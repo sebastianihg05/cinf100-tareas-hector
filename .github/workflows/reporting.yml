@@ -1,0 +1,70 @@
+name: CINF100 Evidence Collector
+
+on:
+
+  push:
+    branches:
+      - desa
+
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - closed
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+
+  collect-event-data:
+    name: collect-event-data
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Show evidence metadata
+        run: |
+          echo "Repository=${{ github.repository }}"
+          echo "Event=${{ github.event_name }}"
+          echo "Actor=${{ github.actor }}"
+          echo "SHA=${{ github.sha }}"
+          echo "Ref=${{ github.ref }}"
+
+      - name: Commit evidence
+        if: github.event_name == 'push'
+        run: |
+          echo "=== Último commit ==="
+          git show \
+            --no-patch \
+            --format='author=%an <%ae>%nsha=%H%ndate=%aI%nsubject=%s'
+
+          echo ""
+          echo "=== Archivos modificados ==="
+          git diff-tree \
+            --no-commit-id \
+            --name-status \
+            -r HEAD
+
+      - name: Pull Request evidence
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "PR=${{ github.event.pull_request.number }}"
+          echo "Author=${{ github.event.pull_request.user.login }}"
+          echo "Source=${{ github.head_ref }}"
+          echo "Target=${{ github.base_ref }}"
+          echo "State=${{ github.event.pull_request.state }}"
+          echo "Merged=${{ github.event.pull_request.merged }}"
+          echo "Commits=${{ github.event.pull_request.commits }}"
+          echo "Changed files=${{ github.event.pull_request.changed_files }}"
+          echo "Additions=${{ github.event.pull_request.additions }}"
+          echo "Deletions=${{ github.event.pull_request.deletions }}"

@@ -1,0 +1,158 @@
+name: CINF100 CI
+
+on:
+
+  # Trabajo cotidiano.
+  # Cada push a desa genera evidencia técnica.
+  push:
+    branches:
+      - desa
+
+  # Entrega formal.
+  # Solo evaluamos PR cuyo destino es main.
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cinf100-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  repository-validation:
+    name: repository-validation
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate required files
+        run: |
+          test -f README.md
+          test -f CONTRIBUTING.md
+          test -f SECURITY.md
+
+      - name: Validate directories
+        run: |
+          test -d frontend
+          test -d backend
+          test -d docs
+          test -d tests
+
+  backend-tests:
+    name: backend-tests
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Detect backend dependencies
+        id: backend
+        run: |
+          if [ -f backend/requirements.txt ]; then
+            echo "requirements=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "requirements=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install backend dependencies
+        if: steps.backend.outputs.requirements == 'true'
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Run Pytest
+        if: steps.backend.outputs.requirements == 'true'
+        run: |
+          if [ -d backend/tests ]; then
+            pytest backend/tests
+          fi
+
+  frontend-tests:
+    name: frontend-tests
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect frontend
+        id: frontend
+        run: |
+          if [ -f frontend/package.json ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node
+        if: steps.frontend.outputs.exists == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        if: steps.frontend.outputs.exists == 'true'
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run tests
+        if: steps.frontend.outputs.exists == 'true'
+        working-directory: frontend
+        run: npm test --if-present
+
+      - name: Run build
+        if: steps.frontend.outputs.exists == 'true'
+        working-directory: frontend
+        run: npm run build --if-present
+
+  delivery-check:
+    name: delivery-check
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Validate delivery branches
+        run: |
+          echo "Base branch: ${{ github.base_ref }}"
+          echo "Source branch: ${{ github.head_ref }}"
+
+          if [ "${{ github.base_ref }}" != "main" ]; then
+            echo "ERROR: La entrega debe tener main como destino."
+            exit 1
+          fi
+
+          if [ "${{ github.head_ref }}" != "desa" ]; then
+            echo "ERROR: La entrega oficial debe realizarse desde desa."
+            exit 1
+          fi
+
+          echo "Entrega válida: desa -> main"
+
+      - name: Delivery metadata
+        run: |
+          echo "PR #${{ github.event.pull_request.number }}"
+          echo "Author: ${{ github.event.pull_request.user.login }}"
+          echo "Created: ${{ github.event.pull_request.created_at }}"
+          echo "Updated: ${{ github.event.pull_request.updated_at }}"
