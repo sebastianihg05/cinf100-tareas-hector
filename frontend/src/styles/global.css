@@ -1,0 +1,22 @@
+:root {
+  --navy: #003366;
+  --navy-light: #265d93;
+  --red: #cc0033;
+  --ink: #1a1d20;
+  --muted: #5a6578;
+  --line: #e2e8f0;
+  --green: #10b981;
+  --green-bg: #d1fae5;
+  --font: 'Manrope', system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  color: var(--ink);
+  background: #eef1f5;
+}
+
+button { font-family: inherit; cursor: pointer; }

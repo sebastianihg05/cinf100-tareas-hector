@@ -1,0 +1,97 @@
+import { useState } from 'react'
+import AddButton from '../components/AddButton'
+import CardActions from '../components/CardActions'
+import ChoferForm from '../components/ChoferForm'
+import ConfirmDialog from '../components/ConfirmDialog'
+import { IconPhone, IconTruck } from '../components/icons'
+import Modal from '../components/Modal'
+import Pills from '../components/Pills'
+import { useAdmin } from '../store/AdminContext'
+import type { Chofer } from '../types'
+import { fechaLarga, iniciales, todayISO } from '../utils/format'
+
+type Filtro = 'activos' | 'baja'
+type Dialogo = { kind: 'form'; chofer?: Chofer } | { kind: 'baja'; chofer: Chofer } | null
+
+/** Licencia vencida o por vencer en los próximos 30 días */
+function estadoLicencia(iso: string): 'vencida' | 'por-vencer' | 'ok' {
+  const hoy = todayISO()
+  if (iso <= hoy) return 'vencida'
+  const limite = new Date()
+  limite.setDate(limite.getDate() + 30)
+  const lim = `${limite.getFullYear()}-${String(limite.getMonth() + 1).padStart(2, '0')}-${String(limite.getDate()).padStart(2, '0')}`
+  return iso <= lim ? 'por-vencer' : 'ok'
+}
+
+export default function VistaChoferes() {
+  const { state, saveChofer, toggleChofer, vanDeChofer } = useAdmin()
+  const [filtro, setFiltro] = useState<Filtro>('activos')
+  const [dialogo, setDialogo] = useState<Dialogo>(null)
+
+  const activos = state.choferes.filter((c) => c.activo)
+  const baja = state.choferes.filter((c) => !c.activo)
+  const lista = filtro === 'activos' ? activos : baja
+  const cerrar = () => setDialogo(null)
+
+  return (
+    <>
+      <Pills value={filtro} onChange={setFiltro} options={[
+        { value: 'activos', label: 'Activos', count: activos.length },
+        { value: 'baja', label: 'Dados de baja', count: baja.length },
+      ]} />
+      <AddButton label="Agregar Conductor" onClick={() => setDialogo({ kind: 'form' })} />
+
+      <ul className="adm-list">
+        {lista.map((c) => {
+          const van = vanDeChofer(c)
+          const lic = estadoLicencia(c.licenciaHasta)
+          return (
+            <li key={c.id} className="adm-card">
+              <div className="adm-card__head">
+                <span className="adm-card__who">
+                  <span className="adm-avatar adm-avatar--light adm-avatar--sm" aria-hidden="true">{iniciales(c.nombre)}</span>
+                  <span className="adm-card__title">{c.nombre}</span>
+                </span>
+                <span className={`adm-badge ${!c.activo ? 'adm-badge--off' : van ? 'adm-badge--ok' : 'adm-badge--pending'}`}>
+                  {!c.activo ? 'De baja' : van ? 'Asignado' : 'Sin van'}
+                </span>
+              </div>
+              <p className="adm-card__small">Rut: {c.rut} · Licencia hasta {fechaLarga(c.licenciaHasta)}</p>
+              {lic !== 'ok' && (
+                <span className="adm-tag adm-tag--warn">{lic === 'vencida' ? 'Licencia vencida' : 'Licencia por vencer'}</span>
+              )}
+              <p className="adm-card__line adm-card__line--small">{c.correo}</p>
+              {van && <p className="adm-card__line adm-card__line--small"><IconTruck size={12} />{van.patente}</p>}
+              <p className="adm-card__line adm-card__line--small"><IconPhone size={11} />{c.telefono}</p>
+              <CardActions
+                activo={c.activo}
+                onEdit={() => setDialogo({ kind: 'form', chofer: c })}
+                onToggle={() => (c.activo ? setDialogo({ kind: 'baja', chofer: c }) : toggleChofer(c.id))}
+              />
+            </li>
+          )
+        })}
+        {lista.length === 0 && <li className="adm-empty">No hay conductores en esta lista.</li>}
+      </ul>
+
+      {dialogo?.kind === 'form' && (
+        <Modal title={dialogo.chofer ? `Editar a ${dialogo.chofer.nombre}` : 'Agregar conductor'} onClose={cerrar}>
+          <ChoferForm
+            initial={dialogo.chofer}
+            onCancel={cerrar}
+            onSubmit={(chofer) => { saveChofer(chofer); cerrar() }}
+          />
+        </Modal>
+      )}
+      {dialogo?.kind === 'baja' && (
+        <ConfirmDialog
+          title="Dar de baja"
+          message={`¿Dar de baja a ${dialogo.chofer.nombre}? Se desasignará de su van.`}
+          confirmLabel="Dar de baja"
+          onCancel={cerrar}
+          onConfirm={() => { toggleChofer(dialogo.chofer.id); cerrar() }}
+        />
+      )}
+    </>
+  )
+}
