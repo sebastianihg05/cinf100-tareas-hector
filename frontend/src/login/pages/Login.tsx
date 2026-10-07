@@ -2,11 +2,10 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/auth.css";
 
-Correo:
-dev.admin@unab.cl
-
-Contraseña:
-Unab.2026
+const ADMIN_DEMO = {
+  correo: "dev.admin@unab.cl",
+  password: "Unab.2026",
+};
 
 function Login() {
   const navigate = useNavigate();
