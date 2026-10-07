@@ -1,11 +1,14 @@
-import { adminInicial, choferesIniciales, pasajerosIniciales, vansIniciales, viajesIniciales } from '../data/mock'
-import type { Admin, Chofer, EstadoViaje, Notificacion, Pasajero, Van, Viaje } from '../types'
+import { adminInicial, choferesIniciales, pasajerosIniciales, reservasIniciales, vansIniciales, viajesIniciales } from '../data/mock'
+import type { Admin, Chofer, EstadoViaje, Notificacion, Pasajero, Reserva, Van, Viaje } from '../types'
+import { sincronizar, validarSolicitud } from './reservas'
 
 export type State = {
   vans: Van[]
   choferes: Chofer[]
   pasajeros: Pasajero[]
   viajes: Viaje[]
+  /** asientos reservados por los pasajeros (compartidos con la app del pasajero) */
+  reservas: Reserva[]
   notificaciones: Notificacion[]
   admin: Admin
 }
@@ -19,18 +22,28 @@ export type Action =
   | { type: 'viaje/add'; viajes: Viaje[] }
   | { type: 'viaje/estado'; id: string; estado: EstadoViaje; notificacion?: Notificacion }
   | { type: 'viaje/van'; id: string; vanId: string }
+  | { type: 'reserva/crear'; reservas: Reserva[] }
   | { type: 'notif/leer'; id: string }
   | { type: 'notif/leerTodas' }
   | { type: 'admin/update'; patch: Partial<Admin> }
 
-export const estadoInicial = (): State => ({
-  vans: vansIniciales,
-  choferes: choferesIniciales,
-  pasajeros: pasajerosIniciales,
-  viajes: viajesIniciales,
-  notificaciones: [],
-  admin: adminInicial,
-})
+export const estadoInicial = (): State =>
+  sincronizar({
+    vans: vansIniciales,
+    choferes: choferesIniciales,
+    pasajeros: pasajerosIniciales,
+    viajes: viajesIniciales,
+    reservas: reservasIniciales,
+    notificaciones: [],
+    admin: adminInicial,
+  })
+
+/** Al cancelar o completar un viaje, sus reservas pendientes siguen la misma suerte. */
+const cerrarReservas = (reservas: Reserva[], viajeId: string, estado: EstadoViaje): Reserva[] => {
+  if (estado !== 'cancelado' && estado !== 'completado') return reservas
+  const nuevo = estado === 'cancelado' ? 'cancelada' : 'completada'
+  return reservas.map((r) => (r.viajeId === viajeId && r.estado === 'pendiente' ? { ...r, estado: nuevo } : r))
+}
 
 const liberarChofer = (vans: Van[], choferId: string) =>
   vans.map((v) => (v.choferId === choferId ? { ...v, choferId: null } : v))
@@ -72,11 +85,20 @@ export function reducer(s: State, a: Action): State {
     case 'viaje/add':
       return { ...s, viajes: [...s.viajes, ...a.viajes] }
     case 'viaje/estado':
-      return {
+      return sincronizar({
         ...s,
         viajes: s.viajes.map((v) => (v.id === a.id ? { ...v, estado: a.estado } : v)),
+        reservas: cerrarReservas(s.reservas, a.id, a.estado),
         notificaciones: a.notificacion ? [a.notificacion, ...s.notificaciones] : s.notificaciones,
-      }
+      })
+    case 'reserva/crear': {
+      // Defensa: el contexto ya validó, pero el reducer nunca aplica una reserva que choque con otra.
+      const primera = a.reservas[0]
+      if (!primera) return s
+      const items = a.reservas.map((r) => ({ viajeId: r.viajeId, trayecto: r.trayecto, asiento: r.asiento }))
+      if (validarSolicitud(s, primera.pasajeroId, items).length > 0) return s
+      return sincronizar({ ...s, reservas: [...s.reservas, ...a.reservas] })
+    }
     case 'notif/leer':
       return { ...s, notificaciones: s.notificaciones.map((n) => (n.id === a.id ? { ...n, leida: true } : n)) }
     case 'notif/leerTodas':
@@ -90,15 +112,15 @@ export function reducer(s: State, a: Action): State {
 
 /* ---------- Persistencia local (hasta que exista el backend) ---------- */
 
-const KEY = 'unab-admin-v2'
+const KEY = 'unab-admin-v3'
 
 export function cargarEstado(): State {
   try {
     const raw = localStorage.getItem(KEY)
     if (raw) {
       const p = JSON.parse(raw) as Partial<State>
-      if (Array.isArray(p.vans) && Array.isArray(p.choferes) && Array.isArray(p.pasajeros) && Array.isArray(p.viajes) && p.admin) {
-        return { ...p, notificaciones: p.notificaciones ?? [] } as State
+      if (Array.isArray(p.vans) && Array.isArray(p.choferes) && Array.isArray(p.pasajeros) && Array.isArray(p.viajes) && Array.isArray(p.reservas) && p.admin) {
+        return sincronizar({ ...p, notificaciones: p.notificaciones ?? [] } as State)
       }
     }
   } catch {
@@ -107,11 +129,13 @@ export function cargarEstado(): State {
   return estadoInicial()
 }
 
-export function guardarEstado(s: State) {
+/** Devuelve `false` si el navegador no pudo guardar (sin espacio, modo privado, etc.). */
+export function guardarEstado(s: State): boolean {
   try {
     localStorage.setItem(KEY, JSON.stringify(s))
+    return true
   } catch {
-    /* ignorar */
+    return false
   }
 }
 

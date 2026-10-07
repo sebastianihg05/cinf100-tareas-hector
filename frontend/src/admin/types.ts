@@ -59,6 +59,24 @@ export type Viaje = {
   estado: EstadoViaje
 }
 
+export type EstadoReserva = 'pendiente' | 'completada' | 'cancelada'
+
+/**
+ * Un asiento reservado en un viaje. Una reserva de "Ida y Vuelta" son dos registros
+ * (uno por trayecto) que comparten `grupoId`.
+ */
+export type Reserva = {
+  id: string
+  grupoId: string
+  pasajeroId: string
+  viajeId: string
+  trayecto: Trayecto
+  asiento: number
+  estado: EstadoReserva
+  /** ISO yyyy-mm-ddThh:mm */
+  creadaEn: string
+}
+
 /** El conductor inicia el viaje desde su app; al administrador solo le llega este aviso. */
 export type Notificacion = {
   id: string

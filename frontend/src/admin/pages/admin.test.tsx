@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import AdminLayout from '../components/AdminLayout'
+import { viajesIniciales } from '../data/mock'
 import AbrirViaje from './AbrirViaje'
 import { AdminProvider } from '../store/AdminContext'
 import PerfilAdmin from './PerfilAdmin'
@@ -151,7 +152,7 @@ describe('Pasajeros', () => {
 describe('Viajes', () => {
   it('filtra por estado', async () => {
     r(<VistaViajes />)
-    expect(screen.getAllByText(/Asientos reservados ·/)).toHaveLength(4)
+    expect(screen.getAllByText(/Asientos reservados ·/)).toHaveLength(viajesIniciales.length)
     await userEvent.click(screen.getByRole('tab', { name: 'En curso' }))
     expect(screen.getByText('No hay viajes con ese filtro.')).toBeInTheDocument()
   })
@@ -226,7 +227,9 @@ describe('Viajes', () => {
     await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancelar viaje' }))
 
     await userEvent.click(screen.getByRole('tab', { name: 'Cancelados' }))
-    expect(screen.getAllByText(/Asientos reservados ·/)).toHaveLength(1)
+    // los que ya venían cancelados en los datos de prueba + el que se acaba de cancelar
+    const yaCancelados = viajesIniciales.filter((v) => v.estado === 'cancelado').length
+    expect(screen.getAllByText(/Asientos reservados ·/)).toHaveLength(yaCancelados + 1)
     // un viaje cancelado ya no se puede volver a cancelar ni iniciar
     expect(screen.queryByRole('button', { name: 'Cancelar viaje' })).not.toBeInTheDocument()
   })
