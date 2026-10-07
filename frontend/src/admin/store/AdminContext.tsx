@@ -1,7 +1,11 @@
-import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNode } from 'react'
-import type { Admin, Chofer, EstadoViaje, Pasajero, Van, Viaje } from '../types'
+import { createContext, useContext, useEffect, useMemo, useReducer, useRef, type ReactNode } from 'react'
+import type { Admin, Chofer, EstadoViaje, Pasajero, Reserva, Van, Viaje } from '../types'
 import { ahoraISO } from '../utils/format'
-import { cargarEstado, guardarEstado, nuevoId, reducer, type State } from './adminStore'
+import { cargarEstado, guardarEstado, nuevoId, reducer, type Action, type State } from './adminStore'
+import {
+  agruparReservas, asientosOcupados, capacidadDeViaje, validarSolicitud,
+  type GrupoReserva, type ResultadoReserva, type SolicitudReserva,
+} from './reservas'
 
 type AdminApi = {
   state: State
@@ -21,14 +25,25 @@ type AdminApi = {
   updateAdmin: (patch: Partial<Admin>) => void
   choferDeVan: (van: Van) => Chofer | undefined
   vanDeChofer: (chofer: Chofer) => Van | undefined
+  /** Reservas del pasajero separadas en próximas e historial */
+  reservasDe: (pasajeroId: string) => { proximas: GrupoReserva[]; historial: GrupoReserva[] }
+  /** Reserva 1 o 2 asientos (ida / vuelta) de forma atómica: o se guardan todos o ninguno */
+  crearReservas: (pasajeroId: string, solicitud: SolicitudReserva[]) => ResultadoReserva
+  /** Capacidad del viaje (`undefined` si todavía no tiene van asignada) */
+  capacidadDe: (viaje: Viaje) => number | undefined
+  /** Números de asiento ya tomados en el viaje */
+  asientosOcupadosDe: (viajeId: string) => number[]
 }
 
 const AdminContext = createContext<AdminApi | null>(null)
 
 export function AdminProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, cargarEstado)
+  // Última versión del estado, para validar y guardar una reserva sin depender del ciclo de render.
+  const estadoActual = useRef(state)
+  estadoActual.current = state
 
-  useEffect(() => guardarEstado(state), [state])
+  useEffect(() => { guardarEstado(state) }, [state])
 
   const api = useMemo<AdminApi>(
     () => ({
@@ -57,6 +72,33 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       updateAdmin: (patch) => dispatch({ type: 'admin/update', patch }),
       choferDeVan: (van) => state.choferes.find((c) => c.id === van.choferId),
       vanDeChofer: (chofer) => state.vans.find((v) => v.choferId === chofer.id),
+      reservasDe: (pasajeroId) => agruparReservas(state, pasajeroId),
+      capacidadDe: (viaje) => capacidadDeViaje(state, viaje),
+      asientosOcupadosDe: (viajeId) => asientosOcupados(state.reservas, viajeId),
+      crearReservas: (pasajeroId, solicitud) => {
+        const actual = estadoActual.current
+        const conflictos = validarSolicitud(actual, pasajeroId, solicitud)
+        if (conflictos.length > 0) {
+          return { ok: false, tipo: 'conflicto', error: conflictos[0].mensaje, conflictos }
+        }
+        const grupoId = nuevoId('g')
+        const creadaEn = ahoraISO()
+        const reservas: Reserva[] = solicitud.map((it) => ({
+          id: nuevoId('r'), grupoId, pasajeroId, viajeId: it.viajeId, trayecto: it.trayecto, asiento: it.asiento,
+          estado: 'pendiente', creadaEn,
+        }))
+        const accion: Action = { type: 'reserva/crear', reservas }
+        const siguiente = reducer(actual, accion)
+        if (!guardarEstado(siguiente)) {
+          return {
+            ok: false, tipo: 'almacenamiento',
+            error: 'No se pudo guardar la reserva en este dispositivo. Revisa el almacenamiento del navegador e inténtalo de nuevo.',
+          }
+        }
+        estadoActual.current = siguiente
+        dispatch(accion)
+        return { ok: true, grupoId, reservas }
+      },
     }),
     [state],
   )

@@ -9,6 +9,12 @@ import VistaPasajeros from './admin/pages/VistaPasajeros'
 import VistaVans from './admin/pages/VistaVans'
 import VistaViajes from './admin/pages/VistaViajes'
 import { AdminProvider } from './admin/store/AdminContext'
+import PasajeroLayout from './pasajero/PasajeroLayout'
+import Confirmacion from './pasajero/pages/Confirmacion'
+import MisReservas from './pasajero/pages/MisReservas'
+import Reservar from './pasajero/pages/Reservar'
+import SeleccionAsientoIda from './pasajero/pages/SeleccionAsientoIda'
+import SeleccionAsientoVuelta from './pasajero/pages/SeleccionAsientoVuelta'
 
 export default function App() {
   return (
@@ -23,6 +29,14 @@ export default function App() {
           <Route path="viajes" element={<VistaViajes />} />
           <Route path="viajes/abrir" element={<AbrirViaje />} />
           <Route path="perfil" element={<PerfilAdmin />} />
+        </Route>
+        <Route path="/pasajero" element={<PasajeroLayout />}>
+          <Route index element={<Navigate to="reservar" replace />} />
+          <Route path="reservar" element={<Reservar />} />
+          <Route path="asiento/ida" element={<SeleccionAsientoIda />} />
+          <Route path="asiento/vuelta" element={<SeleccionAsientoVuelta />} />
+          <Route path="confirmacion" element={<Confirmacion />} />
+          <Route path="reservas" element={<MisReservas />} />
         </Route>
         <Route path="/login" element={<SesionCerrada />} />
         <Route path="*" element={<Navigate to="/admin/vans" replace />} />
