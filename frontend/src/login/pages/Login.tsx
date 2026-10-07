@@ -37,11 +37,18 @@ function Login() {
       return;
     }
 
-    setError("");
-
-    // La autenticación y redirección según rol
-    // se conectarán posteriormente con el backend.
-  };
+  const correoNormalizado = correo.toLowerCase().trim();
+    if (
+      correoNormalizado === ADMIN_DEMO.correo &&
+      password === ADMIN_DEMO.password
+    ) {
+      setError("");
+      navigate("/admin/panel", { replace: true });
+      return;
+    }
+    
+    setError("Correo o contraseña incorrectos.");
+    };
 
   return (
     <main className="auth-page">
