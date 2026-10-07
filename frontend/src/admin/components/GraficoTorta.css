@@ -1,0 +1,31 @@
+.grafico-torta {
+  min-height: 240px; background: #f8fafc; border: 1px solid #dce2e8; border-radius: 12px; padding: 16px;
+  color: #003366; box-shadow: 0 2px 5px rgba(0, 0, 0, .04);
+}
+.grafico-torta__titulo { text-align: center; margin-bottom: 12px; font-size: 15px; font-weight: 800; }
+.grafico-torta__contenido { display: flex; align-items: center; justify-content: center; gap: 24px; flex-wrap: wrap; }
+
+.grafico-torta__anillo {
+  width: 150px; height: 150px; border-radius: 50%; position: relative; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.grafico-torta__anillo::after { content: ''; position: absolute; inset: 35px; background: #f8fafc; border-radius: 50%; }
+.grafico-torta__centro { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; line-height: 1.1; }
+.grafico-torta__centro span { color: #6b7280; font-size: 11px; font-weight: 700; }
+.grafico-torta__centro strong { margin-top: 3px; color: #0066cc; font-size: 24px; font-weight: 800; }
+
+.grafico-torta__leyenda { display: flex; flex-direction: column; gap: 4px; }
+.grafico-torta__item {
+  display: flex; align-items: center; gap: 7px; padding: 4px 6px; border-radius: 8px;
+  color: #6b7280; font-size: 12px; font-weight: 700; text-decoration: none;
+}
+.grafico-torta__item:hover { background: rgba(0, 51, 102, .06); }
+.grafico-torta__item:focus-visible { outline: 3px solid rgba(0, 51, 102, .35); outline-offset: 2px; }
+.grafico-torta__item strong { color: #003366; margin-left: 2px; }
+.grafico-torta__punto { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+@media (max-width: 480px) {
+  .grafico-torta__contenido { gap: 16px; }
+  .grafico-torta__anillo { width: 130px; height: 130px; }
+  .grafico-torta__anillo::after { inset: 30px; }
+}
