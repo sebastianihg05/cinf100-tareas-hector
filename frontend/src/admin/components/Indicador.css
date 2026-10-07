@@ -1,0 +1,36 @@
+.indicador {
+  position: relative; display: flex; flex-direction: column; text-decoration: none; color: #003366;
+  background: #fff; border: 1px solid #dce2e8; border-radius: 12px;
+  transition: transform .12s, box-shadow .12s;
+}
+.indicador:hover { transform: translateY(-2px); box-shadow: 0 8px 14px rgba(0, 0, 0, .1); }
+.indicador:focus-visible { outline: 3px solid rgba(0, 51, 102, .35); outline-offset: 2px; }
+
+.indicador__etiqueta { color: #6b7280; font-size: 12px; font-weight: 700; }
+.indicador__valor { color: #003366; font-weight: 800; }
+
+/* tarjeta: etiqueta arriba, número grande, ícono en la esquina */
+.indicador--tarjeta { min-height: 88px; padding: 12px; align-items: flex-start; justify-content: center; text-align: left; box-shadow: 0 3px 8px rgba(0, 0, 0, .05); }
+.indicador--tarjeta .indicador__valor { margin-top: 2px; font-size: 26px; }
+.indicador--tarjeta .indicador__icono { position: absolute; top: 10px; right: 10px; opacity: .6; }
+
+/* conteo: número centrado sobre fondo suave */
+.indicador--conteo { min-height: 90px; padding: 16px; align-items: center; justify-content: center; background: #f8fafc; box-shadow: 0 2px 5px rgba(0, 0, 0, .04); }
+.indicador--conteo .indicador__valor { order: -1; font-size: 28px; }
+.indicador--conteo .indicador__etiqueta { margin-top: 4px; text-align: center; }
+
+.indicador--blue .indicador__valor, .indicador--blue .indicador__icono { color: #0066cc; }
+.indicador--yellow .indicador__valor, .indicador--yellow .indicador__icono { color: #e0a800; }
+.indicador--turquoise .indicador__valor, .indicador--turquoise .indicador__icono { color: #00a6a6; }
+.indicador__icono { color: #003366; }
+
+@media (max-width: 480px) {
+  .indicador--tarjeta { min-height: 84px; padding: 11px; }
+  .indicador--tarjeta .indicador__etiqueta { font-size: 11px; }
+  .indicador--tarjeta .indicador__valor { font-size: 24px; }
+  .indicador--conteo { padding: 12px 6px; min-height: 80px; }
+  .indicador--conteo .indicador__valor { font-size: 24px; }
+}
+@media (min-width: 640px) {
+  .indicador--tarjeta { min-height: 95px; }
+}

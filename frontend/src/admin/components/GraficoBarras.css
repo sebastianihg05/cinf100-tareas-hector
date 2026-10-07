@@ -1,0 +1,23 @@
+.grafico-barras { background: #f8fafc; border: 1px solid #dce2e8; border-radius: 12px; padding: 16px; box-shadow: 0 2px 5px rgba(0, 0, 0, .04); }
+.grafico-barras h3 { margin: 0; color: #003366; font-size: 15px; font-weight: 800; }
+.grafico-barras__sub { margin: 3px 0 12px; color: #6b7280; font-size: 12px; }
+.grafico-barras__vacio { margin: 8px 0 0; color: #6b7280; font-size: 13px; }
+.grafico-barras__lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+
+.grafico-barras__barra {
+  display: grid; grid-template-columns: minmax(84px, 38%) 1fr auto; align-items: center; gap: 10px;
+  padding: 5px 6px; border-radius: 8px; color: #003366; text-decoration: none;
+}
+.grafico-barras__barra:hover { background: rgba(0, 51, 102, .06); }
+.grafico-barras__barra:focus-visible { outline: 3px solid rgba(0, 51, 102, .35); outline-offset: 2px; }
+.grafico-barras__etiqueta { font-size: 12px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.grafico-barras__pista { height: 14px; background: #e6ebf1; border-radius: 100px; overflow: hidden; }
+.grafico-barras__relleno { display: block; height: 100%; border-radius: 100px; transition: width .3s; }
+.grafico-barras__valor { min-width: 34px; text-align: right; font-size: 12px; font-weight: 800; color: #003366; }
+
+.grafico-barras__relleno--amarillo { background: #e0a800; }
+.grafico-barras__relleno--azul { background: #0066cc; }
+.grafico-barras__relleno--turquesa { background: #00a6a6; }
+.grafico-barras__relleno--rojo { background: #cc0033; }
+.grafico-barras__relleno--gris { background: #94a3b8; }
+.grafico-barras__relleno--navy { background: #003366; }
