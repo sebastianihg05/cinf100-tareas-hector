@@ -17,10 +17,10 @@ import Reservar from './pasajero/pages/Reservar'
 import SeleccionAsientoIda from './pasajero/pages/SeleccionAsientoIda'
 import SeleccionAsientoVuelta from './pasajero/pages/SeleccionAsientoVuelta'
 
-import Login from './pages/Login'
-import Register from './pages/Register'
-import RegisterSuccess from './pages/RegisterSuccess'
-import ForgotPassword from './pages/ForgotPassword'
+import Login from "./login/pages/Login";
+import Register from "./login/pages/Register";
+import RegisterSuccess from "./login/pages/RegisterSuccess";
+import ForgotPassword from "./login/pages/ForgotPassword";
 
 export default function App() {
   return (
