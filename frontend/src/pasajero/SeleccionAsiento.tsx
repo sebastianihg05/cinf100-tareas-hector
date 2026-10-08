@@ -3,12 +3,14 @@ import { useRef, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAdmin } from '../admin/store/AdminContext'
 import type { Trayecto } from '../admin/types'
+import { usePasajeroActual } from '../login/usePasajeroActual'
 import { borradorInicial, useBorrador } from './borrador'
 import MapaAsientos from './MapaAsientos'
-import { PASAJERO_ID, fechaTexto, trayectosDe, useViajesSede } from './viajes'
+import { fechaTexto, trayectosDe, useViajesSede } from './viajes'
 
 export default function SeleccionAsiento({ trayecto }: { trayecto: Trayecto }) {
   const { crearReservas, capacidadDe, asientosOcupadosDe } = useAdmin()
+  const { pasajeroId } = usePasajeroActual()
   const { borrador, setBorrador } = useBorrador()
   const navigate = useNavigate()
   const dia = useViajesSede(borrador.sede).get(borrador.fecha)
@@ -60,7 +62,7 @@ export default function SeleccionAsiento({ trayecto }: { trayecto: Trayecto }) {
 
     enviandoRef.current = true
     setEnviando(true)
-    const resultado = crearReservas(PASAJERO_ID, solicitud)
+    const resultado = crearReservas(pasajeroId, solicitud)
     if (resultado.ok) {
       setHecho(true)
       setBorrador(borradorInicial(borrador.sede))

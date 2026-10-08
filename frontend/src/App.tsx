@@ -16,11 +16,14 @@ import MisReservas from './pasajero/pages/MisReservas'
 import Reservar from './pasajero/pages/Reservar'
 import SeleccionAsientoIda from './pasajero/pages/SeleccionAsientoIda'
 import SeleccionAsientoVuelta from './pasajero/pages/SeleccionAsientoVuelta'
+import PerfilPasajero from './pasajero/pages/PerfilPasajero'
 
 import Login from "./login/pages/Login";
 import Register from "./login/pages/Register";
 import RegisterSuccess from "./login/pages/RegisterSuccess";
 import ForgotPassword from "./login/pages/ForgotPassword";
+import Pendiente from './login/pages/Pendiente'
+import RequiereRol from './login/RequiereRol'
 
 export default function App() {
   return (
@@ -33,24 +36,35 @@ export default function App() {
         <Route path="/registro/exito" element={<RegisterSuccess />} />
         <Route path="/recuperar" element={<ForgotPassword />} />
 
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<Navigate to="vans" replace />} />
-          <Route path="panel" element={<PanelPendiente />} />
-          <Route path="vans" element={<VistaVans />} />
-          <Route path="choferes" element={<VistaChoferes />} />
-          <Route path="pasajeros" element={<VistaPasajeros />} />
-          <Route path="viajes" element={<VistaViajes />} />
-          <Route path="viajes/abrir" element={<AbrirViaje />} />
-          <Route path="perfil" element={<PerfilAdmin />} />
+        {/* Cada grupo exige iniciar sesión con el rol correspondiente (el que asignó el administrador). */}
+        <Route element={<RequiereRol rol="admin" />}>
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<Navigate to="vans" replace />} />
+            <Route path="panel" element={<PanelPendiente />} />
+            <Route path="vans" element={<VistaVans />} />
+            <Route path="choferes" element={<VistaChoferes />} />
+            <Route path="pasajeros" element={<VistaPasajeros />} />
+            <Route path="viajes" element={<VistaViajes />} />
+            <Route path="viajes/abrir" element={<AbrirViaje />} />
+            <Route path="perfil" element={<PerfilAdmin />} />
+          </Route>
         </Route>
 
-        <Route path="/pasajero" element={<PasajeroLayout />}>
-          <Route index element={<Navigate to="reservar" replace />} />
-          <Route path="reservar" element={<Reservar />} />
-          <Route path="asiento/ida" element={<SeleccionAsientoIda />} />
-          <Route path="asiento/vuelta" element={<SeleccionAsientoVuelta />} />
-          <Route path="confirmacion" element={<Confirmacion />} />
-          <Route path="reservas" element={<MisReservas />} />
+        <Route element={<RequiereRol rol="funcionario" />}>
+          <Route path="/pasajero" element={<PasajeroLayout />}>
+            <Route index element={<Navigate to="reservar" replace />} />
+            <Route path="reservar" element={<Reservar />} />
+            <Route path="asiento/ida" element={<SeleccionAsientoIda />} />
+            <Route path="asiento/vuelta" element={<SeleccionAsientoVuelta />} />
+            <Route path="confirmacion" element={<Confirmacion />} />
+            <Route path="reservas" element={<MisReservas />} />
+            <Route path="perfil" element={<PerfilPasajero />} />
+          </Route>
+        </Route>
+
+        {/* Marcador: el panel del conductor todavía no está desarrollado. */}
+        <Route element={<RequiereRol rol="conductor" />}>
+          <Route path="/conductor" element={<Pendiente titulo="Panel del conductor" />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/login" replace />} />

@@ -1,8 +1,3 @@
-/* =====================================================================
-   App del pasajero (reserva de asientos). Prefijo `psj-`.
-   Mobile-first: la base está pensada para 360-390 px (diseño de Figma) y
-   se adapta a pantallas más anchas centrando la columna.
-   ===================================================================== */
 
 .psj-shell {
   --psj-bg: #f4f5f7;
@@ -152,8 +147,10 @@ select.psj-control:disabled { cursor: not-allowed; color: var(--muted); backgrou
   width: min(100%, 312px); padding: 26px 24px; border: 1.5px solid #d3d4d8; border-radius: 46px;
   background: #e8e8ea; display: flex; flex-direction: column; gap: 22px;
 }
-.psj-van__fila { display: flex; align-items: center; justify-content: center; gap: 30px; }
-.psj-van__fila--conductor { gap: 104px; }
+/* Todas las filas miden lo mismo que la de 3 asientos (3 x 54 + 2 x 30 px), así comparten columnas. */
+.psj-van__fila { display: flex; align-items: center; justify-content: flex-start; gap: 30px; width: 222px; max-width: 100%; margin-inline: auto; }
+/* conductor y asiento 1 en los extremos; las filas de 1 o 2 asientos quedan pegadas al lado izquierdo */
+.psj-van__fila--conductor { justify-content: space-between; }
 
 .psj-asiento {
   position: relative; flex-shrink: 0; display: block; width: 54px; height: 66px; padding: 0; border: 0; background: none;
@@ -322,3 +319,17 @@ select.psj-control:disabled { cursor: not-allowed; color: var(--muted); backgrou
 @media (max-height: 640px) {
   .psj-van { padding-block: 18px; gap: 14px; }
 }
+
+/* ---------- Cancelar una reserva ---------- */
+.psj-reserva__acciones { display: flex; gap: 10px; margin-top: 12px; }
+.psj-reserva__acciones .psj-btn { min-height: 42px; font-size: 14px; }
+.psj-reserva__cancelar { border-color: #cc0033; color: #cc0033; }
+.psj-reserva__cancelar:hover { background: #fdf0f3; }
+
+/* ---------- Campana de notificaciones y acceso al perfil ---------- */
+.psj-bell { position: relative; background: none; border: 0; border-radius: 8px; cursor: pointer; }
+.psj-bell:hover { background: rgba(255, 255, 255, .14); }
+.psj-bell:focus-visible { outline: 3px solid rgba(255, 255, 255, .6); }
+.psj-user--enlace { text-decoration: none; color: inherit; transition: background .15s; }
+.psj-user--enlace:hover { background: #f6f8fb; }
+.psj-user__fin { display: flex; align-items: center; gap: 8px; color: var(--muted); }

@@ -1,30 +1,21 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAdmin } from "../../admin/store/AdminContext";
+import { ahoraISO, esCorreoInstitucional } from "../../admin/utils/format";
+import { autenticar } from "../authDemo";
+import { guardarSesion, RUTA_INICIO } from "../sesion";
 import "../styles/auth.css";
-
-const ADMIN_DEMO = {
-  correo: "dev.admin@unab.cl",
-  password: "Unab.2026",
-};
 
 function Login() {
   const navigate = useNavigate();
+  const { state, patchPasajero, updateAdmin } = useAdmin();
 
   const [correo, setCorreo] = useState("");
   const [password, setPassword] = useState("");
   const [mostrarPassword, setMostrarPassword] = useState(false);
   const [error, setError] = useState("");
 
-  const correoInstitucionalValido = (correoIngresado: string) => {
-    const correoNormalizado = correoIngresado.toLowerCase().trim();
-
-    return (
-      correoNormalizado.endsWith("@uandresbello.edu") ||
-      correoNormalizado.endsWith("@unab.cl")
-    );
-  };
-
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!correo || !password) {
@@ -32,23 +23,29 @@ function Login() {
       return;
     }
 
-    if (!correoInstitucionalValido(correo)) {
+    if (!esCorreoInstitucional(correo)) {
       setError("Debes utilizar un correo institucional.");
       return;
     }
 
-  const correoNormalizado = correo.toLowerCase().trim();
-    if (
-      correoNormalizado === ADMIN_DEMO.correo &&
-      password === ADMIN_DEMO.password
-    ) {
-      setError("");
-      navigate("/admin/panel", { replace: true });
+    // Busca entre las cuentas registradas: valida contraseña, aprobación, habilitación y rol.
+    const resultado = await autenticar(correo, password, state);
+
+    if (!resultado.ok) {
+      setError(resultado.error);
       return;
     }
-    
-    setError("Correo o contraseña incorrectos.");
-    };
+
+    setError("");
+    guardarSesion(resultado.sesion);
+
+    // El perfil muestra cuándo ingresó por última vez.
+    const { pasajeroId } = resultado.sesion;
+    if (pasajeroId) patchPasajero(pasajeroId, { ultimoIngreso: ahoraISO() });
+    else updateAdmin({ ultimoIngreso: ahoraISO() });
+
+    navigate(RUTA_INICIO[resultado.sesion.rol], { replace: true });
+  };
 
   return (
     <main className="auth-page">

@@ -1,23 +1,22 @@
-import { useNavigate } from 'react-router-dom'
-import { IconClock } from '../../admin/components/icons'
-import { useAdmin } from '../../admin/store/AdminContext'
+import { Link, useNavigate } from 'react-router-dom'
+import { IconChevron, IconClock } from '../../admin/components/icons'
 import { HORA_TRAYECTO } from '../../admin/types'
 import { iniciales } from '../../admin/utils/format'
+import { usePasajeroActual } from '../../login/usePasajeroActual'
 import { useBorrador } from '../borrador'
 import {
-  CARGO_PASAJERO, DESTINO, MODALIDADES, PASAJERO_ID, SEDES_ORIGEN,
+  CARGO_PASAJERO, DESTINO, MODALIDADES, SEDES_ORIGEN,
   fechaTexto, fechasDisponibles, trayectosDe, useViajesSede, type Modalidad,
 } from '../viajes'
 
 export default function Reservar() {
-  const { state } = useAdmin()
   const { borrador, setBorrador } = useBorrador()
   const navigate = useNavigate()
   const porFecha = useViajesSede(borrador.sede)
   const fechas = fechasDisponibles(porFecha, borrador.modalidad)
   const fecha = fechas.includes(borrador.fecha) ? borrador.fecha : (fechas[0] ?? '')
 
-  const pasajero = state.pasajeros.find((p) => p.id === PASAJERO_ID)
+  const { pasajero } = usePasajeroActual()
   const puedeReservar = pasajero !== undefined && pasajero.aprobado && pasajero.habilitado
 
   const cambiarSede = (sede: string) => setBorrador({ ...borrador, sede, asientos: {} })
@@ -37,16 +36,19 @@ export default function Reservar() {
 
   return (
     <div className="psj-page psj-page--nav-accion">
-      <section className="psj-user">
+      <Link to="/pasajero/perfil" className="psj-user psj-user--enlace" aria-label="Ir a mi perfil">
         <div className="psj-user__info">
-          <div className="psj-avatar" aria-hidden="true">{iniciales(pasajero?.nombre ?? 'Constanza Silva')}</div>
+          <div className="psj-avatar" aria-hidden="true">{iniciales(pasajero?.nombre ?? 'Funcionario')}</div>
           <div>
-            <p className="psj-user__name">Hola, {(pasajero?.nombre ?? 'Constanza Silva').split(' ')[0]}</p>
+            <p className="psj-user__name">Hola, {(pasajero?.nombre ?? 'Funcionario').split(' ')[0]}</p>
             <p className="psj-user__sub">{CARGO_PASAJERO}</p>
           </div>
         </div>
-        {puedeReservar && <span className="psj-badge psj-badge--activo">Activo</span>}
-      </section>
+        <span className="psj-user__fin">
+          {puedeReservar && <span className="psj-badge psj-badge--activo">Activo</span>}
+          <IconChevron size={18} />
+        </span>
+      </Link>
 
       {!puedeReservar ? (
         <p className="psj-alert" role="alert">
@@ -56,12 +58,20 @@ export default function Reservar() {
         </p>
       ) : (
         <form className="psj-form" onSubmit={(e) => { e.preventDefault(); continuar() }}>
-          <label className="psj-field">
-            <span className="psj-label">Sede de Origen</span>
-            <select className="psj-control" value={borrador.sede} onChange={(e) => cambiarSede(e.target.value)}>
-              {SEDES_ORIGEN.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </label>
+          {SEDES_ORIGEN.length === 1 ? (
+            <div className="psj-field">
+              <label className="psj-label" htmlFor="psj-origen">Sede de Origen</label>
+              <input id="psj-origen" className="psj-control" value={SEDES_ORIGEN[0]} readOnly aria-describedby="psj-origen-ayuda" />
+              <p id="psj-origen-ayuda" className="psj-help">Origen fijo institucional predeterminado</p>
+            </div>
+          ) : (
+            <label className="psj-field">
+              <span className="psj-label">Sede de Origen</span>
+              <select className="psj-control" value={borrador.sede} onChange={(e) => cambiarSede(e.target.value)}>
+                {SEDES_ORIGEN.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </label>
+          )}
 
           <div className="psj-field">
             <label className="psj-label" htmlFor="psj-destino">Sede de Destino</label>

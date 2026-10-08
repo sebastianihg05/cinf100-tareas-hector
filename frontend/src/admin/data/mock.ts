@@ -38,7 +38,7 @@ export const pasajerosIniciales: Pasajero[] = [
     reserva: { fecha: '2026-10-07', trayecto: 'Vuelta', asiento: 5 },
   },
   {
-    // Pasajera de la app del pasajero (todavía no hay login: ver PASAJERO_ID en pasajero/viajes.ts)
+    // Funcionaria de ejemplo con reservas (se puede iniciar sesión con la contraseña de demostración)
     id: 'p5', nombre: 'Constanza Silva', email: 'S.constanza@uandresbello.edu', sede: 'Quillota 980',
     celular: '+56 9 0000 0012', ultimoIngreso: '2026-10-06T08:05',
     aprobado: true, puedeAbrirViajes: false, habilitado: true,
