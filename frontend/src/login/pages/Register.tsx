@@ -1,9 +1,13 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAdmin } from "../../admin/store/AdminContext";
+import { esCorreoInstitucional, normalizarTelefono } from "../../admin/utils/format";
+import { guardarCredencial } from "../authDemo";
 import "../styles/auth.css";
 
 function Register() {
   const navigate = useNavigate();
+  const { crearSolicitud } = useAdmin();
 
   const [nombre, setNombre] = useState("");
   const [correo, setCorreo] = useState("");
@@ -18,14 +22,6 @@ function Register() {
 
   const [error, setError] = useState("");
 
-  const correoInstitucionalValido = (correoIngresado: string) => {
-    const correoNormalizado = correoIngresado.toLowerCase().trim();
-
-    return (
-      correoNormalizado.endsWith("@uandresbello.edu") ||
-      correoNormalizado.endsWith("@unab.cl")
-    );
-  };
 
   const telefonoValido = (telefonoIngresado: string) => {
     const numeros = telefonoIngresado.replace(/\D/g, "");
@@ -33,7 +29,7 @@ function Register() {
     return numeros.length >= 8 && numeros.length <= 12;
   };
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (
@@ -48,7 +44,7 @@ function Register() {
       return;
     }
 
-    if (!correoInstitucionalValido(correo)) {
+    if (!esCorreoInstitucional(correo)) {
       setError("Debes utilizar un correo institucional.");
       return;
     }
@@ -68,8 +64,23 @@ function Register() {
       return;
     }
 
-    setError("");
+    // Crea una solicitud real: queda "por aprobar" en el panel del administrador, sin rol asignado todavía.
+    const solicitud = crearSolicitud({
+      nombre,
+      email: correo,
+      sede,
+      celular: normalizarTelefono(telefono) ?? telefono,
+    });
 
+    if (!solicitud.ok) {
+      setError(solicitud.error);
+      return;
+    }
+
+    // La contraseña no se guarda en claro: solo un hash de demostración (ver authDemo.ts).
+    await guardarCredencial(solicitud.pasajero.email, password);
+
+    setError("");
     navigate("/registro/exito");
   };
 

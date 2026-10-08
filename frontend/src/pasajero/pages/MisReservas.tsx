@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import ConfirmDialog from '../../admin/components/ConfirmDialog'
 import { IconClock, IconSeat } from '../../admin/components/icons'
 import { useAdmin } from '../../admin/store/AdminContext'
-import type { GrupoReserva } from '../../admin/store/reservas'
+import { cancelables, type GrupoReserva } from '../../admin/store/reservas'
 import type { EstadoReserva } from '../../admin/types'
-import { PASAJERO_ID, fechaTexto } from '../viajes'
+import { usePasajeroActual } from '../../login/usePasajeroActual'
+import { fechaTexto } from '../viajes'
 
 const ESTADO: Record<EstadoReserva, { texto: string; clase: string }> = {
   pendiente: { texto: 'Pendiente', clase: 'psj-badge--pendiente' },
@@ -12,7 +14,7 @@ const ESTADO: Record<EstadoReserva, { texto: string; clase: string }> = {
   cancelada: { texto: 'Cancelado', clase: 'psj-badge--cancelado' },
 }
 
-function TarjetaReserva({ grupo }: { grupo: GrupoReserva }) {
+function TarjetaReserva({ grupo, onCancelar }: { grupo: GrupoReserva; onCancelar?: () => void }) {
   const conViaje = grupo.trayectos.find((t) => t.viaje)?.viaje
   const cancelados = grupo.trayectos.filter((t) => t.reserva.estado === 'cancelada')
   const parcial = cancelados.length > 0 && cancelados.length < grupo.trayectos.length
@@ -44,13 +46,25 @@ function TarjetaReserva({ grupo }: { grupo: GrupoReserva }) {
           {cancelados.map((t) => t.reserva.trayecto).join(' y ')} cancelada; el resto de la reserva se mantiene.
         </p>
       )}
+      {onCancelar && (
+        <div className="psj-reserva__acciones">
+          {/* Solo el botón por ahora: la edición de la reserva todavía no está implementada. */}
+          <button type="button" className="psj-btn psj-btn--secondary psj-reserva__editar">Editar reserva</button>
+          <button type="button" className="psj-btn psj-btn--secondary psj-reserva__cancelar" onClick={onCancelar}>
+            Cancelar reserva
+          </button>
+        </div>
+      )}
     </li>
   )
 }
 
 export default function MisReservas() {
-  const { reservasDe } = useAdmin()
-  const { proximas, historial } = reservasDe(PASAJERO_ID)
+  const { state, reservasDe, cancelarReserva } = useAdmin()
+  const [cancelando, setCancelando] = useState<GrupoReserva | null>(null)
+  const [aviso, setAviso] = useState('')
+  const { pasajeroId } = usePasajeroActual()
+  const { proximas, historial } = reservasDe(pasajeroId)
   const [pestana, setPestana] = useState<'proximas' | 'historial'>('proximas')
   const lista = pestana === 'proximas' ? proximas : historial
 
@@ -71,10 +85,31 @@ export default function MisReservas() {
           </div>
         ) : (
           <ul className="psj-lista">
-            {lista.map((g) => <TarjetaReserva key={g.grupoId} grupo={g} />)}
+            {lista.map((g) => (
+              <TarjetaReserva key={g.grupoId} grupo={g}
+                onCancelar={cancelables(state, pasajeroId, g.grupoId).length > 0 ? () => { setAviso(''); setCancelando(g) } : undefined} />
+            ))}
           </ul>
         )}
       </div>
+
+      {aviso && <p className="psj-alert psj-alert--suave" role="status">{aviso}</p>}
+
+      {cancelando && (
+        <ConfirmDialog
+          title="Cancelar reserva"
+          message={`¿Cancelar tu reserva del ${fechaTexto(cancelando.fecha)}? Los asientos quedarán libres para otros funcionarios.`}
+          confirmLabel="Cancelar reserva"
+          cancelLabel="Volver"
+          onCancel={() => setCancelando(null)}
+          onConfirm={() => {
+            const r = cancelarReserva(pasajeroId, cancelando.grupoId)
+            setCancelando(null)
+            setAviso(r.ok ? 'Tu reserva fue cancelada y los asientos quedaron libres.' : r.error)
+          }}
+        />
+      )}
+
     </div>
   )
 }

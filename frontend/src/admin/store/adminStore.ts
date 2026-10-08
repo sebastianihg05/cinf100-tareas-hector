@@ -1,5 +1,5 @@
 import { adminInicial, choferesIniciales, pasajerosIniciales, reservasIniciales, vansIniciales, viajesIniciales } from '../data/mock'
-import type { Admin, Chofer, EstadoViaje, Notificacion, Pasajero, Reserva, Van, Viaje } from '../types'
+import type { Admin, Chofer, EstadoViaje, Notificacion, Pasajero, Reserva, Rol, Van, Viaje } from '../types'
 import { sincronizar, validarSolicitud } from './reservas'
 
 export type State = {
@@ -18,11 +18,16 @@ export type Action =
   | { type: 'van/toggle'; id: string }
   | { type: 'chofer/save'; chofer: Chofer }
   | { type: 'chofer/toggle'; id: string }
+  | { type: 'pasajero/solicitar'; pasajero: Pasajero }
+  | { type: 'pasajero/aprobar'; id: string; rol: Rol }
+  | { type: 'pasajero/rechazar'; id: string }
+  | { type: 'pasajero/eliminar'; id: string }
   | { type: 'pasajero/patch'; id: string; patch: Partial<Pasajero> }
   | { type: 'viaje/add'; viajes: Viaje[] }
   | { type: 'viaje/estado'; id: string; estado: EstadoViaje; notificacion?: Notificacion }
   | { type: 'viaje/van'; id: string; vanId: string }
   | { type: 'reserva/crear'; reservas: Reserva[] }
+  | { type: 'reserva/cancelar'; ids: string[] }
   | { type: 'notif/leer'; id: string }
   | { type: 'notif/leerTodas' }
   | { type: 'admin/update'; patch: Partial<Admin> }
@@ -80,6 +85,28 @@ export function reducer(s: State, a: Action): State {
         vans: actual.activo ? liberarChofer(s.vans, a.id) : s.vans,
       }
     }
+    case 'pasajero/solicitar': {
+      // Defensa: el contexto ya validó, pero el reducer nunca crea dos cuentas con el mismo correo.
+      const correo = a.pasajero.email.toLowerCase()
+      if (s.pasajeros.some((p) => p.email.toLowerCase() === correo)) return s
+      return { ...s, pasajeros: [...s.pasajeros, { ...a.pasajero, aprobado: false }] }
+    }
+    case 'pasajero/aprobar':
+      // La aprobación se hace una sola vez: solo afecta a solicitudes que siguen por aprobar.
+      return {
+        ...s,
+        pasajeros: s.pasajeros.map((p) => (p.id === a.id && !p.aprobado ? { ...p, aprobado: true, rol: a.rol } : p)),
+      }
+    case 'pasajero/rechazar':
+      // Rechazar elimina la solicitud (no existe cuenta aún). Una cuenta ya aprobada no se puede rechazar.
+      return { ...s, pasajeros: s.pasajeros.filter((p) => p.id !== a.id || p.aprobado) }
+    case 'pasajero/eliminar':
+      // Borra la cuenta y todas sus reservas (libera los asientos) y recalcula los cupos de los viajes.
+      return sincronizar({
+        ...s,
+        pasajeros: s.pasajeros.filter((p) => p.id !== a.id),
+        reservas: s.reservas.filter((r) => r.pasajeroId !== a.id),
+      })
     case 'pasajero/patch':
       return { ...s, pasajeros: s.pasajeros.map((p) => (p.id === a.id ? { ...p, ...a.patch } : p)) }
     case 'viaje/add':
@@ -98,6 +125,14 @@ export function reducer(s: State, a: Action): State {
       const items = a.reservas.map((r) => ({ viajeId: r.viajeId, trayecto: r.trayecto, asiento: r.asiento }))
       if (validarSolicitud(s, primera.pasajeroId, items).length > 0) return s
       return sincronizar({ ...s, reservas: [...s.reservas, ...a.reservas] })
+    }
+    case 'reserva/cancelar': {
+      // Una reserva cancelada libera su asiento (ver estaActiva) y sincroniza los cupos del viaje.
+      const ids = new Set(a.ids)
+      return sincronizar({
+        ...s,
+        reservas: s.reservas.map((r) => (ids.has(r.id) && r.estado === 'pendiente' ? { ...r, estado: 'cancelada' as const } : r)),
+      })
     }
     case 'notif/leer':
       return { ...s, notificaciones: s.notificaciones.map((n) => (n.id === a.id ? { ...n, leida: true } : n)) }

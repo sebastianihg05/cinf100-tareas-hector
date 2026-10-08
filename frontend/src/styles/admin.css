@@ -361,3 +361,22 @@
 @media (min-width: 900px) {
   .adm-greeting { grid-area: greeting; }
 }
+
+
+/* ---------- Solicitudes de registro: asignar rol, aprobar o rechazar ---------- */
+.adm-card--solicitud { flex-wrap: wrap; }
+.adm-solicitud {
+  flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: flex-end; gap: 8px;
+  padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, .18);
+}
+.adm-solicitud__rol { display: flex; flex-direction: column; gap: 3px; margin-right: auto; font-size: 11px; font-weight: 700; }
+.adm-solicitud__rol select {
+  font-family: inherit; font-size: 13px; padding: 7px 10px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, .35);
+  background: rgba(255, 255, 255, .12); color: #fff;
+}
+.adm-solicitud__rol select option { color: #1a1d20; }
+.adm-reject {
+  background: transparent; color: #fff; border: 1px solid rgba(255, 255, 255, .55); border-radius: 8px;
+  font-weight: 800; font-size: 11px; padding: 8px 12px;
+}
+.adm-reject:hover { background: rgba(204, 0, 51, .45); border-color: transparent; }

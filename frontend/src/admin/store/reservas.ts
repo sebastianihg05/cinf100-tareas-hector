@@ -175,3 +175,15 @@ export function agruparReservas(
     .sort((a, b) => clave(b).localeCompare(clave(a)))
   return { proximas, historial }
 }
+
+/**
+ * Reservas de un grupo que el pasajero todavía puede cancelar: las suyas, pendientes, de un viaje que sigue
+ * pendiente y que aún no sale. Una reserva de ida y vuelta se cancela completa (todos sus trayectos pendientes).
+ */
+export function cancelables(datos: Pick<Datos, 'viajes' | 'reservas'>, pasajeroId: string, grupoId: string): Reserva[] {
+  return datos.reservas.filter((r) => {
+    if (r.pasajeroId !== pasajeroId || r.grupoId !== grupoId || r.estado !== 'pendiente') return false
+    const viaje = datos.viajes.find((v) => v.id === r.viajeId)
+    return viaje !== undefined && viaje.estado === 'pendiente' && !yaSalio(viaje)
+  })
+}

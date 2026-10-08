@@ -1,11 +1,18 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, useRef, type ReactNode } from 'react'
-import type { Admin, Chofer, EstadoViaje, Pasajero, Reserva, Van, Viaje } from '../types'
+import type { Admin, Chofer, EstadoViaje, Pasajero, Reserva, Rol, Van, Viaje } from '../types'
 import { ahoraISO } from '../utils/format'
 import { cargarEstado, guardarEstado, nuevoId, reducer, type Action, type State } from './adminStore'
 import {
-  agruparReservas, asientosOcupados, capacidadDeViaje, validarSolicitud,
+  agruparReservas, asientosOcupados, cancelables, capacidadDeViaje, validarSolicitud,
   type GrupoReserva, type ResultadoReserva, type SolicitudReserva,
 } from './reservas'
+
+/** Datos del formulario de registro. */
+export type NuevaSolicitud = { nombre: string; email: string; sede: string; celular: string }
+
+export type ResultadoCancelacion = { ok: true; cantidad: number } | { ok: false; error: string }
+
+export type ResultadoSolicitud = { ok: true; pasajero: Pasajero } | { ok: false; error: string }
 
 type AdminApi = {
   state: State
@@ -15,6 +22,14 @@ type AdminApi = {
   saveChofer: (chofer: Chofer) => void
   toggleChofer: (id: string) => void
   patchPasajero: (id: string, patch: Partial<Pasajero>) => void
+  /** Registro de un funcionario: crea una solicitud "por aprobar" (sin rol hasta que el administrador la apruebe) */
+  crearSolicitud: (datos: NuevaSolicitud) => ResultadoSolicitud
+  /** Aprueba una solicitud y le asigna su rol (se hace una sola vez) */
+  aprobarSolicitud: (id: string, rol: Rol) => void
+  /** Elimina la cuenta de un pasajero junto con todas sus reservas (libera los asientos y el espacio guardado) */
+  eliminarPasajero: (id: string) => void
+  /** Rechaza una solicitud: se elimina y la persona tendría que registrarse de nuevo */
+  rechazarSolicitud: (id: string) => void
   addViajes: (viajes: Viaje[]) => void
   setEstadoViaje: (id: string, estado: EstadoViaje) => void
   marcarLeida: (id: string) => void
@@ -29,6 +44,8 @@ type AdminApi = {
   reservasDe: (pasajeroId: string) => { proximas: GrupoReserva[]; historial: GrupoReserva[] }
   /** Reserva 1 o 2 asientos (ida / vuelta) de forma atómica: o se guardan todos o ninguno */
   crearReservas: (pasajeroId: string, solicitud: SolicitudReserva[]) => ResultadoReserva
+  /** Cancela una reserva completa del pasajero (todos sus trayectos pendientes) y libera los asientos */
+  cancelarReserva: (pasajeroId: string, grupoId: string) => ResultadoCancelacion
   /** Capacidad del viaje (`undefined` si todavía no tiene van asignada) */
   capacidadDe: (viaje: Viaje) => number | undefined
   /** Números de asiento ya tomados en el viaje */
@@ -55,6 +72,34 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       saveChofer: (chofer) => dispatch({ type: 'chofer/save', chofer }),
       toggleChofer: (id) => dispatch({ type: 'chofer/toggle', id }),
       patchPasajero: (id, patch) => dispatch({ type: 'pasajero/patch', id, patch }),
+      crearSolicitud: (datos) => {
+        const actual = estadoActual.current
+        const email = datos.email.trim().toLowerCase()
+        const existe =
+          email === actual.admin.email.toLowerCase() ||
+          actual.choferes.some((c) => c.correo.toLowerCase() === email) ||
+          actual.pasajeros.some((p) => p.email.toLowerCase() === email)
+        if (existe) return { ok: false, error: 'Ya existe una cuenta o una solicitud con ese correo.' }
+
+        const pasajero: Pasajero = {
+          id: nuevoId('p'),
+          nombre: datos.nombre.trim().replace(/\s+/g, ' '),
+          email,
+          sede: datos.sede,
+          celular: datos.celular.trim(),
+          ultimoIngreso: ahoraISO(),
+          aprobado: false,
+          puedeAbrirViajes: false,
+          habilitado: true,
+        }
+        const accion: Action = { type: 'pasajero/solicitar', pasajero }
+        estadoActual.current = reducer(actual, accion)
+        dispatch(accion)
+        return { ok: true, pasajero }
+      },
+      aprobarSolicitud: (id, rol) => dispatch({ type: 'pasajero/aprobar', id, rol }),
+      rechazarSolicitud: (id) => dispatch({ type: 'pasajero/rechazar', id }),
+      eliminarPasajero: (id) => dispatch({ type: 'pasajero/eliminar', id }),
       addViajes: (viajes) => dispatch({ type: 'viaje/add', viajes }),
       // Lo llama la app del conductor (aquí solo se simula en desarrollo). Al iniciar, avisa al administrador.
       setEstadoViaje: (id, estado) =>
@@ -75,6 +120,17 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       reservasDe: (pasajeroId) => agruparReservas(state, pasajeroId),
       capacidadDe: (viaje) => capacidadDeViaje(state, viaje),
       asientosOcupadosDe: (viajeId) => asientosOcupados(state.reservas, viajeId),
+      cancelarReserva: (pasajeroId, grupoId) => {
+        const actual = estadoActual.current
+        const ids = cancelables(actual, pasajeroId, grupoId).map((r) => r.id)
+        if (ids.length === 0) {
+          return { ok: false, error: 'Esta reserva ya no se puede cancelar: el viaje ya salió o la reserva ya no está pendiente.' }
+        }
+        const accion: Action = { type: 'reserva/cancelar', ids }
+        estadoActual.current = reducer(actual, accion)
+        dispatch(accion)
+        return { ok: true, cantidad: ids.length }
+      },
       crearReservas: (pasajeroId, solicitud) => {
         const actual = estadoActual.current
         const conflictos = validarSolicitud(actual, pasajeroId, solicitud)

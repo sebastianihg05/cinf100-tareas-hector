@@ -28,6 +28,9 @@ export type ReservaPasajero = {
   asiento: number
 }
 
+/** Rol que el administrador asigna al aprobar una solicitud de registro. */
+export type Rol = 'funcionario' | 'conductor'
+
 export type Pasajero = {
   id: string
   nombre: string
@@ -36,7 +39,9 @@ export type Pasajero = {
   celular: string
   /** ISO yyyy-mm-ddThh:mm */
   ultimoIngreso: string
-  /** cuenta aprobada: puede reservar asientos */
+  /** Rol asignado al aprobar la solicitud. Las cuentas de ejemplo sin rol se tratan como funcionario. */
+  rol?: Rol
+  /** cuenta aprobada: puede reservar asientos. Mientras sea `false` la cuenta es una solicitud por aprobar. */
   aprobado: boolean
   /** Dirección de Docencia: abre viajes en días sin viaje fijo */
   puedeAbrirViajes: boolean

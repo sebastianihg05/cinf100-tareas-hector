@@ -1,16 +1,15 @@
 import { useMemo } from 'react'
 import { asientosOcupados, capacidadDeViaje, estaActiva, yaSalio } from '../admin/store/reservas'
 import { useAdmin } from '../admin/store/AdminContext'
-import { SEDES, type Trayecto, type Viaje } from '../admin/types'
+import { usePasajeroActual } from '../login/usePasajeroActual'
+import type { Trayecto, Viaje } from '../admin/types'
 
-/** Todavía no hay login: la app del pasajero opera como esta pasajera (ver admin/data/mock.ts). */
-export const PASAJERO_ID = 'p5'
 export const CARGO_PASAJERO = 'Funcionario Docente'
 
 /** Destino fijo institucional de la ida (y origen de la vuelta). */
 export const DESTINO = 'Santiago'
-/** Sedes desde las que se puede salir: todas menos el destino fijo. */
-export const SEDES_ORIGEN: string[] = SEDES.filter((s) => s !== DESTINO)
+/** Origen fijo institucional: todos los viajes de ida salen de Quillota 980. */
+export const SEDES_ORIGEN: string[] = ['Quillota 980']
 
 export type Modalidad = 'Ida' | 'Vuelta' | 'IdaVuelta'
 export const MODALIDADES: { valor: Modalidad; etiqueta: string }[] = [
@@ -44,6 +43,7 @@ export type DiaViajes = Partial<Record<Trayecto, Viaje>>
  */
 export function useViajesSede(sede: string): Map<string, DiaViajes> {
   const { state } = useAdmin()
+  const { pasajeroId } = usePasajeroActual()
   return useMemo(() => {
     const porFecha = new Map<string, DiaViajes>()
     for (const v of state.viajes) {
@@ -51,13 +51,13 @@ export function useViajesSede(sede: string): Map<string, DiaViajes> {
       if ((v.trayecto === 'Ida' ? v.origen : v.destino) !== sede) continue
       const capacidad = capacidadDeViaje(state, v)
       if (capacidad === undefined || asientosOcupados(state.reservas, v.id).length >= capacidad) continue
-      if (state.reservas.some((r) => r.viajeId === v.id && r.pasajeroId === PASAJERO_ID && estaActiva(r))) continue
+      if (state.reservas.some((r) => r.viajeId === v.id && r.pasajeroId === pasajeroId && estaActiva(r))) continue
       const dia = porFecha.get(v.fecha) ?? {}
       if (!dia[v.trayecto]) dia[v.trayecto] = v
       porFecha.set(v.fecha, dia)
     }
     return porFecha
-  }, [state, sede])
+  }, [state, sede, pasajeroId])
 }
 
 /** Fechas (ordenadas) en las que existen todos los trayectos que exige la modalidad. */

@@ -1,15 +1,17 @@
 import { Link, Navigate, useLocation } from 'react-router-dom'
 import { useAdmin } from '../../admin/store/AdminContext'
-import { DESTINO, PASAJERO_ID, destinoLabel } from '../viajes'
+import { usePasajeroActual } from '../../login/usePasajeroActual'
+import { DESTINO, destinoLabel } from '../viajes'
 
 export default function Confirmacion() {
-  const { state, reservasDe } = useAdmin()
+  const { reservasDe } = useAdmin()
+  const { pasajero, pasajeroId } = usePasajeroActual()
   const grupoId = (useLocation().state as { grupoId?: unknown } | null)?.grupoId
-  const { proximas, historial } = reservasDe(PASAJERO_ID)
+  const { proximas, historial } = reservasDe(pasajeroId)
   const grupo = typeof grupoId === 'string' ? [...proximas, ...historial].find((g) => g.grupoId === grupoId) : undefined
   if (!grupo) return <Navigate to="/pasajero/reservas" replace />
 
-  const nombre = state.pasajeros.find((p) => p.id === PASAJERO_ID)?.nombre ?? 'Constanza Silva'
+  const nombre = pasajero?.nombre ?? 'Funcionario'
   const ida = grupo.trayectos.find((t) => t.reserva.trayecto === 'Ida')?.viaje
   const vuelta = grupo.trayectos.find((t) => t.reserva.trayecto === 'Vuelta')?.viaje
   const sedeOrigen = ida?.origen ?? vuelta?.destino ?? '—'
