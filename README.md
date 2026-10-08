@@ -1,15 +1,13 @@
-# {{ repository_name }}
-
 ## CINF100 – Integrador I: Práctica I
 
 Universidad Andrés Bello – UNAB DevHub
 
 ### Identificación
 
-- Semestre: `{{ term }}`
-- Sede: `{{ site }}`
-- Sección: `{{ nrc }}`
-- Grupo: `{{ group_key }}`
+- Semestre: `{{2}}`
+- Sede: `{{ Viña del mar }}`
+- Sección: `{{ 8535 }}`
+- Grupo: `{{ 2 }}`
 
 ---
 
