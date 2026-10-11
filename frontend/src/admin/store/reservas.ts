@@ -104,6 +104,35 @@ export function validarSolicitud(datos: Datos, pasajeroId: string, items: Solici
   return conflictos
 }
 
+export type CambioAsiento = { id: string; asiento: number }
+
+/** Valida el cambio de asiento de una reserva pendiente. Devuelve la lista de conflictos (vacía si es válido). */
+export function validarCambioAsientos(datos: Datos, pasajeroId: string, grupoId: string, cambios: CambioAsiento[]): Conflicto[] {
+  if (cambios.length === 0) return [{ codigo: 'viaje-no-disponible', mensaje: 'No hay cambios para guardar.' }]
+  const conflictos: Conflicto[] = []
+  const editables = cancelables(datos, pasajeroId, grupoId)
+  for (const c of cambios) {
+    const reserva = editables.find((r) => r.id === c.id)
+    const viaje = reserva && datos.viajes.find((v) => v.id === reserva.viajeId)
+    const capacidad = viaje ? capacidadDeViaje(datos, viaje) : undefined
+    if (!reserva || !viaje || capacidad === undefined) {
+      conflictos.push({ codigo: 'viaje-no-disponible', mensaje: 'Esta reserva ya no se puede editar: el viaje ya salió o la reserva ya no está pendiente.' })
+      continue
+    }
+    if (!Number.isInteger(c.asiento) || c.asiento < 1 || c.asiento > capacidad) {
+      conflictos.push({ codigo: 'asiento-invalido', trayecto: reserva.trayecto, mensaje: `El asiento ${c.asiento} no existe en el viaje de ${reserva.trayecto}.` })
+      continue
+    }
+    if (datos.reservas.some((r) => r.id !== reserva.id && r.viajeId === viaje.id && estaActiva(r) && r.asiento === c.asiento)) {
+      conflictos.push({
+        codigo: 'asiento-ocupado', trayecto: reserva.trayecto,
+        mensaje: `El asiento ${c.asiento} del viaje de ${reserva.trayecto} acaba de ser reservado. Elige otro.`,
+      })
+    }
+  }
+  return conflictos
+}
+
 const clave = (v: Pick<Viaje, 'fecha' | 'hora'>) => `${v.fecha} ${v.hora}`
 
 const mismaReserva = (a: Pasajero['reserva'], b: Pasajero['reserva']) =>

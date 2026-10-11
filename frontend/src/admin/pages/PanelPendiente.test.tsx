@@ -74,3 +74,18 @@ describe('Panel conectado al resto del administrador', () => {
     expect(screen.getByText(/Deshabilitados/)).toBeInTheDocument()
   })
 })
+
+describe('Panel: reservas y viajes', () => {
+  it('lista los próximos viajes y las últimas reservas', () => {
+    abrirPanel()
+    expect(within(screen.getByRole('region', { name: 'Próximos viajes' })).getAllByRole('link').length).toBeGreaterThan(0)
+    expect(within(screen.getByRole('region', { name: 'Últimas reservas' })).getAllByRole('link').length).toBeGreaterThan(0)
+  })
+
+  it('agrupa las reservas por día y por semana', async () => {
+    abrirPanel()
+    expect(screen.getByRole('region', { name: 'Reservas por día' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('tab', { name: 'Por semana' }))
+    expect(screen.getByRole('region', { name: 'Reservas por semana' })).toBeInTheDocument()
+  })
+})

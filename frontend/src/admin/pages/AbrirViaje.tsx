@@ -4,8 +4,8 @@ import { IconCalendar, IconInfo } from '../components/icons'
 import Field from '../components/Field'
 import { useAdmin } from '../store/AdminContext'
 import { nuevoId } from '../store/adminStore'
-import { HORA_TRAYECTO, RUTA_TRAYECTO, type Trayecto, type Viaje } from '../types'
-import { todayISO } from '../utils/format'
+import { DIAS_MAX_ANTICIPACION, DIAS_MIN_ANTICIPACION, HORA_TRAYECTO, RUTA_TRAYECTO, type Trayecto, type Viaje } from '../types'
+import { sumarDias, todayISO } from '../utils/format'
 
 type Opcion = 'Ida' | 'Vuelta' | 'Ida y vuelta'
 const OPCIONES: Opcion[] = ['Ida', 'Vuelta', 'Ida y vuelta']
@@ -21,14 +21,16 @@ export default function AbrirViaje() {
   const [error, setError] = useState('')
 
   const volver = () => navigate('/admin/viajes')
+  const desde = sumarDias(todayISO(), DIAS_MIN_ANTICIPACION)
+  const hasta = sumarDias(todayISO(), DIAS_MAX_ANTICIPACION)
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
     const trayectos = trayectosDe(opcion)
 
     if (!fecha) return setError('Selecciona la fecha del viaje')
-    if (fecha < todayISO()) return setError('La fecha debe ser desde hoy en adelante')
-    // el administrador puede abrir viajes cualquier día (también miércoles y jueves); los cancelados no cuentan
+    if (fecha < desde || fecha > hasta) return setError('La fecha debe estar entre 1 y 30 días desde hoy')
+    // los viajes cancelados no cuentan
     if (state.viajes.some((v) => v.estado !== 'cancelado' && v.fecha === fecha && trayectos.includes(v.trayecto))) {
       return setError('Ya hay un viaje abierto ese día para el trayecto elegido')
     }
@@ -58,8 +60,8 @@ export default function AbrirViaje() {
       </p>
 
       <section className="adm-panel">
-        <Field label="Fecha del viaje" error={error} hint="Desde hoy. Como administrador puedes abrir viajes cualquier día, incluidos miércoles y jueves.">
-          {(p) => <input {...p} type="date" min={todayISO()} value={fecha}
+        <Field label="Fecha del viaje" error={error} hint="Entre 1 y 30 días desde hoy. Puedes abrir viajes cualquier día, incluidos miércoles y jueves.">
+          {(p) => <input {...p} type="date" min={desde} max={hasta} value={fecha}
             onChange={(e) => { setFecha(e.target.value); setError('') }} />}
         </Field>
 

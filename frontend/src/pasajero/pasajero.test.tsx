@@ -1,10 +1,11 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it } from 'vitest'
 import App from '../App'
 import { reservasIniciales, pasajerosIniciales, vansIniciales, viajesIniciales } from '../admin/data/mock'
-import { agruparReservas, asientosOcupados, cancelables, sincronizar, validarSolicitud, type Datos } from '../admin/store/reservas'
+import { agruparReservas, asientosOcupados, cancelables, sincronizar, validarCambioAsientos, validarSolicitud, type Datos } from '../admin/store/reservas'
+import { sumarDias, todayISO } from '../admin/utils/format'
 import { guardarSesion } from '../login/sesion'
 import { disponerAsientos } from './MapaAsientos'
 
@@ -65,6 +66,25 @@ describe('reglas de reserva', () => {
 
 const PASAJERO_ID = 'p5'
 
+describe('validarCambioAsientos', () => {
+  it('acepta un asiento libre y rechaza uno ocupado o inexistente', () => {
+    const d = datos()
+    const ida = d.reservas.find((r) => r.grupoId === 'g-prox' && r.trayecto === 'Ida')!
+    expect(validarCambioAsientos(d, PASAJERO_ID, 'g-prox', [{ id: ida.id, asiento: 1 }])).toEqual([])
+    expect(validarCambioAsientos(d, PASAJERO_ID, 'g-prox', [{ id: ida.id, asiento: 99 }])[0].codigo).toBe('asiento-invalido')
+
+    const otra = { ...ida, id: 'x1', pasajeroId: 'p2', grupoId: 'g-otra', asiento: 6 }
+    const conOtra = { ...d, reservas: [...d.reservas, otra] }
+    expect(validarCambioAsientos(conOtra, PASAJERO_ID, 'g-prox', [{ id: ida.id, asiento: 6 }])[0].codigo).toBe('asiento-ocupado')
+  })
+
+  it('no deja editar una reserva del historial', () => {
+    const d = datos()
+    const hist = d.reservas.find((r) => r.grupoId === 'g-hist')!
+    expect(validarCambioAsientos(d, PASAJERO_ID, 'g-hist', [{ id: hist.id, asiento: 4 }])[0].codigo).toBe('viaje-no-disponible')
+  })
+})
+
 describe('flujo del pasajero', () => {
   // la app del pasajero exige haber iniciado sesión: se entra como la funcionaria de ejemplo
   beforeEach(() => guardarSesion({ correo: 'S.constanza@uandresbello.edu', nombre: 'Constanza Silva', rol: 'funcionario', pasajeroId: PASAJERO_ID }))
@@ -72,10 +92,6 @@ describe('flujo del pasajero', () => {
   it('reserva ida y vuelta y la ve en Mis Reservas, compartida con el administrador', async () => {
     render(<MemoryRouter initialEntries={['/pasajero/reservar']}><App /></MemoryRouter>)
 
-    // el desplegable de fechas parte con la primera fecha disponible (14 oct.: la del 8 oct. ya está reservada)
-    const fecha = screen.getByLabelText(/Fecha del Viaje/) as HTMLSelectElement
-    const opciones = within(fecha).getAllByRole('option')
-    await userEvent.selectOptions(fecha, opciones[0])
     await userEvent.click(screen.getByRole('button', { name: 'Seleccionar asientos' }))
 
     expect(await screen.findByText('Selección Asiento — Ida')).toBeInTheDocument()
@@ -95,9 +111,6 @@ describe('flujo del pasajero', () => {
 
   it('un asiento ocupado no se puede elegir', async () => {
     render(<MemoryRouter initialEntries={['/pasajero/reservar']}><App /></MemoryRouter>)
-    const fecha = screen.getByLabelText(/Fecha del Viaje/) as HTMLSelectElement
-    const opciones = within(fecha).getAllByRole('option')
-    await userEvent.selectOptions(fecha, opciones[0])
     await userEvent.click(screen.getByRole('button', { name: 'Seleccionar asientos' }))
     await screen.findByText('Selección Asiento — Ida')
     expect(screen.getAllByRole('radio', { name: /ocupado/ }).every((b) => (b as HTMLButtonElement).disabled)).toBe(true)
@@ -111,13 +124,49 @@ describe('flujo del pasajero', () => {
     expect(screen.getByText('Cancelado')).toBeInTheDocument()
   })
 
-  it('la sede de origen es fija: solo Quillota 980', () => {
+  it('la sede de origen es fija: solo Quillota 980 (Campus Viña del Mar)', () => {
     render(<MemoryRouter initialEntries={['/pasajero/reservar']}><App /></MemoryRouter>)
     const origen = screen.getByLabelText('Sede de Origen') as HTMLInputElement
-    expect(origen.value).toBe('Quillota 980')
+    expect(origen.value).toBe('Quillota 980 (Campus Viña del Mar)')
     expect(origen.readOnly).toBe(true)
     expect(screen.queryByRole('option', { name: 'Quintay' })).not.toBeInTheDocument()
     expect(screen.queryByRole('option', { name: 'Rokamar' })).not.toBeInTheDocument()
+  })
+
+  it('la fecha se elige entre 1 y 30 días desde hoy', () => {
+    render(<MemoryRouter initialEntries={['/pasajero/reservar']}><App /></MemoryRouter>)
+    const fecha = screen.getByLabelText(/Fecha del Viaje/) as HTMLInputElement
+    expect(fecha.type).toBe('date')
+    expect(fecha.min).toBe(sumarDias(todayISO(), 1))
+    expect(fecha.max).toBe(sumarDias(todayISO(), 30))
+  })
+
+  it('una fecha fuera del rango o sin viajes no deja continuar', () => {
+    render(<MemoryRouter initialEntries={['/pasajero/reservar']}><App /></MemoryRouter>)
+    const fecha = screen.getByLabelText(/Fecha del Viaje/)
+    fireEvent.change(fecha, { target: { value: sumarDias(todayISO(), 45) } })
+    expect(screen.getByRole('alert')).toHaveTextContent('entre 1 y 30 días')
+    expect(screen.getByRole('button', { name: 'Seleccionar asientos' })).toBeDisabled()
+
+    // un lunes cualquiera dentro del rango no tiene viaje fijo
+    let lunes = sumarDias(todayISO(), 1)
+    while (new Date(`${lunes}T12:00`).getDay() !== 1) lunes = sumarDias(lunes, 1)
+    fireEvent.change(fecha, { target: { value: lunes } })
+    expect(screen.getByRole('status')).toHaveTextContent('No hay viajes disponibles desde Quillota 980')
+    expect(screen.getByRole('button', { name: 'Seleccionar asientos' })).toBeDisabled()
+  })
+
+  it('editar una reserva cambia el asiento y lo deja guardado', async () => {
+    render(<MemoryRouter initialEntries={['/pasajero/reservas']}><App /></MemoryRouter>)
+    await userEvent.click(screen.getAllByRole('button', { name: 'Editar reserva' })[0])
+    const dialogo = screen.getByRole('dialog')
+    await userEvent.click(within(dialogo).getAllByRole('radio', { name: 'Asiento 1' })[0])
+    await userEvent.click(within(dialogo).getByRole('button', { name: 'Guardar cambios' }))
+
+    expect(screen.getByRole('status')).toHaveTextContent('Tu reserva fue actualizada')
+    const guardado = JSON.parse(localStorage.getItem('unab-admin-v3')!)
+    const ida = guardado.reservas.find((r: { grupoId: string; trayecto: string }) => r.grupoId === 'g-prox' && r.trayecto === 'Ida')
+    expect(ida.asiento).toBe(1)
   })
 
   it('el cliente puede cancelar su reserva: pide confirmación, libera el asiento y pasa al historial', async () => {

@@ -1,0 +1,16 @@
+.lista-resumen { background: #f8fafc; border: 1px solid #dce2e8; border-radius: 12px; padding: 16px; box-shadow: 0 2px 5px rgba(0, 0, 0, .04); }
+.lista-resumen h3 { margin: 0; color: #003366; font-size: 15px; font-weight: 800; }
+.lista-resumen__sub { margin: 3px 0 12px; color: #6b7280; font-size: 12px; }
+.lista-resumen__vacio { margin: 8px 0 0; color: #6b7280; font-size: 13px; }
+.lista-resumen__lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+
+.lista-resumen__fila {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 7px 6px; border-radius: 8px; color: #003366; text-decoration: none;
+}
+.lista-resumen__fila:hover { background: rgba(0, 51, 102, .06); }
+.lista-resumen__fila:focus-visible { outline: 3px solid rgba(0, 51, 102, .35); outline-offset: 2px; }
+.lista-resumen__texto { display: flex; flex-direction: column; min-width: 0; }
+.lista-resumen__texto strong { font-size: 12px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lista-resumen__texto small { color: #6b7280; font-size: 11px; }
+.lista-resumen__valor { flex-shrink: 0; font-size: 12px; font-weight: 800; }

@@ -333,3 +333,6 @@ select.psj-control:disabled { cursor: not-allowed; color: var(--muted); backgrou
 .psj-user--enlace { text-decoration: none; color: inherit; transition: background .15s; }
 .psj-user--enlace:hover { background: #f6f8fb; }
 .psj-user__fin { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+
+.psj-editar__tramo { margin-bottom: 14px; }
+.psj-editar__titulo { margin: 0 0 8px; font-size: 14px; font-weight: 800; }

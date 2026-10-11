@@ -37,10 +37,10 @@ export default function VistaVans() {
             <li key={v.id} className="adm-card">
               <div className="adm-card__head">
                 <span className="adm-card__title adm-card__title--icon"><IconTruck size={14} />{v.patente}</span>
-                <span className={`adm-badge ${v.activa ? 'adm-badge--ok' : 'adm-badge--off'}`}>{v.activa ? 'Asignado' : 'De baja'}</span>
+                <span className={`adm-badge ${v.activa ? 'adm-badge--ok' : 'adm-badge--off'}`}>{!v.activa ? 'De baja' : chofer ? 'Asignado' : 'Sin asignar'}</span>
               </div>
               <p className="adm-card__strong">{v.asientos} asientos</p>
-              <p className="adm-card__line"><IconUser size={12} />{chofer ? chofer.nombre : 'Sin conductor'}</p>
+              <p className="adm-card__line"><IconUser size={12} />{chofer ? chofer.nombre : 'Sin asignar'}</p>
               {chofer && <p className="adm-card__line"><IconPhone />{chofer.telefono}</p>}
               <CardActions
                 activo={v.activa}

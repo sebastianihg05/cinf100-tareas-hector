@@ -12,6 +12,16 @@ export const todayISO = () => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
+/** Suma (o resta) días a una fecha yyyy-mm-dd */
+export const sumarDias = (iso: string, dias: number) => {
+  const d = parseISO(iso)
+  d.setDate(d.getDate() + dias)
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+/** Lunes de la semana de una fecha yyyy-mm-dd */
+export const inicioSemana = (iso: string) => sumarDias(iso, -((parseISO(iso).getDay() + 6) % 7))
+
 /** Ahora mismo, en hora local, como yyyy-mm-ddThh:mm */
 export const ahoraISO = () => {
   const d = new Date()
@@ -70,8 +80,8 @@ export function formatearRut(r: string): string {
 /** minúsculas y sin tildes, para búsquedas */
 export const sinTildes = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
-/** Solo correos institucionales (@unab.cl, @uandresbello.cl o @uandresbello.edu) */
-export const esCorreoInstitucional = (c: string) => /^[^\s@]+@(unab\.cl|uandresbello\.(cl|edu))$/i.test(c.trim())
+/** Solo correos institucionales (@unab.cl o @uandresbello.edu) */
+export const esCorreoInstitucional = (c: string) => /^[^\s@]+@(unab\.cl|uandresbello\.edu)$/i.test(c.trim())
 
 /** 0 = domingo ... 3 = miércoles, 4 = jueves */
 export const diaSemana = (iso: string) => parseISO(iso).getDay()

@@ -6,6 +6,7 @@ import { useAdmin } from '../../admin/store/AdminContext'
 import { cancelables, type GrupoReserva } from '../../admin/store/reservas'
 import type { EstadoReserva } from '../../admin/types'
 import { usePasajeroActual } from '../../login/usePasajeroActual'
+import EditarReserva from '../EditarReserva'
 import { fechaTexto } from '../viajes'
 
 const ESTADO: Record<EstadoReserva, { texto: string; clase: string }> = {
@@ -14,7 +15,7 @@ const ESTADO: Record<EstadoReserva, { texto: string; clase: string }> = {
   cancelada: { texto: 'Cancelado', clase: 'psj-badge--cancelado' },
 }
 
-function TarjetaReserva({ grupo, onCancelar }: { grupo: GrupoReserva; onCancelar?: () => void }) {
+function TarjetaReserva({ grupo, onEditar, onCancelar }: { grupo: GrupoReserva; onEditar?: () => void; onCancelar?: () => void }) {
   const conViaje = grupo.trayectos.find((t) => t.viaje)?.viaje
   const cancelados = grupo.trayectos.filter((t) => t.reserva.estado === 'cancelada')
   const parcial = cancelados.length > 0 && cancelados.length < grupo.trayectos.length
@@ -48,8 +49,7 @@ function TarjetaReserva({ grupo, onCancelar }: { grupo: GrupoReserva; onCancelar
       )}
       {onCancelar && (
         <div className="psj-reserva__acciones">
-          {/* Solo el botón por ahora: la edición de la reserva todavía no está implementada. */}
-          <button type="button" className="psj-btn psj-btn--secondary psj-reserva__editar">Editar reserva</button>
+          <button type="button" className="psj-btn psj-btn--secondary psj-reserva__editar" onClick={onEditar}>Editar reserva</button>
           <button type="button" className="psj-btn psj-btn--secondary psj-reserva__cancelar" onClick={onCancelar}>
             Cancelar reserva
           </button>
@@ -62,6 +62,7 @@ function TarjetaReserva({ grupo, onCancelar }: { grupo: GrupoReserva; onCancelar
 export default function MisReservas() {
   const { state, reservasDe, cancelarReserva } = useAdmin()
   const [cancelando, setCancelando] = useState<GrupoReserva | null>(null)
+  const [editando, setEditando] = useState<GrupoReserva | null>(null)
   const [aviso, setAviso] = useState('')
   const { pasajeroId } = usePasajeroActual()
   const { proximas, historial } = reservasDe(pasajeroId)
@@ -87,6 +88,7 @@ export default function MisReservas() {
           <ul className="psj-lista">
             {lista.map((g) => (
               <TarjetaReserva key={g.grupoId} grupo={g}
+                onEditar={() => { setAviso(''); setEditando(g) }}
                 onCancelar={cancelables(state, pasajeroId, g.grupoId).length > 0 ? () => { setAviso(''); setCancelando(g) } : undefined} />
             ))}
           </ul>
@@ -94,6 +96,11 @@ export default function MisReservas() {
       </div>
 
       {aviso && <p className="psj-alert psj-alert--suave" role="status">{aviso}</p>}
+
+      {editando && (
+        <EditarReserva grupo={editando} pasajeroId={pasajeroId} onClose={() => setEditando(null)}
+          onGuardado={(m) => { setEditando(null); setAviso(m) }} />
+      )}
 
       {cancelando && (
         <ConfirmDialog

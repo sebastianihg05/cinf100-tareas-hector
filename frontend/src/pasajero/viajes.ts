@@ -2,14 +2,20 @@ import { useMemo } from 'react'
 import { asientosOcupados, capacidadDeViaje, estaActiva, yaSalio } from '../admin/store/reservas'
 import { useAdmin } from '../admin/store/AdminContext'
 import { usePasajeroActual } from '../login/usePasajeroActual'
-import type { Trayecto, Viaje } from '../admin/types'
+import { DIAS_MAX_ANTICIPACION, DIAS_MIN_ANTICIPACION, SEDES_ORIGEN, type Trayecto, type Viaje } from '../admin/types'
+import { sumarDias, todayISO } from '../admin/utils/format'
 
 export const CARGO_PASAJERO = 'Funcionario Docente'
 
 /** Destino fijo institucional de la ida (y origen de la vuelta). */
 export const DESTINO = 'Santiago'
-/** Origen fijo institucional: todos los viajes de ida salen de Quillota 980. */
-export const SEDES_ORIGEN: string[] = ['Quillota 980']
+export { SEDES_ORIGEN }
+
+/** Primera y última fecha reservable (1 a 30 días desde hoy). */
+export const ventanaReserva = () => ({
+  desde: sumarDias(todayISO(), DIAS_MIN_ANTICIPACION),
+  hasta: sumarDias(todayISO(), DIAS_MAX_ANTICIPACION),
+})
 
 export type Modalidad = 'Ida' | 'Vuelta' | 'IdaVuelta'
 export const MODALIDADES: { valor: Modalidad; etiqueta: string }[] = [
@@ -63,8 +69,9 @@ export function useViajesSede(sede: string): Map<string, DiaViajes> {
 /** Fechas (ordenadas) en las que existen todos los trayectos que exige la modalidad. */
 export function fechasDisponibles(porFecha: Map<string, DiaViajes>, modalidad: Modalidad): string[] {
   const requeridos = trayectosDe(modalidad)
+  const { desde, hasta } = ventanaReserva()
   return [...porFecha.entries()]
-    .filter(([, dia]) => requeridos.every((t) => dia[t]))
+    .filter(([fecha, dia]) => fecha >= desde && fecha <= hasta && requeridos.every((t) => dia[t]))
     .map(([fecha]) => fecha)
     .sort()
 }
