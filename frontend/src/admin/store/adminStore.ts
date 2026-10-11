@@ -1,6 +1,6 @@
 import { adminInicial, choferesIniciales, pasajerosIniciales, reservasIniciales, vansIniciales, viajesIniciales } from '../data/mock'
 import type { Admin, Chofer, EstadoViaje, Notificacion, Pasajero, Reserva, Rol, Van, Viaje } from '../types'
-import { sincronizar, validarSolicitud } from './reservas'
+import { sincronizar, validarCambioAsientos, validarSolicitud, type CambioAsiento } from './reservas'
 
 export type State = {
   vans: Van[]
@@ -28,6 +28,7 @@ export type Action =
   | { type: 'viaje/van'; id: string; vanId: string }
   | { type: 'reserva/crear'; reservas: Reserva[] }
   | { type: 'reserva/cancelar'; ids: string[] }
+  | { type: 'reserva/asientos'; pasajeroId: string; grupoId: string; cambios: CambioAsiento[] }
   | { type: 'notif/leer'; id: string }
   | { type: 'notif/leerTodas' }
   | { type: 'admin/update'; patch: Partial<Admin> }
@@ -133,6 +134,11 @@ export function reducer(s: State, a: Action): State {
         ...s,
         reservas: s.reservas.map((r) => (ids.has(r.id) && r.estado === 'pendiente' ? { ...r, estado: 'cancelada' as const } : r)),
       })
+    }
+    case 'reserva/asientos': {
+      if (validarCambioAsientos(s, a.pasajeroId, a.grupoId, a.cambios).length > 0) return s
+      const nuevo = new Map(a.cambios.map((c) => [c.id, c.asiento]))
+      return sincronizar({ ...s, reservas: s.reservas.map((r) => (nuevo.has(r.id) ? { ...r, asiento: nuevo.get(r.id)! } : r)) })
     }
     case 'notif/leer':
       return { ...s, notificaciones: s.notificaciones.map((n) => (n.id === a.id ? { ...n, leida: true } : n)) }

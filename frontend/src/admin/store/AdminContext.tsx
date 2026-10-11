@@ -3,14 +3,16 @@ import type { Admin, Chofer, EstadoViaje, Pasajero, Reserva, Rol, Van, Viaje } f
 import { ahoraISO } from '../utils/format'
 import { cargarEstado, guardarEstado, nuevoId, reducer, type Action, type State } from './adminStore'
 import {
-  agruparReservas, asientosOcupados, cancelables, capacidadDeViaje, validarSolicitud,
-  type GrupoReserva, type ResultadoReserva, type SolicitudReserva,
+  agruparReservas, asientosOcupados, cancelables, capacidadDeViaje, validarCambioAsientos, validarSolicitud,
+  type CambioAsiento, type GrupoReserva, type ResultadoReserva, type SolicitudReserva,
 } from './reservas'
 
 /** Datos del formulario de registro. */
 export type NuevaSolicitud = { nombre: string; email: string; sede: string; celular: string }
 
 export type ResultadoCancelacion = { ok: true; cantidad: number } | { ok: false; error: string }
+
+export type ResultadoEdicion = { ok: true } | { ok: false; error: string }
 
 export type ResultadoSolicitud = { ok: true; pasajero: Pasajero } | { ok: false; error: string }
 
@@ -46,6 +48,8 @@ type AdminApi = {
   crearReservas: (pasajeroId: string, solicitud: SolicitudReserva[]) => ResultadoReserva
   /** Cancela una reserva completa del pasajero (todos sus trayectos pendientes) y libera los asientos */
   cancelarReserva: (pasajeroId: string, grupoId: string) => ResultadoCancelacion
+  /** Cambia el asiento de los trayectos pendientes de una reserva */
+  cambiarAsientos: (pasajeroId: string, grupoId: string, cambios: CambioAsiento[]) => ResultadoEdicion
   /** Capacidad del viaje (`undefined` si todavía no tiene van asignada) */
   capacidadDe: (viaje: Viaje) => number | undefined
   /** Números de asiento ya tomados en el viaje */
@@ -130,6 +134,15 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         estadoActual.current = reducer(actual, accion)
         dispatch(accion)
         return { ok: true, cantidad: ids.length }
+      },
+      cambiarAsientos: (pasajeroId, grupoId, cambios) => {
+        const actual = estadoActual.current
+        const conflictos = validarCambioAsientos(actual, pasajeroId, grupoId, cambios)
+        if (conflictos.length > 0) return { ok: false, error: conflictos[0].mensaje }
+        const accion: Action = { type: 'reserva/asientos', pasajeroId, grupoId, cambios }
+        estadoActual.current = reducer(actual, accion)
+        dispatch(accion)
+        return { ok: true }
       },
       crearReservas: (pasajeroId, solicitud) => {
         const actual = estadoActual.current

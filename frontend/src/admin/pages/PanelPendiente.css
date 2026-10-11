@@ -36,6 +36,7 @@
 .dashboard-cancelled__label { display: flex; align-items: center; gap: 9px; font-size: 13px; font-weight: 700; }
 .dashboard-cancelled strong { font-size: 28px; font-weight: 800; }
 
+.dashboard-section .adm-pills { margin-bottom: 12px; }
 .dashboard-charts { display: grid; grid-template-columns: 1fr; gap: 12px; }
 
 @media (max-width: 480px) {

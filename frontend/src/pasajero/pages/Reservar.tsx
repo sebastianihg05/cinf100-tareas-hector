@@ -1,12 +1,12 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { IconChevron, IconClock } from '../../admin/components/icons'
-import { HORA_TRAYECTO } from '../../admin/types'
+import { HORA_TRAYECTO, sedeLabel } from '../../admin/types'
 import { iniciales } from '../../admin/utils/format'
 import { usePasajeroActual } from '../../login/usePasajeroActual'
 import { useBorrador } from '../borrador'
 import {
   CARGO_PASAJERO, DESTINO, MODALIDADES, SEDES_ORIGEN,
-  fechaTexto, fechasDisponibles, trayectosDe, useViajesSede, type Modalidad,
+  fechasDisponibles, trayectosDe, useViajesSede, ventanaReserva, type Modalidad,
 } from '../viajes'
 
 export default function Reservar() {
@@ -14,12 +14,14 @@ export default function Reservar() {
   const navigate = useNavigate()
   const porFecha = useViajesSede(borrador.sede)
   const fechas = fechasDisponibles(porFecha, borrador.modalidad)
-  const fecha = fechas.includes(borrador.fecha) ? borrador.fecha : (fechas[0] ?? '')
+  const { desde, hasta } = ventanaReserva()
+  const fecha = borrador.fecha || (fechas[0] ?? '')
+  const fueraDeRango = fecha !== '' && (fecha < desde || fecha > hasta)
+  const sinViajes = fecha !== '' && !fueraDeRango && !fechas.includes(fecha)
 
   const { pasajero } = usePasajeroActual()
   const puedeReservar = pasajero !== undefined && pasajero.aprobado && pasajero.habilitado
 
-  const cambiarSede = (sede: string) => setBorrador({ ...borrador, sede, asientos: {} })
   const cambiarFecha = (f: string) => setBorrador({ ...borrador, fecha: f, asientos: {} })
   const cambiarModalidad = (modalidad: Modalidad) => {
     // Solo se conservan los asientos de los trayectos que siguen incluidos.
@@ -29,7 +31,7 @@ export default function Reservar() {
   }
 
   const continuar = () => {
-    if (!fecha || !puedeReservar) return
+    if (!fechas.includes(fecha) || !puedeReservar) return
     setBorrador({ ...borrador, fecha, asientos: fecha === borrador.fecha ? borrador.asientos : {} })
     navigate(borrador.modalidad === 'Vuelta' ? '/pasajero/asiento/vuelta' : '/pasajero/asiento/ida')
   }
@@ -58,20 +60,11 @@ export default function Reservar() {
         </p>
       ) : (
         <form className="psj-form" onSubmit={(e) => { e.preventDefault(); continuar() }}>
-          {SEDES_ORIGEN.length === 1 ? (
-            <div className="psj-field">
-              <label className="psj-label" htmlFor="psj-origen">Sede de Origen</label>
-              <input id="psj-origen" className="psj-control" value={SEDES_ORIGEN[0]} readOnly aria-describedby="psj-origen-ayuda" />
-              <p id="psj-origen-ayuda" className="psj-help">Origen fijo institucional predeterminado</p>
-            </div>
-          ) : (
-            <label className="psj-field">
-              <span className="psj-label">Sede de Origen</span>
-              <select className="psj-control" value={borrador.sede} onChange={(e) => cambiarSede(e.target.value)}>
-                {SEDES_ORIGEN.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </label>
-          )}
+          <div className="psj-field">
+            <label className="psj-label" htmlFor="psj-origen">Sede de Origen</label>
+            <input id="psj-origen" className="psj-control" value={sedeLabel(SEDES_ORIGEN[0])} readOnly aria-describedby="psj-origen-ayuda" />
+            <p id="psj-origen-ayuda" className="psj-help">Origen fijo institucional predeterminado</p>
+          </div>
 
           <div className="psj-field">
             <label className="psj-label" htmlFor="psj-destino">Sede de Destino</label>
@@ -81,15 +74,14 @@ export default function Reservar() {
 
           <label className="psj-field">
             <span className="psj-label">Fecha del Viaje</span>
-            {fechas.length > 0 ? (
-              <select className="psj-control" value={fecha} onChange={(e) => cambiarFecha(e.target.value)}>
-                {fechas.map((f) => <option key={f} value={f}>{fechaTexto(f)}</option>)}
-              </select>
-            ) : (
-              <select className="psj-control" disabled value=""><option value="">No hay viajes disponibles</option></select>
-            )}
+            <input type="date" className="psj-control" value={fecha} min={desde} max={hasta}
+              onChange={(e) => cambiarFecha(e.target.value)} />
+            <p className="psj-help">Entre 1 y 30 días desde hoy</p>
           </label>
-          {fechas.length === 0 && (
+          {fueraDeRango && (
+            <p className="psj-alert psj-alert--suave" role="alert">La fecha debe estar entre 1 y 30 días desde hoy.</p>
+          )}
+          {(sinViajes || (fecha === '' && fechas.length === 0)) && (
             <p className="psj-alert psj-alert--suave" role="status">
               No hay viajes disponibles desde {borrador.sede} para {MODALIDADES.find((m) => m.valor === borrador.modalidad)!.etiqueta.toLowerCase()}.
             </p>
@@ -112,7 +104,7 @@ export default function Reservar() {
           </div>
 
           <div className="psj-footer psj-footer--sobre-nav">
-            <button type="submit" className="psj-btn psj-btn--primary" disabled={!fecha}>Seleccionar asientos</button>
+            <button type="submit" className="psj-btn psj-btn--primary" disabled={!fechas.includes(fecha)}>Seleccionar asientos</button>
           </div>
         </form>
       )}

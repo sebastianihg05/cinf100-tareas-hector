@@ -1,17 +1,16 @@
 import { useState, type FormEvent } from 'react'
 import { useAdmin } from '../store/AdminContext'
 import { nuevoId } from '../store/adminStore'
-import type { Van } from '../types'
+import { CAPACIDAD_VAN, type Van } from '../types'
 import { normalizarPatente } from '../utils/format'
 import Field from './Field'
 
 type Props = { initial?: Van; onSubmit: (van: Van) => void; onCancel: () => void }
-type Errors = Partial<Record<'patente' | 'asientos', string>>
+type Errors = Partial<Record<'patente', string>>
 
 export default function VanForm({ initial, onSubmit, onCancel }: Props) {
   const { state, vanDeChofer } = useAdmin()
   const [patente, setPatente] = useState(initial?.patente ?? '')
-  const [asientos, setAsientos] = useState(String(initial?.asientos ?? 8))
   const [choferId, setChoferId] = useState(initial?.choferId ?? '')
   const [errors, setErrors] = useState<Errors>({})
 
@@ -24,16 +23,13 @@ export default function VanForm({ initial, onSubmit, onCancel }: Props) {
     if (!pat) errs.patente = 'Formato inválido. Ejemplos: FG-1251 o BBCD-12'
     else if (state.vans.some((v) => v.patente === pat && v.id !== initial?.id)) errs.patente = 'Ya existe una van con esa patente'
 
-    const n = Number(asientos)
-    if (!Number.isInteger(n) || n < 1 || n > 20) errs.asientos = 'Ingresa un número entre 1 y 20'
-
     setErrors(errs)
-    if (errs.patente || errs.asientos || !pat) return
+    if (errs.patente || !pat) return
 
     onSubmit({
       id: initial?.id ?? nuevoId('v'),
       patente: pat,
-      asientos: n,
+      asientos: CAPACIDAD_VAN,
       choferId: choferId || null,
       activa: initial?.activa ?? true,
     })
@@ -45,8 +41,8 @@ export default function VanForm({ initial, onSubmit, onCancel }: Props) {
         {(p) => <input {...p} value={patente} onChange={(e) => setPatente(e.target.value)} autoComplete="off" />}
       </Field>
 
-      <Field label="Cantidad de asientos" error={errors.asientos}>
-        {(p) => <input {...p} type="number" min={1} max={20} value={asientos} onChange={(e) => setAsientos(e.target.value)} />}
+      <Field label="Cantidad de asientos" hint="Capacidad fija de la van">
+        {(p) => <input {...p} type="number" value={CAPACIDAD_VAN} readOnly />}
       </Field>
 
       <Field label="Conductor asignado" hint="Un conductor maneja una sola van">

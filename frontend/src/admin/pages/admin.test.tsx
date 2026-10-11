@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
@@ -8,6 +8,7 @@ import AbrirViaje from './AbrirViaje'
 import { AdminProvider } from '../store/AdminContext'
 import PerfilAdmin from './PerfilAdmin'
 import SesionCerrada from './SesionCerrada'
+import { diaSemana, fechaDMY, sumarDias, todayISO } from '../utils/format'
 import VistaChoferes from './VistaChoferes'
 import VistaPasajeros from './VistaPasajeros'
 import VistaVans from './VistaVans'
@@ -19,6 +20,13 @@ const r = (ui: React.ReactElement, path = '/') =>
       <AdminProvider>{ui}</AdminProvider>
     </MemoryRouter>,
   )
+
+/** Próxima fecha (desde mañana) que cae en ese día de la semana: 0 = domingo ... 3 = miércoles */
+const proximoDia = (dia: number) => {
+  let f = sumarDias(todayISO(), 1)
+  while (diaSemana(f) !== dia) f = sumarDias(f, 1)
+  return f
+}
 
 describe('Vans', () => {
   it('dar de baja pide confirmación y mueve la van a "Dadas de baja"', async () => {
@@ -48,15 +56,21 @@ describe('Vans', () => {
     expect(screen.getByRole('tab', { name: 'Activas (4)' })).toBeInTheDocument()
   })
 
-  it('editar van cambia los asientos', async () => {
+  it('la capacidad de la van es fija en 8 asientos', async () => {
     r(<VistaVans />)
     await userEvent.click(screen.getAllByRole('button', { name: /Editar/ })[0])
+    const asientos = within(screen.getByRole('dialog')).getByLabelText('Cantidad de asientos') as HTMLInputElement
+    expect(asientos.value).toBe('8')
+    expect(asientos.readOnly).toBe(true)
+  })
+
+  it('una van sin conductor figura como "Sin asignar"', async () => {
+    r(<VistaVans />)
+    await userEvent.click(screen.getByRole('button', { name: /Agregar van/ }))
     const dlg = screen.getByRole('dialog')
-    const asientos = within(dlg).getByLabelText('Cantidad de asientos')
-    await userEvent.clear(asientos)
-    await userEvent.type(asientos, '12')
-    await userEvent.click(within(dlg).getByRole('button', { name: 'Guardar cambios' }))
-    expect(screen.getByText('12 asientos')).toBeInTheDocument()
+    await userEvent.type(within(dlg).getByLabelText('Patente'), 'ab1234')
+    await userEvent.click(within(dlg).getByRole('button', { name: 'Agregar van' }))
+    expect(screen.getAllByText('Sin asignar').length).toBeGreaterThan(0)
   })
 })
 
@@ -212,13 +226,36 @@ describe('Viajes', () => {
     expect(screen.getAllByRole('radio').map((x) => x.textContent)).toEqual(['Ida', 'Vuelta', 'Ida y vuelta'])
   })
 
-  it('el administrador sí puede abrir viajes en miércoles y jueves', async () => {
+  it('el administrador abre viajes que salen de Quillota 980', async () => {
     r(appViajes, '/admin/viajes/abrir')
-    // 2030-01-16 es miércoles
-    await userEvent.type(screen.getByLabelText('Fecha del viaje'), '2030-01-16')
+    expect(screen.queryByLabelText('Sede de origen')).not.toBeInTheDocument()
+    const lunes = proximoDia(1)
+    fireEvent.change(screen.getByLabelText('Fecha del viaje'), { target: { value: lunes } })
     await userEvent.click(screen.getByRole('button', { name: /Abrir viaje/ }))
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    expect(screen.getByText('16/01/2030')).toBeInTheDocument()
+    expect(screen.getAllByText(fechaDMY(lunes)).length).toBeGreaterThan(0)
+  })
+
+  it('la fecha de un viaje nuevo debe estar entre 1 y 30 días desde hoy', async () => {
+    r(appViajes, '/admin/viajes/abrir')
+    const campo = screen.getByLabelText('Fecha del viaje')
+    for (const f of [todayISO(), sumarDias(todayISO(), 45)]) {
+      fireEvent.change(campo, { target: { value: f } })
+      await userEvent.click(screen.getByRole('button', { name: /Abrir viaje/ }))
+      expect(screen.getByRole('alert')).toHaveTextContent('entre 1 y 30 días')
+    }
+  })
+
+  it('filtra los viajes por trayecto y por destino', async () => {
+    r(appViajes, '/admin/viajes')
+    await userEvent.click(screen.getByRole('tab', { name: 'Ida' }))
+    expect(screen.queryByText(/Santiago → Quillota/)).not.toBeInTheDocument()
+    expect(screen.getAllByText(/Quillota 980 → Santiago/).length).toBeGreaterThan(0)
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Ida y vuelta' }))
+    await userEvent.selectOptions(screen.getByLabelText('Destino'), 'Quillota 980')
+    expect(screen.queryByText(/Quillota 980 → Santiago/)).not.toBeInTheDocument()
+    expect(screen.getAllByText(/Santiago → Quillota 980/).length).toBeGreaterThan(0)
   })
 
   it('cancelar un viaje pide confirmación y lo deja como "Cancelado"', async () => {
@@ -236,8 +273,7 @@ describe('Viajes', () => {
 
   it('ida y vuelta crea dos viajes sin van, y luego se les asigna una', async () => {
     r(appViajes, '/admin/viajes/abrir')
-    // 2030-01-14 es lunes
-    await userEvent.type(screen.getByLabelText('Fecha del viaje'), '2030-01-14')
+    fireEvent.change(screen.getByLabelText('Fecha del viaje'), { target: { value: proximoDia(1) } })
     await userEvent.click(screen.getByRole('radio', { name: 'Ida y vuelta' }))
     await userEvent.click(screen.getByRole('button', { name: /Abrir viaje/ }))
 
@@ -288,5 +324,19 @@ describe('Perfil', () => {
     await userEvent.type(campo, '987654321')
     await userEvent.click(screen.getByRole('button', { name: 'Guardar' }))
     expect(screen.getByText('+56 9 8765 4321')).toBeInTheDocument()
+  })
+})
+
+describe('Pasajeros: búsqueda por fecha y destino', () => {
+  it('busca por destino y filtra por la fecha del viaje', async () => {
+    r(<VistaPasajeros />)
+    const total = screen.getAllByRole('listitem').length
+    await userEvent.type(screen.getByLabelText('Buscar pasajeros'), 'santiago')
+    const porDestino = screen.getAllByRole('listitem').length
+    expect(porDestino).toBeLessThan(total)
+
+    await userEvent.clear(screen.getByLabelText('Buscar pasajeros'))
+    fireEvent.change(screen.getByLabelText('Fecha del viaje'), { target: { value: '2001-01-01' } })
+    expect(screen.getByText('No hay pasajeros que coincidan.')).toBeInTheDocument()
   })
 })

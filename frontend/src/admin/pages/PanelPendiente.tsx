@@ -1,11 +1,15 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import GraficoBarras, { type Barra, type TonoBarra } from '../components/GraficoBarras'
 import GraficoTorta from '../components/GraficoTorta'
 import { IconBan, IconClock, IconRoute, IconTruck } from '../components/icons'
 import Indicador from '../components/Indicador'
+import ListaResumen, { type ItemResumen } from '../components/ListaResumen'
+import Pills from '../components/Pills'
 import { useAdmin } from '../store/AdminContext'
+import { estaActiva } from '../store/reservas'
 import { SEDES, type EstadoViaje } from '../types'
-import { fechaCorta, todayISO } from '../utils/format'
+import { fechaCorta, inicioSemana, todayISO } from '../utils/format'
 import { estadoLicencia } from '../utils/licencia'
 import './PanelPendiente.css'
 
@@ -26,6 +30,7 @@ const ESTADOS: { clave: EstadoViaje; etiqueta: string; tono: TonoBarra }[] = [
 
 export default function PanelPendiente() {
   const { state, asientosOcupadosDe } = useAdmin()
+  const [agrupar, setAgrupar] = useState<'dia' | 'semana'>('dia')
 
   /* ---------- Usuarios, conductores y vans ---------- */
   const pendientes = state.pasajeros.filter((p) => !p.aprobado).length
@@ -73,6 +78,44 @@ export default function PanelPendiente() {
         porcentaje: capacidad ? porcentaje(ocupados, capacidad) : 0,
         valor: capacidad ? `${ocupados}/${capacidad}` : 'Sin van',
         to: '/admin/viajes',
+      }
+    })
+
+  /* ---------- Reservas por día y por semana ---------- */
+  const porViaje = new Map(state.viajes.map((v) => [v.id, v]))
+  const reservasPorFecha = new Map<string, number>()
+  for (const r of state.reservas) {
+    const viaje = porViaje.get(r.viajeId)
+    if (!viaje || !estaActiva(r)) continue
+    const clave = agrupar === 'dia' ? viaje.fecha : inicioSemana(viaje.fecha)
+    reservasPorFecha.set(clave, (reservasPorFecha.get(clave) ?? 0) + 1)
+  }
+  const grupos = [...reservasPorFecha.entries()].sort(([a], [b]) => a.localeCompare(b)).slice(-7)
+  const maxReservas = Math.max(1, ...grupos.map(([, n]) => n))
+  const barrasReservas: Barra[] = grupos.map(([fecha, n]) => ({
+    clave: fecha, etiqueta: agrupar === 'dia' ? fechaCorta(fecha) : `Semana del ${fechaCorta(fecha)}`, tono: 'azul',
+    porcentaje: porcentaje(n, maxReservas), valor: String(n), to: '/admin/viajes',
+  }))
+
+  /* ---------- Próximos viajes y últimas reservas ---------- */
+  const proximosViajes: ItemResumen[] = state.viajes
+    .filter((v) => v.estado === 'pendiente' && v.fecha >= hoy)
+    .sort((a, b) => (a.fecha + a.hora).localeCompare(b.fecha + b.hora))
+    .slice(0, 5)
+    .map((v) => ({
+      clave: v.id, principal: `${fechaCorta(v.fecha)} · ${v.hora} hrs · ${v.trayecto}`, secundario: `${v.origen} → ${v.destino}`,
+      valor: state.vans.find((x) => x.id === v.vanId)?.patente ?? 'Sin van', to: '/admin/viajes',
+    }))
+
+  const ultimasReservas: ItemResumen[] = [...state.reservas]
+    .sort((a, b) => b.creadaEn.localeCompare(a.creadaEn))
+    .slice(0, 5)
+    .map((r) => {
+      const viaje = porViaje.get(r.viajeId)
+      return {
+        clave: r.id, principal: state.pasajeros.find((p) => p.id === r.pasajeroId)?.nombre ?? 'Pasajero eliminado',
+        secundario: `${viaje ? fechaCorta(viaje.fecha) : '—'} · ${r.trayecto} · Asiento ${r.asiento}`,
+        valor: fechaCorta(r.creadaEn.slice(0, 10)), to: '/admin/pasajeros',
       }
     })
 
@@ -131,6 +174,20 @@ export default function PanelPendiente() {
             barras={barrasSede} vacio="Aún no hay pasajeros." />
           <GraficoBarras titulo="Ocupación de los próximos viajes" subtitulo="Asientos reservados sobre la capacidad de la van"
             barras={barrasOcupacion} vacio="No hay viajes pendientes próximos." />
+        </div>
+      </section>
+
+      <section className="dashboard-section">
+        <h2>Reservas y viajes</h2>
+        <Pills value={agrupar} onChange={setAgrupar} options={[
+          { value: 'dia', label: 'Por día' },
+          { value: 'semana', label: 'Por semana' },
+        ]} />
+        <div className="dashboard-charts">
+          <GraficoBarras titulo={agrupar === 'dia' ? 'Reservas por día' : 'Reservas por semana'} subtitulo="Reservas activas según la fecha del viaje"
+            barras={barrasReservas} vacio="Aún no hay reservas." />
+          <ListaResumen titulo="Próximos viajes" subtitulo="Ordenados por fecha" items={proximosViajes} vacio="No hay viajes pendientes próximos." />
+          <ListaResumen titulo="Últimas reservas" subtitulo="De la más reciente a la más antigua" items={ultimasReservas} vacio="Aún no hay reservas." />
         </div>
       </section>
 

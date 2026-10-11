@@ -6,10 +6,11 @@ import Field from '../components/Field'
 import Modal from '../components/Modal'
 import Pills from '../components/Pills'
 import { useAdmin } from '../store/AdminContext'
-import type { EstadoViaje, Viaje } from '../types'
+import type { EstadoViaje, Trayecto, Viaje } from '../types'
 import { fechaDMY, fechaLarga, todayISO } from '../utils/format'
 
 type Filtro = 'todos' | EstadoViaje
+type FiltroTrayecto = 'todos' | Trayecto
 
 const ETIQUETA: Record<EstadoViaje, string> = {
   pendiente: 'Pendiente', 'en-curso': 'En curso', completado: 'Completado', cancelado: 'Cancelado',
@@ -59,12 +60,16 @@ export default function VistaViajes() {
   const navigate = useNavigate()
   const [filtro, setFiltro] = useState<Filtro>('todos')
   const [fecha, setFecha] = useState('')
+  const [trayecto, setTrayecto] = useState<FiltroTrayecto>('todos')
+  const [destino, setDestino] = useState('')
   const [asignando, setAsignando] = useState<string | null>(null)
   const [cancelando, setCancelando] = useState<Viaje | null>(null)
 
   const lista = state.viajes
     .filter((v) => (filtro === 'todos' || v.estado === filtro) && (!fecha || v.fecha === fecha))
+    .filter((v) => (trayecto === 'todos' || v.trayecto === trayecto) && (!destino || v.destino === destino))
     .sort((a, b) => (a.fecha + a.hora).localeCompare(b.fecha + b.hora))
+  const destinos = [...new Set(state.viajes.map((v) => v.destino))].sort()
   const viajeAsignando = state.viajes.find((v) => v.id === asignando)
 
   return (
@@ -73,6 +78,13 @@ export default function VistaViajes() {
         <label className="adm-date">
           <span>Fecha</span>
           <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+        </label>
+        <label className="adm-date">
+          <span>Destino</span>
+          <select value={destino} onChange={(e) => setDestino(e.target.value)}>
+            <option value="">Todos</option>
+            {destinos.map((d) => <option key={d} value={d}>{d}</option>)}
+          </select>
         </label>
         <button className="adm-open-trip" onClick={() => navigate('/admin/viajes/abrir')}>Abrir viaje</button>
       </div>
@@ -83,6 +95,12 @@ export default function VistaViajes() {
         { value: 'en-curso', label: 'En curso' },
         { value: 'completado', label: 'Completados' },
         { value: 'cancelado', label: 'Cancelados' },
+      ]} />
+
+      <Pills value={trayecto} onChange={setTrayecto} options={[
+        { value: 'todos', label: 'Ida y vuelta' },
+        { value: 'Ida', label: 'Ida' },
+        { value: 'Vuelta', label: 'Vuelta' },
       ]} />
 
       <p className="adm-today">{fechaLarga(todayISO())} · Hoy</p>
@@ -101,7 +119,7 @@ export default function VistaViajes() {
               <div className="adm-trip__meta">
                 <span><IconClock />{v.hora} hrs</span>
                 <span><IconTruck size={12} />{van?.patente ?? 'Sin van asignada'}</span>
-                <span><IconUser size={12} />{chofer?.nombre ?? 'Sin conductor'}</span>
+                <span><IconUser size={12} />{chofer?.nombre ?? 'Sin asignar'}</span>
               </div>
               <p className="adm-card__small">Asientos reservados · {v.reservados}/{capacidad}</p>
               <div className="adm-progress" role="progressbar" aria-label="Asientos reservados"

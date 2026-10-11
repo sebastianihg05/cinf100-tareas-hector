@@ -111,6 +111,16 @@ export const sedeLabel = (sede: string) => (CAMPUS[sede] ? `${sede} (${CAMPUS[se
 /** Horarios fijos definidos en el backlog: Ida 06:45, Vuelta 17:00 */
 export const HORA_TRAYECTO: Record<Trayecto, string> = { Ida: '06:45', Vuelta: '17:00' }
 
+/** Única sede de salida: Quillota 980 (Campus Viña del Mar) */
+export const SEDES_ORIGEN = ['Quillota 980']
+
+/** Capacidad fija de cada van */
+export const CAPACIDAD_VAN = 8
+
+/** Un viaje se reserva con 1 a 30 días de anticipación */
+export const DIAS_MIN_ANTICIPACION = 1
+export const DIAS_MAX_ANTICIPACION = 30
+
 /** Ruta fija de cada trayecto */
 export const RUTA_TRAYECTO: Record<Trayecto, { origen: string; destino: string }> = {
   Ida: { origen: 'Quillota 980', destino: 'Santiago' },

@@ -8,8 +8,8 @@ import Pills from '../components/Pills'
 import { borrarCredencial } from '../../login/authDemo'
 import { borrarAvisosLeidos } from '../../pasajero/useAvisosPasajero'
 import { useAdmin } from '../store/AdminContext'
-import { SEDES, sedeLabel, type Pasajero, type Rol } from '../types'
-import { fechaCorta, fechaHora, fechaLarga, iniciales, sinTildes } from '../utils/format'
+import { RUTA_TRAYECTO, SEDES, sedeLabel, type Pasajero, type Rol } from '../types'
+import { fechaCorta, fechaDMY, fechaHora, fechaLarga, iniciales, sinTildes } from '../utils/format'
 
 function TagsReserva({ p }: { p: Pasajero }) {
   const { reserva } = p
@@ -40,6 +40,7 @@ export default function VistaPasajeros() {
   const [params, setParams] = useSearchParams()
   const [detalle, setDetalle] = useState<string | null>(null)
   const [busqueda, setBusqueda] = useState('')
+  const [fechaViaje, setFechaViaje] = useState('')
   // rol elegido para cada solicitud mientras sigue por aprobar (por defecto, funcionario)
   const [roles, setRoles] = useState<Record<string, Rol>>({})
   const [rechazando, setRechazando] = useState<Pasajero | null>(null)
@@ -52,7 +53,9 @@ export default function VistaPasajeros() {
   const lista = state.pasajeros.filter((p) => {
     if (filtro === 'por-aprobar' && p.aprobado) return false
     if (filtro !== 'todos' && filtro !== 'por-aprobar' && p.sede !== filtro) return false
-    return !q || sinTildes(`${p.nombre} ${p.email} ${p.sede}`).includes(q)
+    if (fechaViaje && p.reserva?.fecha !== fechaViaje) return false
+    const viaje = p.reserva ? `${p.reserva.fecha} ${fechaDMY(p.reserva.fecha)} ${RUTA_TRAYECTO[p.reserva.trayecto].destino}` : ''
+    return !q || sinTildes(`${p.nombre} ${p.email} ${p.sede} ${viaje}`).includes(q)
   })
   const sel = state.pasajeros.find((p) => p.id === detalle)
 
@@ -61,7 +64,12 @@ export default function VistaPasajeros() {
       <label className="adm-search">
         <IconSearch />
         <input type="search" value={busqueda} onChange={(e) => setBusqueda(e.target.value)}
-          placeholder="Buscar por nombre, correo o sede" aria-label="Buscar pasajeros" />
+          placeholder="Buscar por nombre, correo, sede o destino" aria-label="Buscar pasajeros" />
+      </label>
+
+      <label className="adm-date adm-date--fila">
+        <span>Fecha del viaje</span>
+        <input type="date" value={fechaViaje} onChange={(e) => setFechaViaje(e.target.value)} />
       </label>
 
       <Pills scroll value={filtro} onChange={setFiltro} options={[
