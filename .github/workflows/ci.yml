@@ -134,16 +134,19 @@ jobs:
     steps:
 
       - name: Validate delivery branches
+        env:
+          BASE_BRANCH: ${{ github.base_ref }}
+          HEAD_BRANCH: ${{ github.head_ref }}
         run: |
-          echo "Base branch: ${{ github.base_ref }}"
-          echo "Source branch: ${{ github.head_ref }}"
+          echo "Base branch: $BASE_BRANCH"
+          echo "Source branch: $HEAD_BRANCH"
 
-          if [ "${{ github.base_ref }}" != "main" ]; then
+          if [ "$BASE_BRANCH" != "main" ]; then
             echo "ERROR: La entrega debe tener main como destino."
             exit 1
           fi
 
-          if [ "${{ github.head_ref }}" != "desa" ]; then
+          if [ "$HEAD_BRANCH" != "desa" ]; then
             echo "ERROR: La entrega oficial debe realizarse desde desa."
             exit 1
           fi
