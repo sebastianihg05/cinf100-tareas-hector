@@ -2,32 +2,45 @@
 
 ## 1. Objetivo
 
-Registrar las pruebas manuales realizadas para comprobar las restricciones de integridad de la tabla `usuarios` en PostgreSQL 16.
+Comprobar las restricciones de integridad de la tabla `usuarios` en PostgreSQL 16.
 
-## 2. Entorno de prueba
+## 2. Cómo ejecutarlas
 
-- Base de datos: `cinf100`.
-- Tabla: `public.usuarios`.
-- Migración: `database/migrations/001_create_usuarios.sql`.
-- Entorno: PostgreSQL ejecutándose mediante Docker Compose.
+Con los contenedores levantados (`docker compose up -d`):
 
-## 3. Resultados
+```bash
+docker compose exec database psql -U devhub -d cinf100 -f /database/tests/usuarios_restricciones.sql
+```
 
-| Prueba | Resultado esperado | Resultado obtenido |
-|---|---|---|
-| Correo con dominio `gmail.com` | Rechazar correo no institucional. | Rechazado por `usuarios_correo_institucional_check`. |
-| Sede `Concepcion` | Rechazar sede no permitida. | Rechazada por `usuarios_sede_check`. |
-| Correo duplicado con diferencias de mayúsculas | Rechazar duplicados. | Rechazado por `usuarios_correo_unique_ci`. |
-| Cuenta pendiente con rol `funcionario` | Rechazar combinación inválida. | Rechazada por `usuarios_estado_rol_check`. |
-| Rol `supervisor` | Rechazar rol no definido. | Rechazado por `usuarios_rol_check`. |
-| Estado `en_revision` | Rechazar estado no permitido. | Rechazado por `usuarios_estado_check`. |
-| Registro sin `nombre_completo` | Rechazar campo obligatorio ausente. | Rechazado por la restricción `NOT NULL`. |
-| Registro válido con correo institucional y sede permitida | Aceptar el registro y aplicar valores predeterminados. | Aceptado; asignó estado `pendiente` y rol nulo. Después se ejecutó `ROLLBACK`. |
+El archivo `database/tests/usuarios_restricciones.sql` ejecuta todos los casos dentro de una transacción que se revierte, muestra una tabla con el resultado de cada uno y termina con error si alguno falla.
 
-## 4. Conclusión
+## 3. Casos
 
-Las pruebas manuales realizadas verificaron el funcionamiento de las restricciones de correo institucional, unicidad del correo, sedes, roles, estados y campos obligatorios.
+| Caso | Resultado esperado |
+|---|---|
+| Registro válido con correo `@unab.cl` | Aceptado, queda `pendiente` y sin rol. |
+| Registro válido con correo `@uandresbello.edu` | Aceptado. |
+| Administrador sin sede | Aceptado. |
+| Hash Argon2id | Aceptado. |
+| Correo `@gmail.com` | Rechazado por `usuarios_correo_institucional_check`. |
+| Correo con mayúsculas | Rechazado por `usuarios_correo_minusculas_check`. |
+| Correo duplicado | Rechazado por `usuarios_correo_unique_ci`. |
+| Nombre vacío o solo espacios | Rechazado por `usuarios_nombre_no_vacio_check`. |
+| Nombre ausente | Rechazado por `NOT NULL`. |
+| Contraseña en texto plano | Rechazado por `usuarios_hash_contrasena_check`. |
+| Teléfono con letras o con espacios | Rechazado por `usuarios_telefono_check`. |
+| Sede `Concepcion` | Rechazado por `usuarios_sede_check`. |
+| Funcionario sin sede | Rechazado por `usuarios_sede_segun_rol_check`. |
+| Administrador con sede | Rechazado por `usuarios_sede_segun_rol_check`. |
+| Rol `supervisor` | Rechazado por `usuarios_rol_check`. |
+| Estado `en_revision` | Rechazado por `usuarios_estado_check`. |
+| Cuenta pendiente con rol | Rechazado por `usuarios_estado_rol_check`. |
+| Cuenta aprobada sin rol | Rechazado por `usuarios_estado_rol_check`. |
+| Cuenta pendiente con decisión registrada | Rechazado por `usuarios_decision_check`. |
+| `id` escrito a mano | Rechazado por `GENERATED ALWAYS`. |
+| Aprobar una cuenta | Guarda quién la aprobó y actualiza `actualizado_en`. |
+| Un usuario se aprueba a sí mismo | Rechazado por `usuarios_no_autoaprobacion_check`. |
 
-También se verificó que un registro válido puede insertarse utilizando los valores predeterminados de la tabla. La transacción de prueba se revirtió para no conservar ese registro.
+## 4. Resultado
 
-Estas comprobaciones son manuales; su automatización queda pendiente para una tarea posterior.
+Los 23 casos pasan con las migraciones 001 y 002 aplicadas: `Todas las pruebas pasaron (23 de 23)`.
