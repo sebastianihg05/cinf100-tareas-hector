@@ -4,16 +4,48 @@ services:
     image: postgres:16
     restart: unless-stopped
 
+    # Valores de desarrollo. Se pueden cambiar en un archivo .env en la raíz
+    # (ver .env.example). Solo se aplican la primera vez que se crea el volumen.
     environment:
-      POSTGRES_USER: devhub
-      POSTGRES_PASSWORD: devhub
-      POSTGRES_DB: cinf100
+      POSTGRES_USER: ${POSTGRES_USER:-devhub}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-devhub}
+      POSTGRES_DB: ${POSTGRES_DB:-cinf100}
 
+    # Solo accesible desde este computador.
     ports:
-      - "5432:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
 
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # Scripts de la carpeta database (para ejecutar las pruebas con psql).
+      - ./database:/database:ro
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  # Aplica las migraciones pendientes y carga los datos de prueba.
+  # Se ejecuta en cada `docker compose up` y termina; es seguro repetirlo.
+  migrate:
+    image: postgres:16
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      PGHOST: database
+      PGUSER: ${POSTGRES_USER:-devhub}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-devhub}
+      PGDATABASE: ${POSTGRES_DB:-cinf100}
+      CARGAR_SEED: ${CARGAR_SEED:-true}
+      SEED_PASSWORD: ${SEED_PASSWORD:-}
+      PGOPTIONS: -c client_min_messages=warning
+    volumes:
+      - ./database:/database:ro
+    # tr quita los \r por si el archivo se guardó con saltos de línea de Windows.
+    entrypoint: ["sh", "-c", "tr -d '\\r' < /database/migrate.sh | sh"]
+    restart: "no"
 
 volumes:
   postgres_data:
