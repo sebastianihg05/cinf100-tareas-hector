@@ -11,6 +11,18 @@ Universidad Andrés Bello – UNAB DevHub
 
 ---
 
+## Base de datos
+
+PostgreSQL 16 en Docker. Para dejarla lista (crea la base, aplica las migraciones y carga usuarios de prueba):
+
+```bash
+docker compose up -d
+```
+
+Instrucciones, pruebas y usuarios de prueba: [`database/README.md`](database/README.md).
+
+---
+
 ## Modelo de trabajo DevHub
 
 Plan → Code → Build/Test → Review → Deploy → Operate → Learn

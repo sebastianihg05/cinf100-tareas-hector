@@ -1,4 +1,4 @@
-CREATE TABLE usuarios (
+CREATE TABLE IF NOT EXISTS usuarios (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     nombre_completo VARCHAR(150) NOT NULL,
     correo VARCHAR(254) NOT NULL,
@@ -43,5 +43,5 @@ CREATE TABLE usuarios (
         )
 );
 
-CREATE UNIQUE INDEX usuarios_correo_unique_ci
+CREATE UNIQUE INDEX IF NOT EXISTS usuarios_correo_unique_ci
     ON usuarios (LOWER(correo));

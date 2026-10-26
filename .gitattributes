@@ -1,0 +1,3 @@
+# Los scripts y el SQL se ejecutan dentro de contenedores Linux.
+*.sh  text eol=lf
+*.sql text eol=lf
