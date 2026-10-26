@@ -21,6 +21,10 @@ docker compose up -d
 
 Instrucciones, pruebas y usuarios de prueba: [`database/README.md`](database/README.md).
 
+## Backend
+
+Node.js + Express + TypeScript en `backend/`. Instrucciones: [`backend/README.md`](backend/README.md).
+
 ---
 
 ## Modelo de trabajo DevHub

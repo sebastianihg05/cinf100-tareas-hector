@@ -51,13 +51,9 @@ SELECT id, correo, sede, rol, estado_aprobacion FROM usuarios ORDER BY id;
 SELECT * FROM schema_migrations;
 ```
 
-Desde el backend (Node.js), con `backend/.env` copiado de `backend/.env.example`:
-
-```bash
-cd backend
-npm install
-npm test
-```
+Desde el backend: con `npm run dev` en `backend/`, la dirección
+`http://localhost:3000/api/health` muestra si la API ve la base y qué
+migraciones están aplicadas. Detalles en `backend/README.md`.
 
 ## Estructura
 

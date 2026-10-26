@@ -4,7 +4,8 @@
 # Lo ejecuta el servicio `migrate` de docker-compose.yml.
 set -eu
 
-DIR=/database
+# Carpeta database: /database en Docker; en el CI se pasa con DATABASE_DIR.
+DIR="${DATABASE_DIR:-/database}"
 
 psql -q -v ON_ERROR_STOP=1 -c "
   CREATE TABLE IF NOT EXISTS schema_migrations (

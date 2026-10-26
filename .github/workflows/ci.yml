@@ -53,37 +53,60 @@ jobs:
     name: backend-tests
     runs-on: ubuntu-latest
 
+    # Misma base que docker-compose.yml, solo para las pruebas.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: devhub
+          POSTGRES_PASSWORD: devhub
+          POSTGRES_DB: cinf100
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U devhub -d cinf100"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+
+    env:
+      PGHOST: localhost
+      PGUSER: devhub
+      PGPASSWORD: devhub
+      PGDATABASE: cinf100
+      DATABASE_URL: postgresql://devhub:devhub@localhost:5432/cinf100
+
     steps:
 
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Apply migrations and seed
+        env:
+          DATABASE_DIR: database
+        run: sh database/migrate.sh
+
+      - name: Run database tests
+        run: psql -v ON_ERROR_STOP=1 -f database/tests/usuarios_restricciones.sql
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          python-version: "3.12"
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
 
-      - name: Detect backend dependencies
-        id: backend
-        run: |
-          if [ -f backend/requirements.txt ]; then
-            echo "requirements=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "requirements=false" >> "$GITHUB_OUTPUT"
-          fi
+      - name: Install dependencies
+        working-directory: backend
+        run: npm ci
 
-      - name: Install backend dependencies
-        if: steps.backend.outputs.requirements == 'true'
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r backend/requirements.txt
+      - name: Typecheck and build
+        working-directory: backend
+        run: npm run build
 
-      - name: Run Pytest
-        if: steps.backend.outputs.requirements == 'true'
-        run: |
-          if [ -d backend/tests ]; then
-            pytest backend/tests
-          fi
+      - name: Run backend tests
+        working-directory: backend
+        run: npm test
 
   frontend-tests:
     name: frontend-tests
