@@ -381,3 +381,40 @@
   font-weight: 800; font-size: 11px; padding: 8px 12px;
 }
 .adm-reject:hover { background: rgba(204, 0, 51, .45); border-color: transparent; }
+
+/* HU-16: acceso y vista del historial de reservas de un pasajero (solo lectura). */
+.adm-passenger__reservas {
+  align-self: flex-start; margin-top: 8px; padding: 7px 10px; border: 1px solid rgba(255,255,255,.55);
+  border-radius: 8px; background: rgba(255,255,255,.12); color: #fff; font-size: 12px;
+  font-weight: 700; cursor: pointer;
+}
+.adm-passenger__reservas:hover, .adm-passenger__reservas:focus-visible { background: rgba(255,255,255,.23); }
+.adm-reservas__abrir { width: 100%; margin-bottom: 14px; }
+.adm-reservas { color: var(--ink); }
+.adm-reservas__volver {
+  border: 0; background: transparent; color: var(--navy); padding: 4px 0;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+}
+.adm-reservas__identidad { margin: 8px 0 4px; overflow-wrap: anywhere; font-size: 12px; color: var(--muted); }
+.adm-reservas__resumen { margin: 0 0 18px; font-size: 14px; font-weight: 700; }
+.adm-reservas__seccion { margin: 18px 0 0; }
+.adm-reservas__seccion h3 { margin: 0 0 10px; font-size: 15px; color: var(--navy); }
+.adm-reservas__lista, .adm-reservas__trayectos { list-style: none; margin: 0; padding: 0; }
+.adm-reservas__lista { display: grid; gap: 12px; }
+.adm-reservas__grupo { padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.adm-reservas__grupo-cabecera, .adm-reservas__trayecto-cabecera {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px;
+}
+.adm-reservas__grupo-cabecera { font-size: 13px; margin-bottom: 10px; }
+.adm-reservas__trayectos { display: grid; gap: 10px; }
+.adm-reservas__trayecto { padding: 10px; border-radius: 8px; background: #f5f7fb; }
+.adm-reservas__trayecto-cabecera { font-size: 12px; margin-bottom: 8px; }
+.adm-reservas__estado { border-radius: 999px; font-size: 10px; font-weight: 700; padding: 4px 8px; }
+.adm-reservas__estado--pendiente { background: #f4e7b5; color: #725609; }
+.adm-reservas__estado--completada { background: #c7fec9; color: #186b34; }
+.adm-reservas__estado--cancelada { background: #fecaca; color: #991b1b; }
+.adm-reservas__datos { margin: 0; display: grid; gap: 5px; }
+.adm-reservas__datos div { display: flex; justify-content: space-between; gap: 12px; font-size: 11px; }
+.adm-reservas__datos dt { color: var(--muted); }
+.adm-reservas__datos dd { margin: 0; text-align: right; font-weight: 600; overflow-wrap: anywhere; }
+.adm-reservas__vacio { padding: 14px; background: #f5f7fb; border-radius: 10px; color: var(--muted); font-size: 13px; }
