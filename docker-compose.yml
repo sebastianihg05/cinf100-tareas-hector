@@ -47,5 +47,20 @@ services:
     entrypoint: ["sh", "-c", "tr -d '\\r' < /database/migrate.sh | sh"]
     restart: "no"
 
+  # Interfaz web para ver y editar la base: http://localhost:8080
+  # Sistema: PostgreSQL · Servidor: database · Usuario y contraseña: devhub · Base: cinf100
+  adminer:
+    image: adminer:5.4.1
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      ADMINER_DEFAULT_SERVER: database
+    # Escucha en IPv4: la imagen usa IPv6 por defecto y falla en algunos equipos.
+    command: ["php", "-S", "0.0.0.0:8080", "-t", "/var/www/html"]
+    ports:
+      - "127.0.0.1:${ADMINER_PORT:-8080}:8080"
+
 volumes:
   postgres_data:

@@ -19,11 +19,14 @@ PostgreSQL 16 en Docker. Para dejarla lista (crea la base, aplica las migracione
 docker compose up -d
 ```
 
+Para ver y editar los datos en el navegador: `http://localhost:8080` (Adminer).
 Instrucciones, pruebas y usuarios de prueba: [`database/README.md`](database/README.md).
 
 ## Backend
 
-Node.js + Express + TypeScript en `backend/`. Instrucciones: [`backend/README.md`](backend/README.md).
+Node.js + Express + TypeScript en `backend/`: registro, inicio de sesión con JWT,
+perfiles por rol y aprobación de cuentas. Instrucciones: [`backend/README.md`](backend/README.md).
+Rutas de la API: [`docs/api/`](docs/api/).
 
 ---
 

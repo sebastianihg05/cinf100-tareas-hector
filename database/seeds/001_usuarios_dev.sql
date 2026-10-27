@@ -44,3 +44,14 @@ SELECT v.nombre, v.correo, c.hash, v.telefono, v.sede,
  CROSS JOIN seed_clave c
  CROSS JOIN (SELECT id FROM usuarios WHERE correo = 'dev.admin@unab.cl') a
  WHERE NOT EXISTS (SELECT 1 FROM usuarios u WHERE u.correo = v.correo);
+
+-- Si SEED_PASSWORD está definida, las cuentas de prueba quedan con esa
+-- contraseña aunque ya existieran con otra (por ejemplo, una aleatoria).
+UPDATE usuarios u
+   SET hash_contrasena = c.hash
+  FROM seed_clave c
+ WHERE :'seed_password' <> ''
+   AND u.correo = ANY (ARRAY[
+         'dev.admin@unab.cl', 'dev.funcionario@unab.cl', 'dev.conductor@unab.cl',
+         'dev.pendiente@uandresbello.edu', 'dev.rechazado@unab.cl', 'dev.desactivado@unab.cl'])
+   AND u.hash_contrasena <> crypt(:'seed_password', u.hash_contrasena);
