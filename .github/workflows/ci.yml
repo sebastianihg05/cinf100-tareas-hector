@@ -75,6 +75,7 @@ jobs:
       PGPASSWORD: devhub
       PGDATABASE: cinf100
       DATABASE_URL: postgresql://devhub:devhub@localhost:5432/cinf100
+      JWT_SECRET: clave-solo-para-el-ci
 
     steps:
 
