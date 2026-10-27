@@ -1,12 +1,20 @@
+import cors from 'cors';
 import express, { type ErrorRequestHandler } from 'express';
+import { rutasAdmin } from './admin/rutas';
+import { config } from './config';
 import { pool } from './db';
 import { rutasAuth } from './usuarios/rutas';
+import { rutasPerfil } from './usuarios/rutas-perfil';
 
 export const app = express();
 
+// Permite que el frontend (Vite) llame a la API desde el navegador.
+app.use(cors({ origin: config.frontendOrigin }));
 app.use(express.json());
 
 app.use('/api/auth', rutasAuth);
+app.use('/api/usuarios', rutasPerfil);
+app.use('/api/admin', rutasAdmin);
 
 // Estado de la API y de la conexión con PostgreSQL
 app.get('/api/health', async (_req, res) => {

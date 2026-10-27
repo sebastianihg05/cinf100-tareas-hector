@@ -55,6 +55,22 @@ Desde el backend: con `npm run dev` en `backend/`, la dirección
 `http://localhost:3000/api/health` muestra si la API ve la base y qué
 migraciones están aplicadas. Detalles en `backend/README.md`.
 
+## Ver la base en el navegador (Adminer)
+
+`docker compose up -d` también levanta **Adminer** en `http://localhost:8080`.
+Para entrar:
+
+| Campo | Valor |
+|---|---|
+| Sistema | **PostgreSQL** (viene marcado MySQL: hay que cambiarlo) |
+| Servidor | `database` |
+| Usuario | `devhub` |
+| Contraseña | `devhub` |
+| Base de datos | `cinf100` |
+
+Ahí puedes ver las tablas, sus datos y su estructura, editar filas y ejecutar
+SQL ("SQL command"). Los cambios que hagas son reales, igual que con `psql`.
+
 ## Estructura
 
 | Carpeta | Contenido |
@@ -86,7 +102,9 @@ se ejecuta dentro de una transacción: si falla, no queda a medias.
 
 La contraseña no está en el repositorio. Se toma de `SEED_PASSWORD` en el
 `.env` de la raíz y se guarda como hash bcrypt. Si no se define, se usa una
-contraseña aleatoria y nadie puede iniciar sesión con estas cuentas.
+contraseña aleatoria y nadie puede iniciar sesión con estas cuentas. Si la
+defines o la cambias después, el siguiente `docker compose up -d` la aplica a
+las cuentas de prueba que ya existían.
 Para no cargar estos usuarios: `CARGAR_SEED=false`.
 
 ## Reiniciar y borrar

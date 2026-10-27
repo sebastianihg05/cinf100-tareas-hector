@@ -15,6 +15,12 @@ npm install
 
 `.env` no se sube a Git. Sus valores por defecto coinciden con `docker-compose.yml`.
 
+| Variable | Para qué |
+|---|---|
+| `DATABASE_URL` | Conexión a PostgreSQL. |
+| `JWT_SECRET` | Clave para firmar las sesiones. Si falta, en desarrollo se usa una temporal y las sesiones se pierden al reiniciar. |
+| `FRONTEND_ORIGIN` | Dirección del frontend autorizada a llamar a la API (por defecto `http://localhost:5173`). |
+
 ## Comandos
 
 | Comando | Qué hace |
@@ -34,11 +40,28 @@ Para comprobar que la API ve la base de datos, abre
 
 Si la base no está levantada responde `503` con `"database":"sin conexión"`.
 
+## Endpoints
+
+| Ruta | Documentación |
+|---|---|
+| `POST /api/auth/registro` | `docs/api/registro.md` |
+| `POST /api/auth/login`, `/api/usuarios/me`, `/api/admin/...` | `docs/api/autenticacion.md` |
+
+## Iniciar sesión con las cuentas de prueba
+
+1. En la raíz del repositorio, crea `.env` (copia de `.env.example`) y ponle una contraseña a `SEED_PASSWORD`, por ejemplo `SEED_PASSWORD=Demo.2026`.
+2. Ejecuta `docker compose up -d`: el seed deja esa contraseña en todas las cuentas `dev.*`.
+3. Con `npm run dev`, inicia sesión con `dev.admin@unab.cl` (administrador), `dev.funcionario@unab.cl` o `dev.conductor@unab.cl`.
+
 ## Estructura
 
 | Ruta | Contenido |
 |---|---|
 | `src/server.ts` | Punto de entrada: levanta el servidor en el puerto `PORT` (3000 por defecto). |
-| `src/app.ts` | Aplicación Express y sus rutas. |
-| `src/db.ts` | Pool de conexiones a PostgreSQL, configurado con `DATABASE_URL`. |
-| `tests/` | Pruebas con `node:test` y `supertest`. |
+| `src/app.ts` | Aplicación Express: CORS, rutas y manejo de errores. |
+| `src/config.ts` | Lee las variables de `backend/.env`. |
+| `src/db.ts` | Pool de conexiones a PostgreSQL. |
+| `src/auth/` | Tokens JWT y middlewares de sesión y de rol. |
+| `src/usuarios/` | Registro, login, perfil, validaciones y hash de contraseñas. |
+| `src/admin/` | Rutas del administrador: solicitudes y usuarios. |
+| `tests/` | Pruebas con `node:test` y `supertest` (`ayudantes.ts` crea usuarios de prueba). |
