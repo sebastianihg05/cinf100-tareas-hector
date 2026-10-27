@@ -32,8 +32,9 @@ test('registra la cuenta como pendiente y sin rol', async () => {
   const respuesta = await request(app).post('/api/auth/registro').send(solicitud);
 
   assert.equal(respuesta.status, 201);
-  assert.equal(respuesta.body.usuario.estado_aprobacion, 'pendiente');
-  assert.equal(respuesta.body.usuario.hash_contrasena, undefined);
+  assert.equal(respuesta.body.usuario.estado, 'pendiente');
+  assert.equal(respuesta.body.usuario.rol, null);
+  assert.ok(!JSON.stringify(respuesta.body).includes('hash'));
 
   const { rows } = await pool.query('SELECT * FROM usuarios WHERE correo = $1', [solicitud.correo]);
   assert.equal(rows.length, 1);

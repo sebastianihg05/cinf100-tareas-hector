@@ -32,7 +32,7 @@ hasta que un administrador la apruebe. Si el cliente envía `rol`,
 
 | Código | Cuándo | Cuerpo |
 |---|---|---|
-| `201` | Cuenta creada | `{"usuario": {"id", "nombre_completo", "correo", "sede", "estado_aprobacion": "pendiente", "creado_en"}}` |
+| `201` | Cuenta creada | `{"usuario": {...}}` con `estado: "pendiente"` y `rol: null` (forma del usuario en `autenticacion.md`) |
 | `400` | Datos inválidos o JSON mal formado | `{"errores": {"campo": "mensaje"}}` con un mensaje por campo con problemas |
 | `409` | El correo ya está registrado (sin importar mayúsculas) | `{"errores": {"correo": "Ya existe una cuenta con este correo."}}` |
 | `500` | Error inesperado | `{"error": "Error interno del servidor."}` |
