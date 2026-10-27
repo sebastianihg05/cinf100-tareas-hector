@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import ConfirmDialog from '../components/ConfirmDialog'
+import DetalleReservasPasajero from '../components/DetalleReservasPasajero'
 import { IconCalendar, IconChevron, IconSearch, IconSeat } from '../components/icons'
 import Interruptor from '../components/Interruptor'
 import Modal from '../components/Modal'
@@ -36,9 +37,8 @@ const ROLES: { valor: Rol; etiqueta: string }[] = [
 const etiquetaRol = (rol?: Rol) => ROLES.find((r) => r.valor === (rol ?? 'funcionario'))!.etiqueta
 
 export default function VistaPasajeros() {
-  const { state, pendientes, patchPasajero, aprobarSolicitud, rechazarSolicitud, eliminarPasajero } = useAdmin()
+  const { state, pendientes, patchPasajero, aprobarSolicitud, rechazarSolicitud, eliminarPasajero, reservasDe } = useAdmin()
   const [params, setParams] = useSearchParams()
-  const [detalle, setDetalle] = useState<string | null>(null)
   const [busqueda, setBusqueda] = useState('')
   const [fechaViaje, setFechaViaje] = useState('')
   // rol elegido para cada solicitud mientras sigue por aprobar (por defecto, funcionario)
@@ -47,7 +47,31 @@ export default function VistaPasajeros() {
   const [eliminando, setEliminando] = useState<Pasajero | null>(null)
 
   const filtro = params.get('filtro') ?? 'todos'
-  const setFiltro = (f: string) => setParams(f === 'todos' ? {} : { filtro: f }, { replace: true })
+  // HU-16: la selección vive en la URL para conservar el pasajero al entrar al historial.
+  const detalle = params.get('pasajero')
+  const vistaDetalle = params.get('vista') === 'reservas' ? 'reservas' : 'perfil'
+
+  const setFiltro = (f: string) => setParams((anterior) => {
+    const siguiente = new URLSearchParams(anterior)
+    if (f === 'todos') siguiente.delete('filtro')
+    else siguiente.set('filtro', f)
+    return siguiente
+  }, { replace: true })
+
+  const abrirDetalle = (id: string, vista: 'perfil' | 'reservas' = 'perfil') => setParams((anterior) => {
+    const siguiente = new URLSearchParams(anterior)
+    siguiente.set('pasajero', id)
+    if (vista === 'reservas') siguiente.set('vista', 'reservas')
+    else siguiente.delete('vista')
+    return siguiente
+  })
+
+  const cerrarDetalle = () => setParams((anterior) => {
+    const siguiente = new URLSearchParams(anterior)
+    siguiente.delete('pasajero')
+    siguiente.delete('vista')
+    return siguiente
+  })
 
   const q = sinTildes(busqueda.trim())
   const lista = state.pasajeros.filter((p) => {
@@ -57,7 +81,8 @@ export default function VistaPasajeros() {
     const viaje = p.reserva ? `${p.reserva.fecha} ${fechaDMY(p.reserva.fecha)} ${RUTA_TRAYECTO[p.reserva.trayecto].destino}` : ''
     return !q || sinTildes(`${p.nombre} ${p.email} ${p.sede} ${viaje}`).includes(q)
   })
-  const sel = state.pasajeros.find((p) => p.id === detalle)
+  const sel = state.pasajeros.find((p) => p.id === detalle && p.aprobado)
+  const reservasSeleccionadas = sel ? reservasDe(sel.id) : null
 
   return (
     <>
@@ -81,18 +106,25 @@ export default function VistaPasajeros() {
       <ul className="adm-list">
         {lista.map((p) => (
           <li key={p.id} className={`adm-card adm-card--passenger${p.aprobado ? ' is-clickable' : ' adm-card--solicitud'}`}
-            onClick={p.aprobado ? () => setDetalle(p.id) : undefined}>
+            onClick={p.aprobado ? () => abrirDetalle(p.id) : undefined}>
             <div className="adm-avatar adm-avatar--light">{iniciales(p.nombre)}</div>
             <div className="adm-passenger__body">
               <p className="adm-card__title">{p.nombre}</p>
               <p className="adm-card__small">{p.email} · {p.sede || 'Sin sede'}</p>
               {p.aprobado
-                ? <TagsReserva p={p} />
+                ? <>
+                    <TagsReserva p={p} />
+                    <button type="button" className="adm-passenger__reservas"
+                      aria-label={`Ver reservas de ${p.nombre}`}
+                      onClick={(e) => { e.stopPropagation(); abrirDetalle(p.id, 'reservas') }}>
+                      Ver reservas
+                    </button>
+                  </>
                 : <span className="adm-badge adm-badge--pending">Por aprobar</span>}
             </div>
             {p.aprobado ? (
               <button className="adm-passenger__go" aria-label={`Ver detalle de ${p.nombre}`}
-                onClick={(e) => { e.stopPropagation(); setDetalle(p.id) }}><IconChevron /></button>
+                onClick={(e) => { e.stopPropagation(); abrirDetalle(p.id) }}><IconChevron /></button>
             ) : (
               <div className="adm-solicitud">
                 <label className="adm-solicitud__rol">
@@ -122,7 +154,17 @@ export default function VistaPasajeros() {
       )}
 
       {sel && (
-        <Modal title={sel.nombre} onClose={() => setDetalle(null)}>
+        <Modal title={sel.nombre} onClose={cerrarDetalle}>
+          {vistaDetalle === 'reservas' && reservasSeleccionadas ? (
+            <DetalleReservasPasajero pasajero={sel}
+              proximas={reservasSeleccionadas.proximas}
+              historial={reservasSeleccionadas.historial}
+              onVolver={() => abrirDetalle(sel.id)} />
+          ) : <>
+          <button type="button" className="adm-btn adm-btn--primary adm-reservas__abrir"
+            onClick={() => abrirDetalle(sel.id, 'reservas')}>
+            Ver todas sus reservas
+          </button>
           <p className="adm-detail__mail">{sel.email}</p>
           <dl className="adm-detail__list">
             <div><dt>Rol</dt><dd>{etiquetaRol(sel.rol)}</dd></div>
@@ -154,6 +196,7 @@ export default function VistaPasajeros() {
             </div>
             <button type="button" className="adm-btn adm-btn--danger" onClick={() => setEliminando(sel)}>Eliminar</button>
           </div>
+          </>}
         </Modal>
       )}
 
@@ -168,7 +211,7 @@ export default function VistaPasajeros() {
             borrarCredencial(eliminando.email)
             borrarAvisosLeidos(eliminando.id)
             setEliminando(null)
-            setDetalle(null)
+            cerrarDetalle()
           }}
         />
       )}
