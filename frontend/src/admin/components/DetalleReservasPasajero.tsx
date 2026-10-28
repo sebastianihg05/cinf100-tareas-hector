@@ -2,7 +2,7 @@ import type { GrupoReserva } from '../store/reservas'
 import type { EstadoReserva, Pasajero } from '../types'
 import { fechaLarga } from '../utils/format'
 
-const ESTADOS: Record<EstadoReserva, string> = {
+export const ESTADOS_RESERVA: Record<EstadoReserva, string> = {
   pendiente: 'Pendiente',
   completada: 'Completada',
   cancelada: 'Cancelada',
@@ -26,7 +26,7 @@ export default function DetalleReservasPasajero({ pasajero, proximas, historial,
           <div className="adm-reservas__grupo-cabecera">
             <strong>{grupo.fecha ? fechaLarga(grupo.fecha) : 'Fecha no disponible'}</strong>
             <span className={`adm-reservas__estado adm-reservas__estado--${grupo.estado}`}>
-              {ESTADOS[grupo.estado]}
+              {ESTADOS_RESERVA[grupo.estado]}
             </span>
           </div>
           <ul className="adm-reservas__trayectos">
@@ -35,7 +35,7 @@ export default function DetalleReservasPasajero({ pasajero, proximas, historial,
                 <div className="adm-reservas__trayecto-cabecera">
                   <strong>{reserva.trayecto}</strong>
                   <span className={`adm-reservas__estado adm-reservas__estado--${reserva.estado}`}>
-                    {ESTADOS[reserva.estado]}
+                    {ESTADOS_RESERVA[reserva.estado]}
                   </span>
                 </div>
                 <dl className="adm-reservas__datos">
