@@ -137,13 +137,18 @@ export function reducer(s: State, a: Action): State {
       return { ...s, pasajeros: s.pasajeros.map((p) => (p.id === a.id ? { ...p, ...a.patch } : p)) }
     case 'viaje/add':
       return { ...s, viajes: [...s.viajes, ...a.viajes] }
-    case 'viaje/estado':
-      return sincronizar({
-        ...s,
-        viajes: s.viajes.map((v) => (v.id === a.id ? { ...v, estado: a.estado } : v)),
-        reservas: cerrarReservas(s.reservas, a.id, a.estado),
-        notificaciones: a.notificacion ? [a.notificacion, ...s.notificaciones] : s.notificaciones,
-      })
+      case 'viaje/estado': {
+          const viaje = s.viajes.find((v) => v.id === a.id)
+          if (!viaje) return s
+          if (a.estado === 'en-curso' && viaje.estado !== 'pendiente') return s
+
+          return sincronizar({
+              ...s,
+              viajes: s.viajes.map((v) => (v.id === a.id ? { ...v, estado: a.estado } : v)),
+              reservas: cerrarReservas(s.reservas, a.id, a.estado),
+              notificaciones: a.notificacion ? [a.notificacion, ...s.notificaciones] : s.notificaciones,
+          })
+      }
     case 'reserva/crear': {
       // Defensa: el contexto ya validó, pero el reducer nunca aplica una reserva que choque con otra.
       const primera = a.reservas[0]
