@@ -1,13 +1,11 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAdmin } from "../../admin/store/AdminContext";
+import { api } from "../../api";
 import { esCorreoInstitucional, normalizarTelefono } from "../../admin/utils/format";
-import { guardarCredencial } from "../authDemo";
 import "../styles/auth.css";
 
 function Register() {
   const navigate = useNavigate();
-  const { crearSolicitud } = useAdmin();
 
   const [nombre, setNombre] = useState("");
   const [correo, setCorreo] = useState("");
@@ -21,13 +19,7 @@ function Register() {
     useState(false);
 
   const [error, setError] = useState("");
-
-
-  const telefonoValido = (telefonoIngresado: string) => {
-    const numeros = telefonoIngresado.replace(/\D/g, "");
-
-    return numeros.length >= 8 && numeros.length <= 12;
-  };
+  const [enviando, setEnviando] = useState(false);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -49,8 +41,9 @@ function Register() {
       return;
     }
 
-    if (!telefonoValido(telefono)) {
-      setError("Ingresa un teléfono de contacto válido.");
+    // El backend solo acepta celulares chilenos (se guardan como +569XXXXXXXX).
+    if (!normalizarTelefono(telefono)) {
+      setError("Ingresa un celular chileno válido, por ejemplo +56 9 1234 5678.");
       return;
     }
 
@@ -64,21 +57,23 @@ function Register() {
       return;
     }
 
-    // Crea una solicitud real: queda "por aprobar" en el panel del administrador, sin rol asignado todavía.
-    const solicitud = crearSolicitud({
-      nombre,
-      email: correo,
+    // BD-17: la solicitud se guarda en PostgreSQL, pendiente y sin rol hasta que el administrador la apruebe.
+    // El backend vuelve a validar los datos y guarda solo el hash de la contraseña.
+    setEnviando(true);
+    const respuesta = await api.registrar({
+      nombreCompleto: nombre,
+      correo,
+      contrasena: password,
+      confirmacion: confirmarPassword,
+      telefono,
       sede,
-      celular: normalizarTelefono(telefono) ?? telefono,
     });
+    setEnviando(false);
 
-    if (!solicitud.ok) {
-      setError(solicitud.error);
+    if (!respuesta.ok) {
+      setError(respuesta.error);
       return;
     }
-
-    // La contraseña no se guarda en claro: solo un hash de demostración (ver authDemo.ts).
-    await guardarCredencial(solicitud.pasajero.email, password);
 
     setError("");
     navigate("/registro/exito");
@@ -226,7 +221,7 @@ function Register() {
 
           {error && <p className="form-error">{error}</p>}
 
-          <button type="submit" className="primary-button">
+          <button type="submit" className="primary-button" disabled={enviando}>
             Crear cuenta
           </button>
         </form>
@@ -246,4 +241,4 @@ function Register() {
   );
 }
 
-export default Register;
+export default Register;

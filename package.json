@@ -1,0 +1,14 @@
+{
+  "name": "cinf100-grupo02",
+  "private": true,
+  "description": "Sistema de Gestión de Transportes Vans UNAB: base de datos, backend y frontend con un solo comando.",
+  "scripts": {
+    "postinstall": "npm install --prefix backend && npm install --prefix frontend",
+    "predev": "node herramientas/preparar-dev.mjs",
+    "dev": "concurrently --names api,web --prefix-colors blue,magenta \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
+    "test": "npm test --prefix backend && npm test --prefix frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.5"
+  }
+}

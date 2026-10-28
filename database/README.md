@@ -104,7 +104,8 @@ La contraseña no está en el repositorio. Se toma de `SEED_PASSWORD` en el
 `.env` de la raíz y se guarda como hash bcrypt. Si no se define, se usa una
 contraseña aleatoria y nadie puede iniciar sesión con estas cuentas. Si la
 defines o la cambias después, el siguiente `docker compose up -d` la aplica a
-las cuentas de prueba que ya existían.
+las cuentas de prueba que ya existían. `npm run dev` en la raíz genera una si
+está vacía y la muestra al arrancar.
 Para no cargar estos usuarios: `CARGAR_SEED=false`.
 
 ## Reiniciar y borrar
@@ -122,4 +123,4 @@ Para no cargar estos usuarios: `CARGAR_SEED=false`.
 - **`password authentication failed`**: el volumen se creó con otras
   credenciales. Usa las originales o ejecuta `docker compose down -v`.
 - **El servicio `migrate` terminó con error**: `docker compose logs migrate`
-  muestra la migración y la línea que falló; nada de esa migración quedó aplicado.
+  muestra la migración y la línea que falló; nada de esa migración quedó aplicado.

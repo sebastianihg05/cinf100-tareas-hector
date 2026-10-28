@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import NotificacionesPanel from './NotificacionesPanel'
+import { api } from '../../api'
+import { cerrarSesion, leerSesion } from '../../login/sesion'
 import { useAdmin } from '../store/AdminContext'
 import { iniciales } from '../utils/format'
 import { IconBack, IconBell, IconChevron, IconPanel, IconRoute, IconTruck, IconUser, IconUsers } from './icons'
@@ -14,7 +16,7 @@ const tabs = [
 ]
 
 export default function AdminLayout() {
-  const { state, pendientes, sinLeer } = useAdmin()
+  const { state, pendientes, sinLeer, sincronizarCuentas } = useAdmin()
   const [notifAbierto, setNotifAbierto] = useState(false)
   const totalAvisos = pendientes + sinLeer
   const { pathname } = useLocation()
@@ -23,6 +25,20 @@ export default function AdminLayout() {
   const enAbrirViaje = pathname.startsWith('/admin/viajes/abrir')
   const subpagina = enPerfil || enAbrirViaje
   const titulo = enPerfil ? 'Mi perfil' : enAbrirViaje ? 'Abrir viaje' : 'Panel Administración'
+
+  // Al entrar, trae las cuentas de PostgreSQL: solicitudes por aprobar y pasajeros aprobados.
+  // Solo una vez: sincronizarCuentas cambia en cada render.
+  useEffect(() => {
+    if (!leerSesion()?.token) return
+    api.listarUsuarios().then((r) => {
+      if (r.ok) sincronizarCuentas(r.datos.usuarios)
+      // La sesión expiró (dura 8 horas) o la cuenta ya no tiene acceso: vuelve al login.
+      else if (r.status === 401 || r.status === 403) {
+        cerrarSesion()
+        navigate('/login', { replace: true })
+      }
+    })
+  }, [])
 
   return (
     <div className="adm-shell">

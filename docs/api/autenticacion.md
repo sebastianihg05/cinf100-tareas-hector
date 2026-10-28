@@ -99,36 +99,19 @@ Solo para `rol: "administrador"`. Otro rol recibe `403`.
 
 La base guarda qué administrador tomó la decisión y cuándo (`decidido_por`, `decidido_en`).
 
-## Ejemplo para el frontend (TypeScript)
+## Conexión con el frontend (BD-17, BD-18)
 
-```ts
-const API = 'http://localhost:3000/api';
+El frontend ya usa esta API:
 
-export async function iniciarSesion(correo: string, contrasena: string) {
-  const respuesta = await fetch(`${API}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ correo, contrasena }),
-  });
-  const datos = await respuesta.json();
-  if (!respuesta.ok) {
-    // datos.error tiene el mensaje para mostrar; datos.estado indica si está pendiente, etc.
-    throw Object.assign(new Error(datos.error), { estado: datos.estado });
-  }
-  sessionStorage.setItem('unab-token', datos.token);
-  return datos.usuario;
-}
+| Pantalla | Qué hace |
+|---|---|
+| Registro (`/registro`) | `POST /api/auth/registro` y muestra los errores del backend (correo repetido, celular inválido, etc.). |
+| Login (`/login`) | `POST /api/auth/login`, guarda el token en la sesión (`sessionStorage`) y redirige según el rol. |
+| Administrador, pestaña Pasajeros | Trae las cuentas con `GET /api/admin/usuarios` y aprueba o rechaza con `POST /api/admin/solicitudes/:id/...`. |
 
-export async function obtenerSolicitudes() {
-  const respuesta = await fetch(`${API}/admin/solicitudes`, {
-    headers: { Authorization: `Bearer ${sessionStorage.getItem('unab-token')}` },
-  });
-  if (respuesta.status === 401) {
-    // La sesión expiró: volver al login.
-  }
-  return (await respuesta.json()).solicitudes;
-}
-```
+- Todas las llamadas están en `frontend/src/api.ts`. En desarrollo, Vite reenvía `/api` al backend (`frontend/vite.config.ts`), así que no hay que configurar direcciones ni CORS.
+- Las cuentas de la base se copian en el estado local de la app (acción `pasajero/desdeBd` en `frontend/src/admin/store/adminStore.ts`), para que reservas y viajes, que todavía son datos de ejemplo, funcionen con ellas.
+- Las pruebas del frontend usan un backend falso en memoria (`frontend/src/test/apiFalsa.ts`) y no necesitan Docker.
 
 ## Probar a mano (PowerShell)
 
@@ -139,4 +122,4 @@ $login = Invoke-RestMethod -Method Post -Uri http://localhost:3000/api/auth/logi
 $cabecera = @{ Authorization = "Bearer $($login.token)" }
 Invoke-RestMethod -Uri http://localhost:3000/api/usuarios/me -Headers $cabecera
 Invoke-RestMethod -Uri http://localhost:3000/api/admin/solicitudes -Headers $cabecera
-```
+```

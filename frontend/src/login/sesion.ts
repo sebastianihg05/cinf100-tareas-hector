@@ -9,6 +9,8 @@ export type Sesion = {
   rol: RolSesion
   /** id del pasajero en el estado compartido; `null` para el administrador */
   pasajeroId: string | null
+  /** Token JWT que entrega el backend al iniciar sesión (BD-18); se envía en cada llamada a la API. */
+  token?: string
 }
 
 /** Pantalla de inicio de cada rol */
@@ -20,7 +22,7 @@ export const RUTA_INICIO: Record<RolSesion, string> = {
 
 const KEY = 'unab-sesion'
 
-/** La sesión vive en sessionStorage: se cierra al cerrar la pestaña. Con backend será un token. */
+/** La sesión vive en sessionStorage: se cierra al cerrar la pestaña. */
 export function leerSesion(): Sesion | null {
   try {
     const raw = sessionStorage.getItem(KEY)
