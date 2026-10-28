@@ -69,6 +69,7 @@
 }
 .adm-chip--edit { background: #88e3c5; color: #08ac75; }
 .adm-chip--ban { background: #d396a5; color: var(--red); }
+.adm-chip--ver { background: #dbe7f5; color: var(--navy); }
 
 /* Pasajeros */
 .adm-card--passenger { flex-direction: row; align-items: center; gap: 14px; padding: 16px 14px; }
