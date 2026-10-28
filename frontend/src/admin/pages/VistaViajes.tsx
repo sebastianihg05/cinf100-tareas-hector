@@ -8,6 +8,7 @@ import Pills from '../components/Pills'
 import { useAdmin } from '../store/AdminContext'
 import type { EstadoViaje, Trayecto, Viaje } from '../types'
 import { fechaDMY, fechaLarga, todayISO } from '../utils/format'
+import ListaPasajerosViaje from '../components/ListaPasajerosViaje'
 
 type Filtro = 'todos' | EstadoViaje
 type FiltroTrayecto = 'todos' | Trayecto
@@ -150,6 +151,8 @@ export default function VistaViajes() {
         })}
         {lista.length === 0 && <li className="adm-empty">No hay viajes con ese filtro.</li>}
       </ul>
+
+      <ListaPasajerosViaje />
 
       {cancelando && (
         <ConfirmDialog
