@@ -39,9 +39,8 @@ export default function DetalleReservasPasajero({ pasajero, proximas, historial,
                   </span>
                 </div>
                 <dl className="adm-reservas__datos">
-                  <div><dt>Viaje</dt><dd>{viaje?.id ?? reserva.viajeId}</dd></div>
                   <div><dt>Ruta</dt><dd>{viaje ? `${viaje.origen} → ${viaje.destino}` : 'Viaje no disponible'}</dd></div>
-                  <div><dt>Salida</dt><dd>{viaje ? `${fechaLarga(viaje.fecha)} · ${viaje.hora} h` : 'No disponible'}</dd></div>
+                  <div><dt>Hora de salida</dt><dd>{viaje ? `${viaje.hora} h` : 'No disponible'}</dd></div>
                   <div><dt>Asiento</dt><dd>{reserva.asiento}</dd></div>
                 </dl>
               </li>
