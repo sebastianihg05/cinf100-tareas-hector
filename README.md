@@ -11,22 +11,31 @@ Universidad Andrés Bello – UNAB DevHub
 
 ---
 
-## Base de datos
+## Levantar la aplicación
 
-PostgreSQL 16 en Docker. Para dejarla lista (crea la base, aplica las migraciones y carga usuarios de prueba):
+Requisitos: Docker Desktop abierto y Node.js 22. Desde la raíz del repositorio:
 
 ```bash
-docker compose up -d
+npm install
+npm run dev
 ```
 
-Para ver y editar los datos en el navegador: `http://localhost:8080` (Adminer).
-Instrucciones, pruebas y usuarios de prueba: [`database/README.md`](database/README.md).
+`npm install` instala el backend y el frontend. `npm run dev` crea los `.env` que falten,
+levanta PostgreSQL con Docker (migraciones y usuarios de prueba) y arranca la API y la app:
 
-## Backend
+| Qué | Dirección |
+|---|---|
+| App | `http://localhost:5173` |
+| API | `http://localhost:3000` |
+| Adminer (ver la base) | `http://localhost:8080` |
 
-Node.js + Express + TypeScript en `backend/`: registro, inicio de sesión con JWT,
-perfiles por rol y aprobación de cuentas. Instrucciones: [`backend/README.md`](backend/README.md).
-Rutas de la API: [`docs/api/`](docs/api/).
+Al arrancar muestra la contraseña de las cuentas de prueba (`dev.admin@unab.cl` y las demás de
+[`database/README.md`](database/README.md)). Es `SEED_PASSWORD` de tu `.env`, que no se sube a GitHub.
+Ctrl + C detiene la API y la app; la base sigue en Docker hasta `docker compose stop`.
+
+- Base de datos: [`database/README.md`](database/README.md).
+- Backend (Node.js + Express + TypeScript): [`backend/README.md`](backend/README.md).
+- Rutas de la API y cómo las usa el frontend: [`docs/api/`](docs/api/).
 
 ---
 
@@ -133,4 +142,4 @@ Cada Pull Request representa una entrega formal del equipo.
 - versiones entregables;
 - releases;
 - despliegues;
-- evidencia de cumplimiento de hitos.
+- evidencia de cumplimiento de hitos.
