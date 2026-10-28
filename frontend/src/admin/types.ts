@@ -33,6 +33,8 @@ export type Rol = 'funcionario' | 'conductor'
 
 export type Pasajero = {
   id: string
+  /** id de la cuenta en PostgreSQL; las cuentas de ejemplo (mock) no lo tienen */
+  idBd?: number
   nombre: string
   email: string
   sede: string

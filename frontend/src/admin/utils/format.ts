@@ -28,6 +28,12 @@ export const ahoraISO = () => {
   return `${todayISO()}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+/** Fecha ISO completa (como las del backend) en hora local, como yyyy-mm-ddThh:mm */
+export const isoLocal = (iso: string) => {
+  const d = new Date(iso)
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 /** 2027-09-06 -> "6 de septiembre de 2027" */
 export const fechaLarga = (iso: string) =>
   parseISO(iso).toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' })

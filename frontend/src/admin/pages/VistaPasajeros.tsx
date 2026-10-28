@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { api } from '../../api'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { IconCalendar, IconChevron, IconSearch, IconSeat } from '../components/icons'
 import Interruptor from '../components/Interruptor'
 import Modal from '../components/Modal'
 import Pills from '../components/Pills'
-import { borrarCredencial } from '../../login/authDemo'
 import { borrarAvisosLeidos } from '../../pasajero/useAvisosPasajero'
 import { useAdmin } from '../store/AdminContext'
 import { RUTA_TRAYECTO, SEDES, sedeLabel, type Pasajero, type Rol } from '../types'
@@ -36,7 +36,7 @@ const ROLES: { valor: Rol; etiqueta: string }[] = [
 const etiquetaRol = (rol?: Rol) => ROLES.find((r) => r.valor === (rol ?? 'funcionario'))!.etiqueta
 
 export default function VistaPasajeros() {
-  const { state, pendientes, patchPasajero, aprobarSolicitud, rechazarSolicitud, eliminarPasajero } = useAdmin()
+  const { state, pendientes, patchPasajero, aprobarSolicitud, rechazarSolicitud, eliminarPasajero, sincronizarCuentas } = useAdmin()
   const [params, setParams] = useSearchParams()
   const [detalle, setDetalle] = useState<string | null>(null)
   const [busqueda, setBusqueda] = useState('')
@@ -45,6 +45,23 @@ export default function VistaPasajeros() {
   const [roles, setRoles] = useState<Record<string, Rol>>({})
   const [rechazando, setRechazando] = useState<Pasajero | null>(null)
   const [eliminando, setEliminando] = useState<Pasajero | null>(null)
+  const [aviso, setAviso] = useState('')
+
+  // Las cuentas de la base se aprueban o rechazan en el backend (BD-15, BD-16); las de ejemplo, solo aquí.
+  const aprobar = async (p: Pasajero) => {
+    const rol = roles[p.id] ?? 'funcionario'
+    if (p.idBd === undefined) return aprobarSolicitud(p.id, rol)
+    const r = await api.aprobar(p.idBd, rol)
+    if (r.ok) sincronizarCuentas([r.datos.usuario])
+    setAviso(r.ok ? '' : r.error)
+  }
+
+  const rechazar = async (p: Pasajero) => {
+    if (p.idBd === undefined) return rechazarSolicitud(p.id)
+    const r = await api.rechazar(p.idBd)
+    if (r.ok) sincronizarCuentas([r.datos.usuario])
+    setAviso(r.ok ? '' : r.error)
+  }
 
   const filtro = params.get('filtro') ?? 'todos'
   const setFiltro = (f: string) => setParams(f === 'todos' ? {} : { filtro: f }, { replace: true })
@@ -78,6 +95,8 @@ export default function VistaPasajeros() {
         ...SEDES.map((s) => ({ value: s as string, label: s })),
       ]} />
 
+      {aviso && <p className="adm-field__error" role="alert">{aviso}</p>}
+
       <ul className="adm-list">
         {lista.map((p) => (
           <li key={p.id} className={`adm-card adm-card--passenger${p.aprobado ? ' is-clickable' : ' adm-card--solicitud'}`}
@@ -103,7 +122,7 @@ export default function VistaPasajeros() {
                   </select>
                 </label>
                 <button className="adm-reject" onClick={() => setRechazando(p)}>Rechazar</button>
-                <button className="adm-approve" onClick={() => aprobarSolicitud(p.id, roles[p.id] ?? 'funcionario')}>Aprobar</button>
+                <button className="adm-approve" onClick={() => aprobar(p)}>Aprobar</button>
               </div>
             )}
           </li>
@@ -117,7 +136,7 @@ export default function VistaPasajeros() {
           message={`¿Rechazar la solicitud de ${rechazando.nombre}? Se eliminará y la persona tendrá que registrarse de nuevo.`}
           confirmLabel="Rechazar"
           onCancel={() => setRechazando(null)}
-          onConfirm={() => { rechazarSolicitud(rechazando.id); setRechazando(null) }}
+          onConfirm={() => { rechazar(rechazando); setRechazando(null) }}
         />
       )}
 
@@ -147,25 +166,27 @@ export default function VistaPasajeros() {
           </div>
           <Interruptor titulo="Puede abrir viajes" descripcion="Para la Dirección de Docencia: abre viajes en días sin viaje fijo."
             activo={sel.puedeAbrirViajes} onChange={(v) => patchPasajero(sel.id, { puedeAbrirViajes: v })} />
-          <div className="adm-switch-row">
-            <div>
-              <strong>Eliminar cuenta</strong>
-              <small>Borra la cuenta y sus reservas del almacenamiento para liberar espacio. No se puede deshacer.</small>
+          {/* Solo las cuentas de ejemplo: el backend todavía no tiene una ruta para dar de baja una cuenta. */}
+          {sel.idBd === undefined && (
+            <div className="adm-switch-row">
+              <div>
+                <strong>Eliminar cuenta</strong>
+                <small>Borra la cuenta y sus reservas del almacenamiento para liberar espacio. No se puede deshacer.</small>
+              </div>
+              <button type="button" className="adm-btn adm-btn--danger" onClick={() => setEliminando(sel)}>Eliminar</button>
             </div>
-            <button type="button" className="adm-btn adm-btn--danger" onClick={() => setEliminando(sel)}>Eliminar</button>
-          </div>
+          )}
         </Modal>
       )}
 
       {eliminando && (
         <ConfirmDialog
           title="Eliminar cuenta"
-          message={`¿Eliminar la cuenta de ${eliminando.nombre}? Se borrarán la cuenta, su contraseña y todas sus reservas, y no se puede deshacer.`}
+          message={`¿Eliminar la cuenta de ${eliminando.nombre}? Se borrarán la cuenta y todas sus reservas, y no se puede deshacer.`}
           confirmLabel="Eliminar cuenta"
           onCancel={() => setEliminando(null)}
           onConfirm={() => {
             eliminarPasajero(eliminando.id)
-            borrarCredencial(eliminando.email)
             borrarAvisosLeidos(eliminando.id)
             setEliminando(null)
             setDetalle(null)

@@ -1,10 +1,9 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import App from '../App'
-import { estadoInicial } from '../admin/store/adminStore'
-import { autenticar, PASSWORD_DEMO } from './authDemo'
+import { agregarCuenta, CONTRASENA } from '../test/apiFalsa'
 import { guardarSesion, leerSesion } from './sesion'
 
 const abrir = (ruta: string) =>
@@ -14,7 +13,8 @@ const abrir = (ruta: string) =>
     </MemoryRouter>,
   )
 
-const iniciarSesion = async (correo: string, password = PASSWORD_DEMO) => {
+// Las cuentas y contraseñas las valida el backend falso de src/test/apiFalsa.ts.
+const iniciarSesion = async (correo: string, password = CONTRASENA) => {
   await userEvent.clear(screen.getByLabelText('Correo electrónico'))
   await userEvent.type(screen.getByLabelText('Correo electrónico'), correo)
   await userEvent.clear(screen.getByLabelText('Contraseña'))
@@ -36,7 +36,7 @@ const registrar = async (nombre: string, correo: string, password = 'clave12345'
 const abrirSolicitud = async (nombre: string) => {
   await iniciarSesion('dev.admin@unab.cl')
   await userEvent.click(await screen.findByRole('link', { name: 'Pasajeros' }))
-  return within(screen.getByText(nombre).closest('li')!)
+  return within((await screen.findByText(nombre)).closest('li')!)
 }
 
 const cerrarSesionDesdeAdmin = async () => {
@@ -74,18 +74,34 @@ describe('Inicio de sesión', () => {
   })
 
   it('una cuenta por aprobar no puede entrar', async () => {
+    agregarCuenta({ nombreCompleto: 'Cuenta Pendiente', correo: 'dev.pendiente@uandresbello.edu' })
     abrir('/login')
-    await iniciarSesion('dev.nuevo.ingreso@uandresbello.edu')
+    await iniciarSesion('dev.pendiente@uandresbello.edu')
     expect(await screen.findByText(/pendiente de aprobación/)).toBeInTheDocument()
     expect(leerSesion()).toBeNull()
   })
 
-  it('una cuenta deshabilitada no puede entrar', async () => {
-    const estado = estadoInicial()
-    const pasajeros = estado.pasajeros.map((p) => (p.id === 'p5' ? { ...p, habilitado: false } : p))
-    const r = await autenticar('S.constanza@uandresbello.edu', PASSWORD_DEMO, { ...estado, pasajeros })
-    expect(r).toMatchObject({ ok: false })
-    expect(!r.ok && r.error).toMatch(/deshabilitada/)
+  it('una cuenta desactivada no puede entrar', async () => {
+    agregarCuenta({ nombreCompleto: 'Cuenta Desactivada', correo: 'dev.desactivado@unab.cl', rol: 'funcionario', estado: 'desactivada' })
+    abrir('/login')
+    await iniciarSesion('dev.desactivado@unab.cl')
+    expect(await screen.findByText(/desactivada/)).toBeInTheDocument()
+    expect(leerSesion()).toBeNull()
+  })
+
+  it('guarda el token del backend en la sesión', async () => {
+    abrir('/login')
+    await iniciarSesion('dev.admin@unab.cl')
+    await screen.findByRole('heading', { name: 'Panel Administración' })
+    expect(leerSesion()?.token).toBeTruthy()
+  })
+
+  it('si el backend no responde, lo dice', async () => {
+    vi.stubGlobal('fetch', () => Promise.reject(new TypeError('Failed to fetch')))
+    abrir('/login')
+    await iniciarSesion('dev.admin@unab.cl')
+    expect(await screen.findByText(/No se pudo conectar con el servidor/)).toBeInTheDocument()
+    expect(leerSesion()).toBeNull()
   })
 })
 
@@ -130,7 +146,7 @@ describe('Registro y aprobación de solicitudes', () => {
   it('no deja registrar un correo que ya existe', async () => {
     abrir('/registro')
     await registrar('Otra Persona', 'S.constanza@uandresbello.edu')
-    expect(await screen.findByText(/Ya existe una cuenta o una solicitud/)).toBeInTheDocument()
+    expect(await screen.findByText('Ya existe una cuenta con este correo.')).toBeInTheDocument()
   })
 
   it('aprobada como funcionario: entra a /pasajero/reservar y ve solo sus datos y reservas', async () => {
@@ -171,7 +187,7 @@ describe('Registro y aprobación de solicitudes', () => {
     expect(leerSesion()).toMatchObject({ rol: 'conductor' })
   })
 
-  it('rechazar una solicitud la elimina y esa persona ya no puede entrar', async () => {
+  it('rechazar una solicitud la quita de la lista y esa persona ya no puede entrar', async () => {
     abrir('/registro')
     await registrar('Camila Torres', 'camila.torres@uandresbello.edu')
     await screen.findByRole('heading', { name: 'Registro enviado' })
@@ -184,7 +200,19 @@ describe('Registro y aprobación de solicitudes', () => {
 
     await cerrarSesionDesdeAdmin()
     await iniciarSesion('camila.torres@uandresbello.edu', 'clave12345')
-    expect(await screen.findByText('Correo o contraseña incorrectos.')).toBeInTheDocument()
+    expect(await screen.findByText(/fue rechazada/)).toBeInTheDocument()
+  })
+
+  it('pide un celular chileno antes de enviar', async () => {
+    abrir('/registro')
+    await userEvent.type(screen.getByLabelText('Nombre completo'), 'Camila Torres')
+    await userEvent.type(screen.getByLabelText('Correo institucional'), 'camila.torres@uandresbello.edu')
+    await userEvent.selectOptions(screen.getByLabelText('Sede'), 'Quintay')
+    await userEvent.type(screen.getByLabelText('Teléfono de contacto'), '32 212 3456')
+    await userEvent.type(screen.getByLabelText('Contraseña'), 'clave12345')
+    await userEvent.type(screen.getByLabelText('Confirmar contraseña'), 'clave12345')
+    await userEvent.click(screen.getByRole('button', { name: 'Crear cuenta' }))
+    expect(screen.getByText(/celular chileno válido/)).toBeInTheDocument()
   })
 })
 
@@ -198,35 +226,35 @@ describe('Eliminar una cuenta', () => {
     expect(within(detalle).getByText('Eliminar cuenta')).toBeInTheDocument()
   })
 
-  it('pide confirmación y, al confirmar, borra la cuenta, sus reservas y su contraseña', async () => {
-    // Camila se registra, el administrador la aprueba y luego la elimina
-    abrir('/registro')
-    await registrar('Camila Torres', 'camila.torres@uandresbello.edu')
-    await screen.findByRole('heading', { name: 'Registro enviado' })
-    await userEvent.click(screen.getByRole('button', { name: 'Volver al inicio' }))
-    expect(localStorage.getItem('unab-credenciales-demo')).toContain('camila.torres@uandresbello.edu')
-
-    const tarjeta = await abrirSolicitud('Camila Torres')
-    await userEvent.click(tarjeta.getByRole('button', { name: 'Aprobar' }))
-    await userEvent.click(screen.getByRole('button', { name: 'Ver detalle de Camila Torres' }))
+  it('pide confirmación y, al confirmar, borra la cuenta de ejemplo y sus reservas', async () => {
+    abrir('/login')
+    await abrirSolicitud('Nuevo ingreso') // entra como administrador y abre Pasajeros
+    await userEvent.click(screen.getByRole('button', { name: 'Ver detalle de Bruno Urrutia' }))
     await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Eliminar' }))
 
     // "Cancelar" en la confirmación no borra nada
     const confirmacion = screen.getByRole('dialog', { name: 'Eliminar cuenta' })
     await userEvent.click(within(confirmacion).getByRole('button', { name: 'Cancelar' }))
-    expect(screen.getAllByText('Camila Torres').length).toBeGreaterThan(0) // el detalle sigue abierto
+    expect(screen.getAllByText('Bruno Urrutia').length).toBeGreaterThan(0) // el detalle sigue abierto
 
     await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Eliminar' }))
     await userEvent.click(within(screen.getByRole('dialog', { name: 'Eliminar cuenta' })).getByRole('button', { name: 'Eliminar cuenta' }))
 
-    expect(screen.queryByText('Camila Torres')).not.toBeInTheDocument()
+    expect(screen.queryByText('Bruno Urrutia')).not.toBeInTheDocument()
     const guardado = JSON.parse(localStorage.getItem('unab-admin-v3')!)
-    expect(guardado.pasajeros.some((p: { email: string }) => p.email === 'camila.torres@uandresbello.edu')).toBe(false)
-    expect(localStorage.getItem('unab-credenciales-demo')).not.toContain('camila.torres@uandresbello.edu')
+    expect(guardado.pasajeros.some((p: { id: string }) => p.id === 'p2')).toBe(false)
+    expect(guardado.reservas.some((r: { pasajeroId: string }) => r.pasajeroId === 'p2')).toBe(false)
+  })
 
-    // y ya no puede entrar
-    await cerrarSesionDesdeAdmin()
-    await iniciarSesion('camila.torres@uandresbello.edu', 'clave12345')
-    expect(await screen.findByText('Correo o contraseña incorrectos.')).toBeInTheDocument()
+  it('una cuenta de la base no se elimina desde aquí', async () => {
+    abrir('/registro')
+    await registrar('Camila Torres', 'camila.torres@uandresbello.edu')
+    await screen.findByRole('heading', { name: 'Registro enviado' })
+    await userEvent.click(screen.getByRole('button', { name: 'Volver al inicio' }))
+
+    const tarjeta = await abrirSolicitud('Camila Torres')
+    await userEvent.click(tarjeta.getByRole('button', { name: 'Aprobar' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Ver detalle de Camila Torres' }))
+    expect(within(screen.getByRole('dialog')).queryByText('Eliminar cuenta')).not.toBeInTheDocument()
   })
 })

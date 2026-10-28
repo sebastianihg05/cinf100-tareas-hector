@@ -1,19 +1,21 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { api } from "../../api";
 import { useAdmin } from "../../admin/store/AdminContext";
+import { idLocalDe } from "../../admin/store/adminStore";
 import { ahoraISO, esCorreoInstitucional } from "../../admin/utils/format";
-import { autenticar } from "../authDemo";
 import { guardarSesion, RUTA_INICIO } from "../sesion";
 import "../styles/auth.css";
 
 function Login() {
   const navigate = useNavigate();
-  const { state, patchPasajero, updateAdmin } = useAdmin();
+  const { state, sincronizarCuentas, updateAdmin } = useAdmin();
 
   const [correo, setCorreo] = useState("");
   const [password, setPassword] = useState("");
   const [mostrarPassword, setMostrarPassword] = useState(false);
   const [error, setError] = useState("");
+  const [enviando, setEnviando] = useState(false);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -28,23 +30,33 @@ function Login() {
       return;
     }
 
-    // Busca entre las cuentas registradas: valida contraseña, aprobación, habilitación y rol.
-    const resultado = await autenticar(correo, password, state);
+    // BD-18: el backend valida la contraseña y el estado de la cuenta (pendiente, rechazada o desactivada).
+    setEnviando(true);
+    const respuesta = await api.iniciarSesion(correo, password);
+    setEnviando(false);
 
-    if (!resultado.ok) {
-      setError(resultado.error);
+    if (!respuesta.ok) {
+      setError(respuesta.error);
       return;
     }
 
     setError("");
-    guardarSesion(resultado.sesion);
+    const { token, usuario } = respuesta.datos;
+    const sesion = { correo: usuario.correo, nombre: usuario.nombreCompleto, token };
 
-    // El perfil muestra cuándo ingresó por última vez.
-    const { pasajeroId } = resultado.sesion;
-    if (pasajeroId) patchPasajero(pasajeroId, { ultimoIngreso: ahoraISO() });
-    else updateAdmin({ ultimoIngreso: ahoraISO() });
+    // En la base el rol se llama "administrador"; en el frontend, "admin".
+    if (usuario.rol === "administrador") {
+      updateAdmin({ nombre: usuario.nombreCompleto, email: usuario.correo, ultimoIngreso: ahoraISO() });
+      guardarSesion({ ...sesion, rol: "admin", pasajeroId: null });
+      navigate(RUTA_INICIO.admin, { replace: true });
+      return;
+    }
 
-    navigate(RUTA_INICIO[resultado.sesion.rol], { replace: true });
+    // Funcionario o conductor: su cuenta se copia en la app para que vea sus datos y reservas.
+    const rol = usuario.rol ?? "funcionario";
+    sincronizarCuentas([usuario]);
+    guardarSesion({ ...sesion, rol, pasajeroId: idLocalDe(state.pasajeros, usuario) });
+    navigate(RUTA_INICIO[rol], { replace: true });
   };
 
   return (
@@ -125,7 +137,7 @@ function Login() {
 
           {error && <p className="form-error">{error}</p>}
 
-          <button type="submit" className="primary-button">
+          <button type="submit" className="primary-button" disabled={enviando}>
             Ingresar al sistema
           </button>
         </form>
