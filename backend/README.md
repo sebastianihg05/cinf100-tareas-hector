@@ -49,6 +49,8 @@ Si la base no está levantada responde `503` con `"database":"sin conexión"`.
 
 ## Iniciar sesión con las cuentas de prueba
 
+Lo más simple es `npm run dev` en la raíz del repositorio: levanta la base, la API y el frontend, y muestra la contraseña. A mano:
+
 1. En la raíz del repositorio, crea `.env` (copia de `.env.example`) y ponle una contraseña a `SEED_PASSWORD`, por ejemplo `SEED_PASSWORD=Demo.2026`.
 2. Ejecuta `docker compose up -d`: el seed deja esa contraseña en todas las cuentas `dev.*`.
 3. Con `npm run dev`, inicia sesión con `dev.admin@unab.cl` (administrador), `dev.funcionario@unab.cl` o `dev.conductor@unab.cl`.
@@ -64,4 +66,4 @@ Si la base no está levantada responde `503` con `"database":"sin conexión"`.
 | `src/auth/` | Tokens JWT y middlewares de sesión y de rol. |
 | `src/usuarios/` | Registro, login, perfil, validaciones y hash de contraseñas. |
 | `src/admin/` | Rutas del administrador: solicitudes y usuarios. |
-| `tests/` | Pruebas con `node:test` y `supertest` (`ayudantes.ts` crea usuarios de prueba). |
+| `tests/` | Pruebas con `node:test` y `supertest` (`ayudantes.ts` crea usuarios de prueba). |

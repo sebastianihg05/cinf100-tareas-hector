@@ -1,5 +1,7 @@
+import type { UsuarioBd } from '../../api'
 import { adminInicial, choferesIniciales, pasajerosIniciales, reservasIniciales, vansIniciales, viajesIniciales } from '../data/mock'
 import type { Admin, Chofer, EstadoViaje, Notificacion, Pasajero, Reserva, Rol, Van, Viaje } from '../types'
+import { isoLocal, normalizarTelefono } from '../utils/format'
 import { sincronizar, validarCambioAsientos, validarSolicitud, type CambioAsiento } from './reservas'
 
 export type State = {
@@ -18,7 +20,7 @@ export type Action =
   | { type: 'van/toggle'; id: string }
   | { type: 'chofer/save'; chofer: Chofer }
   | { type: 'chofer/toggle'; id: string }
-  | { type: 'pasajero/solicitar'; pasajero: Pasajero }
+  | { type: 'pasajero/desdeBd'; usuarios: UsuarioBd[] }
   | { type: 'pasajero/aprobar'; id: string; rol: Rol }
   | { type: 'pasajero/rechazar'; id: string }
   | { type: 'pasajero/eliminar'; id: string }
@@ -86,11 +88,34 @@ export function reducer(s: State, a: Action): State {
         vans: actual.activo ? liberarChofer(s.vans, a.id) : s.vans,
       }
     }
-    case 'pasajero/solicitar': {
-      // Defensa: el contexto ya validó, pero el reducer nunca crea dos cuentas con el mismo correo.
-      const correo = a.pasajero.email.toLowerCase()
-      if (s.pasajeros.some((p) => p.email.toLowerCase() === correo)) return s
-      return { ...s, pasajeros: [...s.pasajeros, { ...a.pasajero, aprobado: false }] }
+    case 'pasajero/desdeBd': {
+      // Las cuentas viven en PostgreSQL (BD-17/18). Se copian aquí para que el resto de la app
+      // (reservas, viajes, panel) las use igual que a los pasajeros de ejemplo.
+      let pasajeros = s.pasajeros
+      for (const u of a.usuarios) {
+        if (u.rol === 'administrador') continue
+        const actual = pasajeroDeCuenta(pasajeros, u)
+        // Una solicitud rechazada deja de aparecer.
+        if (u.estado === 'rechazada') {
+          pasajeros = pasajeros.filter((p) => p !== actual)
+          continue
+        }
+        const datos = {
+          idBd: u.id,
+          nombre: u.nombreCompleto,
+          email: u.correo,
+          sede: u.sede ?? '',
+          celular: normalizarTelefono(u.telefono) ?? u.telefono,
+          rol: u.rol ?? undefined,
+          aprobado: u.estado !== 'pendiente',
+          habilitado: u.estado !== 'desactivada',
+          ultimoIngreso: isoLocal(u.ultimoIngresoEn ?? u.creadoEn),
+        }
+        pasajeros = actual
+          ? pasajeros.map((p) => (p === actual ? { ...p, ...datos } : p))
+          : [...pasajeros, { id: idLocalDe(pasajeros, u), puedeAbrirViajes: false, ...datos }]
+      }
+      return { ...s, pasajeros }
     }
     case 'pasajero/aprobar':
       // La aprobación se hace una sola vez: solo afecta a solicitudes que siguen por aprobar.
@@ -151,7 +176,14 @@ export function reducer(s: State, a: Action): State {
   }
 }
 
-/* ---------- Persistencia local (hasta que exista el backend) ---------- */
+/** Pasajero local que corresponde a una cuenta de la base: por su id en la base o, si no, por correo. */
+export const pasajeroDeCuenta = (pasajeros: Pasajero[], u: UsuarioBd) =>
+  pasajeros.find((p) => p.idBd === u.id) ?? pasajeros.find((p) => p.email.toLowerCase() === u.correo.toLowerCase())
+
+/** id local de una cuenta de la base: el del pasajero que ya le corresponde o uno nuevo, `bd<id>`. */
+export const idLocalDe = (pasajeros: Pasajero[], u: UsuarioBd) => pasajeroDeCuenta(pasajeros, u)?.id ?? `bd${u.id}`
+
+/* ---------- Persistencia local (vans, viajes y reservas siguen siendo de ejemplo) ---------- */
 
 const KEY = 'unab-admin-v3'
 
