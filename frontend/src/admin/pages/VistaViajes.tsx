@@ -8,7 +8,6 @@ import Pills from '../components/Pills'
 import { useAdmin } from '../store/AdminContext'
 import type { EstadoViaje, Trayecto, Viaje } from '../types'
 import { fechaDMY, fechaLarga, todayISO } from '../utils/format'
-import ListaPasajerosViaje from '../components/ListaPasajerosViaje'
 
 type Filtro = 'todos' | EstadoViaje
 type FiltroTrayecto = 'todos' | Trayecto
@@ -65,6 +64,7 @@ export default function VistaViajes() {
   const [destino, setDestino] = useState('')
   const [asignando, setAsignando] = useState<string | null>(null)
   const [cancelando, setCancelando] = useState<Viaje | null>(null)
+  const [viendoPasajeros, setViendoPasajeros] = useState<Viaje | null>(null)
 
   const lista = state.viajes
     .filter((v) => (filtro === 'todos' || v.estado === filtro) && (!fecha || v.fecha === fecha))
@@ -130,6 +130,7 @@ export default function VistaViajes() {
               <div className="adm-trip__foot">
                 <p className="adm-card__small">Abierto por administrador</p>
                 <div className="adm-trip__btns">
+                    <button type="button" className="adm-chip" onClick={() => setViendoPasajeros(v)}>Ver pasajeros ({state.reservas.filter((r) => r.viajeId === v.id && r.estado !== 'cancelada').length})</button>
                   {v.estado === 'pendiente' && !van && (
                     <button className="adm-chip adm-chip--warn" onClick={() => setAsignando(v.id)}>Asignar van</button>
                   )}
@@ -151,9 +152,6 @@ export default function VistaViajes() {
         })}
         {lista.length === 0 && <li className="adm-empty">No hay viajes con ese filtro.</li>}
       </ul>
-
-      <ListaPasajerosViaje />
-
       {cancelando && (
         <ConfirmDialog
           title="Cancelar viaje"
@@ -169,6 +167,7 @@ export default function VistaViajes() {
           <AsignarVan viaje={viajeAsignando} onClose={() => setAsignando(null)} />
         </Modal>
       )}
+      {viendoPasajeros && (<Modal title={`Pasajeros: ${viendoPasajeros.origen} → ${viendoPasajeros.destino}`} onClose={() => setViendoPasajeros(null)}><div>{state.reservas.filter((r) => r.viajeId === viendoPasajeros.id && r.estado !== 'cancelada').map((r) => { const p = state.pasajeros.find((p) => p.id === r.pasajeroId); return <p key={r.id}>{p?.nombre ?? 'Pasajero no encontrado'} — {p?.email ?? 'Sin correo'} — Asiento {r.asiento} — {r.trayecto}</p> })}</div></Modal>)}
     </>
   )
 }
