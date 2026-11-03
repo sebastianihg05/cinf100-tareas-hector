@@ -5,6 +5,7 @@ import App from './App'
 import './styles/global.css'
 import './styles/admin.css'
 import './styles/pasajero.css'
+import './styles/conductor.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

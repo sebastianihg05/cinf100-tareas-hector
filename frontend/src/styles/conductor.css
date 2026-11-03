@@ -1,0 +1,37 @@
+/* Panel del conductor: reutiliza el marco psj-* del pasajero; aquí solo lo que es propio del conductor. */
+.psj-badge--en-curso { background: #dbeafe; color: #1d4ed8; }
+
+.cnd-viaje.is-cancelado { opacity: .7; }
+.cnd-viaje__hoy {
+  margin-left: 8px; padding: 2px 8px; border-radius: 100px; background: #e8edf4; color: var(--navy);
+  font-size: 11px; font-weight: 800; vertical-align: middle;
+}
+.psj-user__sub svg { vertical-align: -2px; }
+
+/* Tarjetas que llevan al detalle del viaje */
+.cnd-viaje--enlace { display: flex; color: inherit; text-decoration: none; transition: box-shadow .15s; }
+.cnd-viaje--enlace:hover { box-shadow: 0 2px 8px rgba(16, 24, 40, .16); }
+.cnd-viaje--enlace:focus-visible { outline: 3px solid rgba(0, 51, 102, .4); outline-offset: 2px; }
+.cnd-resumen { margin: 0; font-size: 14px; font-weight: 700; color: var(--navy); }
+
+/* Detalle del viaje */
+.cnd-titulo { margin: 0; font-size: 15px; }
+.psj-back { text-decoration: none; }
+
+.cnd-pasajeros, .cnd-trayectos { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.cnd-pasajero { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; background: #f4f5f7; }
+.cnd-pasajero__asiento {
+  flex-shrink: 0; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px;
+  background: var(--navy); color: #fff; font-size: 14px; font-weight: 800;
+}
+.cnd-pasajero__nombre { min-width: 0; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+
+.cnd-trayecto {
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px;
+  color: inherit; text-decoration: none; background: #fff;
+}
+a.cnd-trayecto:hover { background: #f1f5fa; }
+a.cnd-trayecto:focus-visible { outline: 3px solid rgba(0, 51, 102, .4); outline-offset: 2px; }
+.cnd-trayecto.is-actual { border-color: var(--navy); background: #eef2f8; }
+.cnd-trayecto.is-actual small { margin-left: auto; font-size: 11px; font-weight: 700; color: var(--navy); }
+.cnd-trayecto__info { flex: 1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; font-size: 13px; color: var(--muted); }

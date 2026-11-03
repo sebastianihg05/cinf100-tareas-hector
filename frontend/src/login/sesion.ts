@@ -17,7 +17,7 @@ export type Sesion = {
 export const RUTA_INICIO: Record<RolSesion, string> = {
   admin: '/admin/panel',
   funcionario: '/pasajero/reservar',
-  conductor: '/conductor',
+  conductor: '/conductor/viajes',
 }
 
 const KEY = 'unab-sesion'
