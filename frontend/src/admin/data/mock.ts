@@ -8,7 +8,7 @@ export const vansIniciales: Van[] = [
 ]
 
 export const choferesIniciales: Chofer[] = [
-  { id: 'c1', nombre: 'Juan Carrasco', correo: 'juan.carrasco@unab.cl', rut: '13.987.654-7', licenciaHasta: '2027-09-06', telefono: '+56 9 0000 0000', activo: true },
+  { id: 'c1', nombre: 'Juan Carrasco', correo: 'dev.conductor@unab.cl', rut: '13.987.654-7', licenciaHasta: '2027-09-06', telefono: '+56 9 0000 0000', activo: true },
   { id: 'c2', nombre: 'Alonso Iriarte', correo: 'alonso.iriarte@unab.cl', rut: '16.987.657-7', licenciaHasta: '2028-07-22', telefono: '+56 9 0000 0000', activo: true },
   { id: 'c3', nombre: 'Leonardo Burgos', correo: 'leonardo.burgos@unab.cl', rut: '14.988.654-7', licenciaHasta: '2027-09-11', telefono: '+56 9 0000 0000', activo: true },
 ]

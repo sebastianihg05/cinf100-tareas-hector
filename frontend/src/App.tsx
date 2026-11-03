@@ -18,11 +18,16 @@ import SeleccionAsientoIda from './pasajero/pages/SeleccionAsientoIda'
 import SeleccionAsientoVuelta from './pasajero/pages/SeleccionAsientoVuelta'
 import PerfilPasajero from './pasajero/pages/PerfilPasajero'
 
+import ConductorLayout from './conductor/ConductorLayout'
+import HistorialViajes from './conductor/pages/HistorialViajes'
+import PerfilConductor from './conductor/pages/PerfilConductor'
+import ViajeDetalle from './conductor/pages/ViajeDetalle'
+import ViajesAsignados from './conductor/pages/ViajesAsignados'
+
 import Login from "./login/pages/Login";
 import Register from "./login/pages/Register";
 import RegisterSuccess from "./login/pages/RegisterSuccess";
 import ForgotPassword from "./login/pages/ForgotPassword";
-import Pendiente from './login/pages/Pendiente'
 import RequiereRol from './login/RequiereRol'
 
 export default function App() {
@@ -62,9 +67,14 @@ export default function App() {
           </Route>
         </Route>
 
-        {/* Marcador: el panel del conductor todavía no está desarrollado. */}
         <Route element={<RequiereRol rol="conductor" />}>
-          <Route path="/conductor" element={<Pendiente titulo="Panel del conductor" />} />
+          <Route path="/conductor" element={<ConductorLayout />}>
+            <Route index element={<Navigate to="viajes" replace />} />
+            <Route path="viajes" element={<ViajesAsignados />} />
+            <Route path="viajes/:viajeId" element={<ViajeDetalle />} />
+            <Route path="historial" element={<HistorialViajes />} />
+            <Route path="perfil" element={<PerfilConductor />} />
+          </Route>
         </Route>
 
         <Route path="*" element={<Navigate to="/login" replace />} />
