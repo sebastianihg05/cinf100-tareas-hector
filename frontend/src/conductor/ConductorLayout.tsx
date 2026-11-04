@@ -16,8 +16,13 @@ export default function ConductorLayout() {
   const ruta = pathname.replace(/\/+$/, '')
   const enDetalle = ruta.startsWith('/conductor/viajes/')
   // Al abrir un viaje desde el historial, "volver" y la pestaña marcada son los del historial.
-  const desdeHistorial = enDetalle && (state as { desde?: string } | null)?.desde === 'historial'
-  const volverA = desdeHistorial ? '/conductor/historial' : '/conductor/viajes'
+  const origen = enDetalle ? (state as { desde?: string } | null)?.desde : undefined
+  const desdeHistorial = origen === 'historial'
+  const volverA = desdeHistorial
+    ? '/conductor/historial'
+    : origen === 'listado-historial'
+      ? '/conductor/viajes?tab=historial'
+      : '/conductor/viajes'
   const titulo = enDetalle ? 'Detalle del viaje' : TITULOS[ruta] ?? 'Panel del conductor'
 
   const clase = (activa: boolean) => `psj-nav__tab${activa ? ' is-active' : ''}`
