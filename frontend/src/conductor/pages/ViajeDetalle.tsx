@@ -7,14 +7,18 @@ import { ESTADO_VIAJE } from '../etiquetas'
 import { useAdmin } from '../../admin/store/AdminContext'
 import { motivoSinViajes, useConductorActual } from '../useConductorActual'
 import { pasajerosDelViaje, trayectosDelDia, viajeAsignado } from '../viajes'
-
+import { useState } from 'react'
+import ConfirmDialog from '../../admin/components/ConfirmDialog'
 /**
  * Detalle de un viaje asignado al conductor: resumen, trayectos del día y pasajeros con su asiento.
  * Ruta: /conductor/viajes/:viajeId (solo abre viajes de la van del conductor).
  */
 export default function ViajeDetalle() {
   const { viajeId } = useParams()
-  const { state } = useAdmin()
+    const { state, setEstadoViaje } = useAdmin()
+    const [confirmandoInicio, setConfirmandoInicio] = useState(false)
+    const [confirmandoFinalizacion, setConfirmandoFinalizacion] = useState(false)
+
   const { asignacion, van } = useConductorActual()
   const viaje = viajeAsignado(asignacion, viajeId)
 
@@ -47,7 +51,30 @@ export default function ViajeDetalle() {
           <div><dt>Van:</dt><dd>{van.patente}</dd></div>
           <div><dt>Asientos reservados:</dt><dd>{viaje.reservados}/{van.asientos}</dd></div>
         </dl>
-        {/* Aquí irán los botones de iniciar y finalizar el viaje (#1861 y #1864). */}
+
+        {viaje.estado === 'pendiente' && (
+            <div className="adm-form__actions">
+                <button
+                    type="button"
+                    className="adm-btn"
+                    onClick={() => setConfirmandoInicio(true)}
+                >
+                    Iniciar viaje
+                </button>
+            </div>
+        )}
+        {viaje.estado === 'en-curso' && (
+            <div className="adm-form__actions">
+                <button
+                    type="button"
+                    className="adm-btn"
+                    onClick={() => setConfirmandoFinalizacion(true)}
+                >
+                    Finalizar viaje
+                </button>
+            </div>  
+        )}
+
       </section>
 
       <section className="psj-card" aria-label="Trayectos del día">
@@ -59,6 +86,32 @@ export default function ViajeDetalle() {
         <h2 className="psj-card__title">Pasajeros ({pasajeros.length})</h2>
         <PasajerosViaje pasajeros={pasajeros} />
       </section>
+
+      {confirmandoInicio && (
+        <ConfirmDialog
+            title="Iniciar viaje"
+            message={`¿Confirmas el inicio del viaje ${viaje.origen} → ${viaje.destino}?`}
+            confirmLabel="Confirmar inicio"
+            onCancel={() => setConfirmandoInicio(false)}
+            onConfirm={() => {
+                setEstadoViaje(viaje.id, 'en-curso')
+                setConfirmandoInicio(false)
+            }}
+        />
+      )}
+      {confirmandoFinalizacion && (
+        <ConfirmDialog
+            title="Completar viaje"
+            message={`¿Confirmas que se ha completado el viaje ${viaje.origen} → ${viaje.destino}?`}
+            confirmLabel="Completar viaje"
+            onCancel={() => setConfirmandoFinalizacion(false)}
+            onConfirm={() => {
+                setEstadoViaje(viaje.id, 'completado')
+                setConfirmandoFinalizacion(false)
+            }}
+        />
+      )}
+
     </div>
   )
 }
