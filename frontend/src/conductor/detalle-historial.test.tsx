@@ -137,6 +137,22 @@ describe('detalle del viaje', () => {
     expect(screen.getByRole('link', { name: 'Ir a mis viajes' })).toHaveAttribute('href', '/conductor/viajes')
   })
 
+  it('conserva la pestaña Historial al abrir un viaje desde Mis viajes y regresar', async () => {
+    abrir('/conductor/viajes')
+    await userEvent.click(await screen.findByRole('tab', { name: 'Historial' }))
+    expect(screen.getByRole('tab', { name: 'Historial' })).toHaveAttribute('aria-selected', 'true')
+
+    const panel = screen.getByRole('tabpanel')
+    await userEvent.click(within(panel).getAllByRole('link')[0])
+    expect(await screen.findByRole('heading', { name: 'Detalle del viaje' })).toBeInTheDocument()
+    const volver = screen.getByRole('link', { name: 'Volver a mis viajes' })
+    expect(volver).toHaveAttribute('href', '/conductor/viajes?tab=historial')
+    await userEvent.click(volver)
+
+    expect(await screen.findByRole('tab', { name: 'Historial' })).toHaveAttribute('aria-selected', 'true')
+    expect(within(screen.getByRole('tabpanel')).queryByText('Pendiente')).not.toBeInTheDocument()
+  })
+
   it('desde el listado, tocar una tarjeta abre su detalle y la flecha vuelve al listado', async () => {
     abrir('/conductor/viajes')
     const panel = await screen.findByRole('tabpanel')
@@ -191,6 +207,25 @@ describe('historial de viajes finalizados', () => {
 
     await userEvent.click(screen.getByRole('link', { name: 'Volver al historial' }))
     expect(await screen.findByRole('heading', { name: 'Historial de viajes' })).toBeInTheDocument()
+  })
+
+  it('conserva el regreso al historial tras cambiar entre trayectos del día', async () => {
+    // Fuerza una ida y vuelta completadas en el mismo día, sin tocar el resto del estado.
+    const viajes = viajesIniciales.map((v) =>
+      v.id === 'f1i' || v.id === 'f1v' ? { ...v, estado: 'completado' as const } : v,
+    )
+    localStorage.setItem('unab-admin-v3', JSON.stringify({ ...estadoInicial(), viajes }))
+    abrir()
+
+    const enlaceIda = screen.getAllByRole('link', { name: /Ver el detalle del viaje/ })
+      .find((l) => l.getAttribute('href') === '/conductor/viajes/f1i')
+    expect(enlaceIda).toBeDefined()
+    await userEvent.click(enlaceIda!)
+    expect(await screen.findByRole('heading', { name: 'Detalle del viaje' })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('link', { name: 'Ver el trayecto de Vuelta de las 17:00' }))
+    expect(await screen.findByText('Vuelta: Santiago → Quillota 980')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Volver al historial' })).toHaveAttribute('href', '/conductor/historial')
   })
 
   it('la navegación tiene Mis viajes, Historial y Perfil, y marca la activa', async () => {
