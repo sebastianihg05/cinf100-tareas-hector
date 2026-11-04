@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { IconClock } from '../../admin/components/icons'
 import type { Viaje } from '../../admin/types'
 import { ESTADO_VIAJE } from '../etiquetas'
@@ -14,6 +14,8 @@ type Props = {
 
 /** Los trayectos del día del conductor (ida y vuelta). Cada uno, salvo el actual, lleva a su detalle. */
 export default function TrayectosDelDia({ trayectos, actualId, pasajerosPorViaje }: Props) {
+  // Si cambia del trayecto de ida al de vuelta, conserva el origen de la navegación.
+  const { state } = useLocation()
   if (trayectos.length <= 1) {
     return <p className="psj-alert psj-alert--suave" role="status">Este es el único trayecto que tienes asignado ese día.</p>
   }
@@ -35,7 +37,7 @@ export default function TrayectosDelDia({ trayectos, actualId, pasajerosPorViaje
           <li key={t.id}>
             {t.id === actualId
               ? <div className="cnd-trayecto is-actual" aria-current="true">{contenido}<small>Este viaje</small></div>
-              : <Link className="cnd-trayecto" to={`/conductor/viajes/${t.id}`} aria-label={`Ver el trayecto de ${t.trayecto} de las ${t.hora}`}>{contenido}</Link>}
+              : <Link className="cnd-trayecto" to={`/conductor/viajes/${t.id}`} state={state} aria-label={`Ver el trayecto de ${t.trayecto} de las ${t.hora}`}>{contenido}</Link>}
           </li>
         )
       })}
