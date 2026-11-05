@@ -14,7 +14,9 @@ export default function PerfilConductor() {
   const filas = [
     { etiqueta: 'Sede', valor: cuenta.sede ? sedeLabel(cuenta.sede) : 'Sin sede' },
     { etiqueta: 'Van asignada', valor: van ? van.patente : 'Sin van asignada' },
-    ...(chofer ? [{ etiqueta: 'Licencia vigente hasta', valor: fechaLarga(chofer.licenciaHasta) }] : []),
+    ...(chofer
+      ? [{ etiqueta: 'Licencia vigente hasta', valor: chofer.licenciaHasta ? fechaLarga(chofer.licenciaHasta) : 'Sin registrar' }]
+      : []),
   ]
 
   return (

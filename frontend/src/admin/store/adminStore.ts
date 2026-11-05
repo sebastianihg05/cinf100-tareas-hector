@@ -1,4 +1,4 @@
-import type { UsuarioBd } from '../../api'
+import type { ConductorBd, UsuarioBd } from '../../api'
 import { adminInicial, choferesIniciales, pasajerosIniciales, reservasIniciales, vansIniciales, viajesIniciales } from '../data/mock'
 import type { Admin, Chofer, EstadoViaje, Notificacion, Pasajero, Reserva, Rol, Van, Viaje } from '../types'
 import { isoLocal, normalizarTelefono } from '../utils/format'
@@ -20,6 +20,7 @@ export type Action =
   | { type: 'van/toggle'; id: string }
   | { type: 'chofer/save'; chofer: Chofer }
   | { type: 'chofer/toggle'; id: string }
+  | { type: 'chofer/desdeBd'; conductores: ConductorBd[] }
   | { type: 'pasajero/desdeBd'; usuarios: UsuarioBd[] }
   | { type: 'pasajero/aprobar'; id: string; rol: Rol }
   | { type: 'pasajero/rechazar'; id: string }
@@ -87,6 +88,29 @@ export function reducer(s: State, a: Action): State {
         choferes: s.choferes.map((c) => (c.id === a.id ? { ...c, activo: !c.activo } : c)),
         vans: actual.activo ? liberarChofer(s.vans, a.id) : s.vans,
       }
+    }
+    case 'chofer/desdeBd': {
+      // Los conductores aprobados en PostgreSQL pasan a la lista de choferes (se reconocen por id o por correo).
+      let choferes = s.choferes
+      let vans = s.vans
+      for (const c of a.conductores) {
+        const actual =
+          choferes.find((ch) => ch.idBd === c.id) ?? choferes.find((ch) => ch.correo.toLowerCase() === c.correo.toLowerCase())
+        const activo = c.activo && c.estado === 'aprobada'
+        const datos: Chofer = {
+          id: actual?.id ?? `cbd${c.id}`,
+          idBd: c.id,
+          nombre: c.nombreCompleto,
+          correo: c.correo.toLowerCase(),
+          telefono: normalizarTelefono(c.telefono) ?? c.telefono,
+          rut: c.rut ?? actual?.rut ?? '',
+          licenciaHasta: c.licenciaHasta ?? actual?.licenciaHasta ?? '',
+          activo,
+        }
+        choferes = actual ? choferes.map((ch) => (ch === actual ? datos : ch)) : [...choferes, datos]
+        if (!activo) vans = liberarChofer(vans, datos.id)
+      }
+      return { ...s, choferes, vans }
     }
     case 'pasajero/desdeBd': {
       // Las cuentas viven en PostgreSQL (BD-17/18). Se copian aquí para que el resto de la app

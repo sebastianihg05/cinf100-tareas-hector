@@ -16,7 +16,7 @@ const tabs = [
 ]
 
 export default function AdminLayout() {
-  const { state, pendientes, sinLeer, sincronizarCuentas } = useAdmin()
+  const { state, pendientes, sinLeer, sincronizarCuentas, sincronizarConductores } = useAdmin()
   const [notifAbierto, setNotifAbierto] = useState(false)
   const totalAvisos = pendientes + sinLeer
   const { pathname } = useLocation()
@@ -31,7 +31,10 @@ export default function AdminLayout() {
   useEffect(() => {
     if (!leerSesion()?.token) return
     api.listarUsuarios().then((r) => {
-      if (r.ok) sincronizarCuentas(r.datos.usuarios)
+      if (r.ok) {
+        sincronizarCuentas(r.datos.usuarios)
+        api.listarConductores().then((c) => { if (c.ok) sincronizarConductores(c.datos.conductores) })
+      }
       // La sesión expiró (dura 8 horas) o la cuenta ya no tiene acceso: vuelve al login.
       else if (r.status === 401 || r.status === 403) {
         cerrarSesion()

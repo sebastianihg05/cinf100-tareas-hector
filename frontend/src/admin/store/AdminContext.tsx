@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, useRef, type ReactNode } from 'react'
-import type { UsuarioBd } from '../../api'
+import type { ConductorBd, UsuarioBd } from '../../api'
 import type { Admin, Chofer, EstadoViaje, Pasajero, Reserva, Rol, Van, Viaje } from '../types'
 import { ahoraISO } from '../utils/format'
 import { cargarEstado, guardarEstado, nuevoId, reducer, type Action, type State } from './adminStore'
@@ -22,6 +22,8 @@ type AdminApi = {
   patchPasajero: (id: string, patch: Partial<Pasajero>) => void
   /** Copia en la app las cuentas que devolvió el backend (registro, login y administración, BD-17/18) */
   sincronizarCuentas: (usuarios: UsuarioBd[]) => void
+  /** Copia en la lista de choferes los conductores guardados en la base */
+  sincronizarConductores: (conductores: ConductorBd[]) => void
   /** Aprueba una solicitud y le asigna su rol (se hace una sola vez) */
   aprobarSolicitud: (id: string, rol: Rol) => void
   /** Elimina la cuenta de un pasajero junto con todas sus reservas (libera los asientos y el espacio guardado) */
@@ -73,6 +75,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       toggleChofer: (id) => dispatch({ type: 'chofer/toggle', id }),
       patchPasajero: (id, patch) => dispatch({ type: 'pasajero/patch', id, patch }),
       sincronizarCuentas: (usuarios) => dispatch({ type: 'pasajero/desdeBd', usuarios }),
+      sincronizarConductores: (conductores) => dispatch({ type: 'chofer/desdeBd', conductores }),
       aprobarSolicitud: (id, rol) => dispatch({ type: 'pasajero/aprobar', id, rol }),
       rechazarSolicitud: (id) => dispatch({ type: 'pasajero/rechazar', id }),
       eliminarPasajero: (id) => dispatch({ type: 'pasajero/eliminar', id }),

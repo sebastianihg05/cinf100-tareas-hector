@@ -14,11 +14,14 @@ export type Chofer = {
   nombre: string
   /** correo institucional: el conductor entra con su cuenta UNAB, sin contraseña propia */
   correo: string
+  /** vacío si es una cuenta de la base que todavía no tiene RUT */
   rut: string
-  /** ISO yyyy-mm-dd */
+  /** ISO yyyy-mm-dd; vacío si todavía no se registra */
   licenciaHasta: string
   telefono: string
   activo: boolean
+  /** id de su cuenta en PostgreSQL; los conductores de ejemplo no lo tienen */
+  idBd?: number
 }
 
 export type ReservaPasajero = {
