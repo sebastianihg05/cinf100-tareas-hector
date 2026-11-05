@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import Logo from './Logo'
 import NotificacionesPanel from './NotificacionesPanel'
 import { api } from '../../api'
 import { cerrarSesion, leerSesion } from '../../login/sesion'
@@ -49,7 +50,7 @@ export default function AdminLayout() {
         <div className="adm-header__left">
           {enAbrirViaje
             ? <button className="adm-back" onClick={() => navigate('/admin/viajes')} aria-label="Volver a viajes"><IconBack /></button>
-            : <span className="adm-brand">UNAB</span>}
+            : <Logo variante="simbolo" alto={30} className="adm-logo" />}
           <h1 className="adm-title">{titulo}</h1>
         </div>
         <button className="adm-bell" onClick={() => setNotifAbierto((a) => !a)} aria-expanded={notifAbierto}
