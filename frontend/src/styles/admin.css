@@ -9,6 +9,7 @@
 }
 .adm-header__left { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .adm-brand { background: var(--red); font-weight: 800; font-size: 14px; padding: 4px 8px; border-radius: 6px; }
+.adm-logo { display: block; flex-shrink: 0; }
 .adm-title { margin: 0; font-size: 17px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .adm-bell { background: none; border: 0; color: #fff; padding: 6px; display: flex; }
 

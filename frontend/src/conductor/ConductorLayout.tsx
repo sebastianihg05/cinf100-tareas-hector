@@ -1,5 +1,6 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { IconBack, IconCalendar, IconRoute, IconUser } from '../admin/components/icons'
+import Logo from '../admin/components/Logo'
 
 const TITULOS: Record<string, string> = {
   '/conductor/viajes': 'Panel del conductor',
@@ -36,7 +37,7 @@ export default function ConductorLayout() {
         <div className="psj-header__left">
           {enDetalle
             ? <Link to={volverA} className="psj-back" aria-label={desdeHistorial ? 'Volver al historial' : 'Volver a mis viajes'}><IconBack /></Link>
-            : <span className="psj-brand">UNAB</span>}
+            : <Logo variante="simbolo" alto={36} className="psj-logo" />}
           <h1 className="psj-title">{titulo}</h1>
         </div>
       </header>

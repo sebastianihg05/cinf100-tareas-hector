@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { IconBack, IconBell, IconCalendar, IconSeat, IconUser } from '../admin/components/icons'
+import Logo from '../admin/components/Logo'
 import PanelAvisos from '../admin/components/PanelAvisos'
 import { BorradorProvider, useBorrador } from './borrador'
 import { useAvisosPasajero } from './useAvisosPasajero'
@@ -40,7 +41,7 @@ function Marco() {
         <div className="psj-header__left">
           {enAsiento
             ? <button type="button" className="psj-back" onClick={volver} aria-label="Volver"><IconBack /></button>
-            : <span className="psj-brand">UNAB</span>}
+            : <Logo variante="simbolo" alto={36} className="psj-logo" />}
           <h1 className="psj-title">{titulo}</h1>
         </div>
         <button type="button" className="psj-bell" onClick={() => setAvisosAbiertos((a) => !a)} aria-expanded={avisosAbiertos}
