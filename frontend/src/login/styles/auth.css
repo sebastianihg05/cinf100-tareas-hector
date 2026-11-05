@@ -13,6 +13,17 @@
   max-width: 440px;
 }
 
+.auth-logo {
+  display: block;
+  flex-shrink: 0;
+}
+
+/* Línea divisoria entre el logo y el nombre, como en el manual de marca UNAB */
+.brand-text {
+  padding-left: 14px;
+  border-left: 1px solid rgba(255, 255, 255, 0.35);
+}
+
 .brand {
   display: flex;
   align-items: center;
@@ -202,6 +213,14 @@
 
   .auth-header h2 {
     font-size: 28px;
+  }
+
+  .auth-logo {
+    height: 50px;
+  }
+
+  .brand h1 {
+    font-size: 19px;
   }
 }
 .user-type-selector {

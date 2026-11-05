@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
+import Logo from "../../admin/components/Logo";
 import { useAdmin } from "../../admin/store/AdminContext";
 import { idLocalDe } from "../../admin/store/adminStore";
 import { ahoraISO, esCorreoInstitucional } from "../../admin/utils/format";
@@ -63,23 +64,9 @@ function Login() {
     <main className="auth-page">
       <section className="auth-container">
         <div className="brand">
-          <div className="brand-icon">
-            <svg
-              viewBox="0 0 24 24"
-              width="28"
-              height="28"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <rect x="4" y="5" width="16" height="12" rx="2" />
-              <path d="M7 17v2M17 17v2M4 10h16M8 7h3M13 7h3" />
-              <circle cx="8" cy="17" r="1" />
-              <circle cx="16" cy="17" r="1" />
-            </svg>
-          </div>
+          <Logo variante="negativo" alto={60} className="auth-logo" />
 
-          <div>
+          <div className="brand-text">
             <h1>UNAB Transporte</h1>
             <p>Sistema de gestión de rutas</p>
           </div>
