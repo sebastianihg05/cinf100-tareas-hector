@@ -2,11 +2,13 @@ import { Router, type Response } from 'express';
 import { requiereRol, requiereSesion } from '../auth/middleware';
 import { pool } from '../db';
 import { aPerfil, COLUMNAS_PERFIL, type Rol } from '../usuarios/perfil';
+import { rutasConductores } from './conductores';
 
 // Rutas solo para administradores (BD-14).
 export const rutasAdmin = Router();
 
 rutasAdmin.use(requiereSesion, requiereRol('administrador'));
+rutasAdmin.use('/conductores', rutasConductores);
 
 // Roles que un administrador puede asignar al aprobar. 'administrador' no se
 // entrega desde la API: así nadie puede crear administradores por error.
@@ -58,12 +60,20 @@ rutasAdmin.post('/solicitudes/:id/aprobar', async (req, res) => {
     return;
   }
 
+  // Si se aprueba como conductor, en la misma consulta se crea su registro en conductores.
   const { rows } = await pool.query(
-    `UPDATE usuarios
-        SET estado_aprobacion = 'aprobada', rol = $2,
-            decidido_por = $3, decidido_en = CURRENT_TIMESTAMP
-      WHERE id = $1 AND estado_aprobacion = 'pendiente'
-      RETURNING ${COLUMNAS_PERFIL}`,
+    `WITH aprobado AS (
+       UPDATE usuarios
+          SET estado_aprobacion = 'aprobada', rol = $2,
+              decidido_por = $3, decidido_en = CURRENT_TIMESTAMP
+        WHERE id = $1 AND estado_aprobacion = 'pendiente'
+        RETURNING ${COLUMNAS_PERFIL}
+     ), conductor AS (
+       INSERT INTO conductores (usuario_id)
+       SELECT id FROM aprobado WHERE rol = 'conductor'
+       ON CONFLICT (usuario_id) DO NOTHING
+     )
+     SELECT * FROM aprobado`,
     [id, rol, req.usuario!.id]
   );
   if (rows.length === 0) {

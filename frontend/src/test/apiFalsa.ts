@@ -1,5 +1,5 @@
 import { vi } from 'vitest'
-import type { UsuarioBd } from '../api'
+import type { ConductorBd, UsuarioBd } from '../api'
 
 /**
  * Backend falso para las pruebas: responde como la API real (docs/api/) pero guarda las cuentas en memoria.
@@ -12,6 +12,24 @@ export const CONTRASENA = 'Segura.2026'
 type Cuenta = UsuarioBd & { contrasena: string }
 
 let cuentas: Cuenta[] = []
+
+type DatosConductor = { rut: string | null; licenciaHasta: string | null; activo: boolean }
+
+/** Tabla conductores: RUT, licencia y estado por id de cuenta. */
+let conductores = new Map<number, DatosConductor>()
+
+/** Registra los datos de conductor de una cuenta (como la tabla conductores). */
+export function agregarConductor(id: number, datos: Partial<DatosConductor> = {}) {
+  conductores.set(id, { rut: null, licenciaHasta: null, activo: true, ...datos })
+}
+
+/** Lo que quedó guardado en la "base" para ese conductor. */
+export const conductorGuardado = (id: number) => conductores.get(id)
+
+const aConductor = (cuenta: Cuenta): ConductorBd => ({
+  id: cuenta.id, nombreCompleto: cuenta.nombreCompleto, correo: cuenta.correo, telefono: cuenta.telefono,
+  estado: cuenta.estado, ...conductores.get(cuenta.id)!,
+})
 
 /** Agrega una cuenta (por ejemplo, una desactivada) y la devuelve. */
 export function agregarCuenta(datos: Partial<Cuenta> & Pick<UsuarioBd, 'nombreCompleto' | 'correo'>): Cuenta {
@@ -81,7 +99,24 @@ function atender(url: string, metodo: string, cuerpo: Record<string, string>, to
     if (cuenta.estado !== 'pendiente') return responder(409, { error: 'Esta solicitud ya fue resuelta.' })
     if (decision[2] === 'aprobar') Object.assign(cuenta, { estado: 'aprobada', rol: cuerpo.rol })
     else cuenta.estado = 'rechazada'
+    if (cuenta.rol === 'conductor' && !conductores.has(cuenta.id)) agregarConductor(cuenta.id)
     return responder(200, { usuario: publica(cuenta) })
+  }
+
+  if (metodo === 'GET' && url === '/api/admin/conductores') {
+    return responder(200, { conductores: cuentas.filter((c) => conductores.has(c.id)).map(aConductor) })
+  }
+
+  const conductor = url.match(/^\/api\/admin\/conductores\/(\d+)$/)
+  if (metodo === 'PATCH' && conductor) {
+    const cuenta = cuentas.find((c) => c.id === Number(conductor[1]))
+    const datos = cuenta && conductores.get(cuenta.id)
+    if (!cuenta || !datos) return responder(404, { error: 'El conductor no existe.' })
+    const cambios = cuerpo as Partial<DatosConductor>
+    const repetido = cambios.rut && [...conductores].some(([id, d]) => id !== cuenta.id && d.rut === cambios.rut)
+    if (repetido) return responder(409, { errores: { rut: 'Ya existe un conductor con ese RUT.' } })
+    Object.assign(datos, cambios)
+    return responder(200, { conductor: aConductor(cuenta) })
   }
 
   return responder(404, { error: 'Ruta no encontrada.' })
@@ -90,6 +125,7 @@ function atender(url: string, metodo: string, cuerpo: Record<string, string>, to
 /** Reemplaza `fetch` por el backend falso, con un administrador y la funcionaria de ejemplo Constanza Silva. */
 export function instalarApiFalsa() {
   cuentas = []
+  conductores = new Map()
   agregarCuenta({ nombreCompleto: 'Administrador Desarrollo', correo: 'dev.admin@unab.cl', sede: null, rol: 'administrador', estado: 'aprobada' })
   agregarCuenta({ nombreCompleto: 'Constanza Silva', correo: 'S.constanza@uandresbello.edu', rol: 'funcionario', estado: 'aprobada' })
 

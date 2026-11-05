@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { api } from '../../api'
 import AddButton from '../components/AddButton'
 import CardActions from '../components/CardActions'
 import ChoferForm from '../components/ChoferForm'
@@ -27,11 +28,34 @@ export default function VistaChoferes() {
   const { state, saveChofer, toggleChofer, vanDeChofer } = useAdmin()
   const [filtro, setFiltro] = useState<Filtro>('activos')
   const [dialogo, setDialogo] = useState<Dialogo>(null)
+  const [aviso, setAviso] = useState('')
 
   const activos = state.choferes.filter((c) => c.activo)
   const baja = state.choferes.filter((c) => !c.activo)
   const lista = filtro === 'activos' ? activos : baja
   const cerrar = () => setDialogo(null)
+
+  // Los conductores de la base guardan RUT, licencia y estado en el backend; los de ejemplo, solo aquí.
+  const guardar = async (chofer: Chofer) => {
+    if (chofer.idBd !== undefined) {
+      const r = await api.actualizarConductor(chofer.idBd, { rut: chofer.rut, licenciaHasta: chofer.licenciaHasta })
+      if (!r.ok) return r.error
+    }
+    saveChofer(chofer)
+    cerrar()
+  }
+
+  const cambiarEstado = async (chofer: Chofer) => {
+    if (chofer.idBd !== undefined) {
+      const r = await api.actualizarConductor(chofer.idBd, { activo: !chofer.activo })
+      if (!r.ok) {
+        setAviso(r.error)
+        return
+      }
+    }
+    setAviso('')
+    toggleChofer(chofer.id)
+  }
 
   return (
     <>
@@ -40,11 +64,13 @@ export default function VistaChoferes() {
         { value: 'baja', label: 'Dados de baja', count: baja.length },
       ]} />
       <AddButton label="Agregar Conductor" onClick={() => setDialogo({ kind: 'form' })} />
+      {aviso && <p className="adm-field__error" role="alert">{aviso}</p>}
 
       <ul className="adm-list">
         {lista.map((c) => {
           const van = vanDeChofer(c)
-          const lic = estadoLicencia(c.licenciaHasta)
+          const sinDatos = !c.rut || !c.licenciaHasta
+          const lic = sinDatos ? 'ok' : estadoLicencia(c.licenciaHasta)
           return (
             <li key={c.id} className="adm-card">
               <div className="adm-card__head">
@@ -56,7 +82,10 @@ export default function VistaChoferes() {
                   {!c.activo ? 'De baja' : van ? 'Asignado' : 'Sin van'}
                 </span>
               </div>
-              <p className="adm-card__small">Rut: {c.rut} · Licencia hasta {fechaLarga(c.licenciaHasta)}</p>
+              <p className="adm-card__small">
+                {sinDatos ? 'RUT y licencia sin registrar' : `Rut: ${c.rut} · Licencia hasta ${fechaLarga(c.licenciaHasta)}`}
+              </p>
+              {sinDatos && <span className="adm-tag adm-tag--warn">Faltan RUT y licencia: usa Editar</span>}
               {lic !== 'ok' && (
                 <span className="adm-tag adm-tag--warn">{lic === 'vencida' ? 'Licencia vencida' : 'Licencia por vencer'}</span>
               )}
@@ -66,7 +95,7 @@ export default function VistaChoferes() {
               <CardActions
                 activo={c.activo}
                 onEdit={() => setDialogo({ kind: 'form', chofer: c })}
-                onToggle={() => (c.activo ? setDialogo({ kind: 'baja', chofer: c }) : toggleChofer(c.id))}
+                onToggle={() => (c.activo ? setDialogo({ kind: 'baja', chofer: c }) : void cambiarEstado(c))}
               />
             </li>
           )
@@ -79,7 +108,7 @@ export default function VistaChoferes() {
           <ChoferForm
             initial={dialogo.chofer}
             onCancel={cerrar}
-            onSubmit={(chofer) => { saveChofer(chofer); cerrar() }}
+            onSubmit={guardar}
           />
         </Modal>
       )}
@@ -89,7 +118,7 @@ export default function VistaChoferes() {
           message={`¿Dar de baja a ${dialogo.chofer.nombre}? Se desasignará de su van.`}
           confirmLabel="Dar de baja"
           onCancel={cerrar}
-          onConfirm={() => { toggleChofer(dialogo.chofer.id); cerrar() }}
+          onConfirm={() => { void cambiarEstado(dialogo.chofer); cerrar() }}
         />
       )}
     </>

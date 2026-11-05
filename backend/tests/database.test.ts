@@ -8,12 +8,20 @@ test('conecta a PostgreSQL y ejecuta una consulta de prueba', async () => {
   assert.equal(result.rows[0].ok, 1);
 });
 
-test('las migraciones 001 y 002 están aplicadas', async () => {
+test('las migraciones 001, 002 y 003 están aplicadas', async () => {
   const { rows } = await pool.query('SELECT version FROM schema_migrations');
   const versiones = rows.map((row) => row.version);
 
   assert.ok(versiones.includes('001_create_usuarios.sql'));
   assert.ok(versiones.includes('002_ajustes_usuarios.sql'));
+  assert.ok(versiones.includes('003_conductores.sql'));
+});
+
+test('la base rechaza un RUT de conductor sin puntos ni guion', async () => {
+  await assert.rejects(
+    pool.query(`INSERT INTO conductores (usuario_id, rut) VALUES (-1, '139876547')`),
+    { constraint: 'conductores_rut_formato_check' }
+  );
 });
 
 test('la base rechaza un correo no institucional', async () => {

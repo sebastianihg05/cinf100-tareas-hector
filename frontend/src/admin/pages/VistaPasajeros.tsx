@@ -37,7 +37,7 @@ const ROLES: { valor: Rol; etiqueta: string }[] = [
 const etiquetaRol = (rol?: Rol) => ROLES.find((r) => r.valor === (rol ?? 'funcionario'))!.etiqueta
 
 export default function VistaPasajeros() {
-  const { state, pendientes, patchPasajero, aprobarSolicitud, rechazarSolicitud, eliminarPasajero, reservasDe, sincronizarCuentas } = useAdmin()
+  const { state, pendientes, patchPasajero, aprobarSolicitud, rechazarSolicitud, eliminarPasajero, reservasDe, sincronizarCuentas, sincronizarConductores } = useAdmin()
   const [params, setParams] = useSearchParams()
   const [busqueda, setBusqueda] = useState('')
   const [fechaViaje, setFechaViaje] = useState('')
@@ -54,6 +54,11 @@ export default function VistaPasajeros() {
     const r = await api.aprobar(p.idBd, rol)
     if (r.ok) sincronizarCuentas([r.datos.usuario])
     setAviso(r.ok ? '' : r.error)
+    // Un conductor recién aprobado aparece de inmediato en Choferes.
+    if (r.ok && rol === 'conductor') {
+      const c = await api.listarConductores()
+      if (c.ok) sincronizarConductores(c.datos.conductores)
+    }
   }
 
   const rechazar = async (p: Pasajero) => {

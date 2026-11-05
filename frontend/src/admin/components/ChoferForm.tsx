@@ -2,11 +2,12 @@ import { useState, type FormEvent } from 'react'
 import { useAdmin } from '../store/AdminContext'
 import { nuevoId } from '../store/adminStore'
 import type { Chofer } from '../types'
-import { esCorreoInstitucional, formatearRut, normalizarTelefono, todayISO, validarRut } from '../utils/format'
+import { errorRut, esCorreoInstitucional, formatearRut, normalizarTelefono, todayISO } from '../utils/format'
 import Field from './Field'
 import { IconInfo } from './icons'
 
-type Props = { initial?: Chofer; onSubmit: (chofer: Chofer) => void; onCancel: () => void }
+/** onSubmit puede devolver un mensaje de error (por ejemplo, si el backend rechazó el cambio). */
+type Props = { initial?: Chofer; onSubmit: (chofer: Chofer) => void | Promise<string | void>; onCancel: () => void }
 type Errors = Partial<Record<'nombre' | 'correo' | 'rut' | 'licencia' | 'telefono', string>>
 
 export default function ChoferForm({ initial, onSubmit, onCancel }: Props) {
@@ -17,8 +18,11 @@ export default function ChoferForm({ initial, onSubmit, onCancel }: Props) {
   const [rut, setRut] = useState(initial?.rut ?? '')
   const [licencia, setLicencia] = useState(initial?.licenciaHasta ?? '')
   const [errors, setErrors] = useState<Errors>({})
+  const [errorGeneral, setErrorGeneral] = useState('')
+  // nombre, correo y celular de un conductor de la base vienen de su cuenta
+  const deCuenta = initial?.idBd !== undefined
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault()
     const errs: Errors = {}
     const nom = nombre.trim().replace(/\s+/g, ' ')
@@ -31,7 +35,8 @@ export default function ChoferForm({ initial, onSubmit, onCancel }: Props) {
     const tel = normalizarTelefono(telefono)
     if (!tel) errs.telefono = 'Celular inválido. Ej: +56 9 1234 5678'
 
-    if (!validarRut(rut)) errs.rut = 'RUT inválido. Ej: 12.345.678-5'
+    const rutMalo = errorRut(rut)
+    if (rutMalo) errs.rut = rutMalo
     else if (state.choferes.some((c) => c.id !== initial?.id && formatearRut(c.rut) === formatearRut(rut))) errs.rut = 'Ya existe un conductor con ese RUT'
 
     if (!licencia) errs.licencia = 'Indica cuándo vence la licencia'
@@ -40,8 +45,9 @@ export default function ChoferForm({ initial, onSubmit, onCancel }: Props) {
     setErrors(errs)
     if (Object.keys(errs).length > 0 || !tel) return
 
-    onSubmit({
+    const error = await onSubmit({
       id: initial?.id ?? nuevoId('c'),
+      idBd: initial?.idBd,
       nombre: nom,
       correo: mail,
       rut: formatearRut(rut),
@@ -49,25 +55,31 @@ export default function ChoferForm({ initial, onSubmit, onCancel }: Props) {
       telefono: tel,
       activo: initial?.activo ?? true,
     })
+    setErrorGeneral(typeof error === 'string' ? error : '')
   }
 
   return (
     <form className="adm-form" onSubmit={submit} noValidate>
-      <p className="adm-note"><IconInfo size={16} />Entrará con su cuenta institucional, sin contraseña propia.</p>
+      <p className="adm-note">
+        <IconInfo size={16} />
+        {deCuenta
+          ? 'Nombre, correo y celular vienen de su cuenta. Aquí se completan el RUT y la licencia.'
+          : 'Entrará con su cuenta institucional, sin contraseña propia.'}
+      </p>
 
       <Field label="Nombre completo" error={errors.nombre}>
-        {(p) => <input {...p} value={nombre} onChange={(e) => setNombre(e.target.value)} autoComplete="off" />}
+        {(p) => <input {...p} value={nombre} onChange={(e) => setNombre(e.target.value)} readOnly={deCuenta} autoComplete="off" />}
       </Field>
 
       <Field label="Correo" error={errors.correo}>
-        {(p) => <input {...p} type="email" value={correo} onChange={(e) => setCorreo(e.target.value)} placeholder="nombre.apellido@unab.cl" autoComplete="off" />}
+        {(p) => <input {...p} type="email" value={correo} onChange={(e) => setCorreo(e.target.value)} readOnly={deCuenta} placeholder="nombre.apellido@unab.cl" autoComplete="off" />}
       </Field>
 
       <Field label="Celular" error={errors.telefono}>
-        {(p) => <input {...p} type="tel" value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="+56 9 1234 5678" />}
+        {(p) => <input {...p} type="tel" value={telefono} onChange={(e) => setTelefono(e.target.value)} readOnly={deCuenta} placeholder="+56 9 1234 5678" />}
       </Field>
 
-      <Field label="RUT" error={errors.rut} hint="Se valida el dígito verificador.">
+      <Field label="RUT" error={errors.rut} hint="Con o sin puntos y guion. Se puede cambiar cuando quieras.">
         {(p) => <input {...p} value={rut} onChange={(e) => setRut(e.target.value)} placeholder="12.345.678-5" autoComplete="off" />}
       </Field>
 
@@ -76,6 +88,8 @@ export default function ChoferForm({ initial, onSubmit, onCancel }: Props) {
       </Field>
 
       <p className="adm-note"><IconInfo size={16} />La van se asigna desde Gestión de vans.</p>
+
+      {errorGeneral && <p className="adm-field__error" role="alert">{errorGeneral}</p>}
 
       <div className="adm-form__actions">
         <button type="button" className="adm-btn adm-btn--ghost" onClick={onCancel}>Cancelar</button>

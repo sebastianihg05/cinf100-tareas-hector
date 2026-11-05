@@ -14,6 +14,20 @@ export type UsuarioBd = {
   ultimoIngresoEn: string | null
 }
 
+/** Conductor guardado en la base: su cuenta más RUT y licencia (vacíos hasta que el administrador los complete). */
+export type ConductorBd = {
+  id: number
+  nombreCompleto: string
+  correo: string
+  telefono: string
+  estado: UsuarioBd['estado']
+  rut: string | null
+  licenciaHasta: string | null
+  activo: boolean
+}
+
+export type CambiosConductor = { rut?: string; licenciaHasta?: string; activo?: boolean }
+
 export type DatosRegistro = {
   nombreCompleto: string
   correo: string
@@ -68,4 +82,8 @@ export const api = {
   listarUsuarios: () => pedir<{ usuarios: UsuarioBd[] }>('/admin/usuarios'),
   aprobar: (id: number, rol: Rol) => pedir<{ usuario: UsuarioBd }>(`/admin/solicitudes/${id}/aprobar`, 'POST', { rol }),
   rechazar: (id: number) => pedir<{ usuario: UsuarioBd }>(`/admin/solicitudes/${id}/rechazar`, 'POST'),
+  /** Conductores de la base con su RUT y licencia (solo administradores). */
+  listarConductores: () => pedir<{ conductores: ConductorBd[] }>('/admin/conductores'),
+  actualizarConductor: (id: number, cambios: CambiosConductor) =>
+    pedir<{ conductor: ConductorBd }>(`/admin/conductores/${id}`, 'PATCH', cambios),
 }

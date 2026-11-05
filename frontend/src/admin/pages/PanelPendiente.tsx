@@ -43,7 +43,7 @@ export default function PanelPendiente() {
   const vansActivas = state.vans.filter((v) => v.activa).length
 
   // OP-841: conductores con la licencia vencida o por vencer
-  const licenciasEnRiesgo = state.choferes.filter((c) => c.activo && estadoLicencia(c.licenciaHasta) !== 'ok').length
+  const licenciasEnRiesgo = state.choferes.filter((c) => c.activo && c.licenciaHasta && estadoLicencia(c.licenciaHasta) !== 'ok').length
 
   /* ---------- Viajes ---------- */
   const cuenta = (estado: EstadoViaje) => state.viajes.filter((v) => v.estado === estado).length
