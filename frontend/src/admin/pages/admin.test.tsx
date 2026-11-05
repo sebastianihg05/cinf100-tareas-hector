@@ -107,6 +107,9 @@ describe('Choferes', () => {
     await userEvent.type(within(dlg).getByLabelText('Correo'), 'pedro.soto@unab.cl')
 
     await llenar('12.345.678-9')
+    expect(within(dlg).getByText(/dígito verificador no corresponde/)).toBeInTheDocument()
+
+    await llenar('12345')
     expect(within(dlg).getByText(/RUT inválido/)).toBeInTheDocument()
 
     await llenar('12345678-5')

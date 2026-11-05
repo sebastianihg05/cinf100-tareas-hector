@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { useAdmin } from '../store/AdminContext'
 import { nuevoId } from '../store/adminStore'
 import type { Chofer } from '../types'
-import { esCorreoInstitucional, formatearRut, normalizarTelefono, todayISO, validarRut } from '../utils/format'
+import { errorRut, esCorreoInstitucional, formatearRut, normalizarTelefono, todayISO } from '../utils/format'
 import Field from './Field'
 import { IconInfo } from './icons'
 
@@ -35,7 +35,8 @@ export default function ChoferForm({ initial, onSubmit, onCancel }: Props) {
     const tel = normalizarTelefono(telefono)
     if (!tel) errs.telefono = 'Celular inválido. Ej: +56 9 1234 5678'
 
-    if (!validarRut(rut)) errs.rut = 'RUT inválido. Ej: 12.345.678-5'
+    const rutMalo = errorRut(rut)
+    if (rutMalo) errs.rut = rutMalo
     else if (state.choferes.some((c) => c.id !== initial?.id && formatearRut(c.rut) === formatearRut(rut))) errs.rut = 'Ya existe un conductor con ese RUT'
 
     if (!licencia) errs.licencia = 'Indica cuándo vence la licencia'

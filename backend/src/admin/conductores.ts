@@ -79,9 +79,12 @@ rutasConductores.patch('/:id', async (req, res) => {
   const cambios: { columna: string; valor: unknown }[] = [];
 
   if (cuerpo.rut !== undefined) {
-    const rut = typeof cuerpo.rut === 'string' ? formatearRut(cuerpo.rut) : null;
+    const texto = typeof cuerpo.rut === 'string' ? cuerpo.rut : '';
+    const rut = formatearRut(texto);
     if (rut) cambios.push({ columna: 'rut', valor: rut });
-    else errores.rut = 'RUT inválido. Ej: 12.345.678-5';
+    else if (/^\d{7,8}[\dK]$/.test(texto.replace(/[.\s-]/g, '').toUpperCase())) {
+      errores.rut = 'El dígito verificador no corresponde a este RUT.';
+    } else errores.rut = 'RUT inválido. Escríbelo con su dígito verificador, por ejemplo 12.345.678-5';
   }
   if (cuerpo.licenciaHasta !== undefined) {
     if (typeof cuerpo.licenciaHasta === 'string' && esFechaValida(cuerpo.licenciaHasta)) {

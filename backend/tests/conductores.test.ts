@@ -88,6 +88,27 @@ test('rechaza RUT, fecha o activo inválidos', async () => {
   }
 });
 
+test('acepta cualquier RUT real y explica cuando el dígito verificador no calza', async () => {
+  const id = await aprobar('rutreal', 'conductor');
+  const enviar = (rut: string) =>
+    request(app).patch(`/api/admin/conductores/${id}`).set('Authorization', admin).send({ rut });
+
+  const valido = await enviar('12.987.987-4');
+  assert.equal(valido.status, 200);
+  assert.equal(valido.body.conductor.rut, '12.987.987-4');
+
+  const conK = await enviar('10000013k');
+  assert.equal(conK.status, 200);
+  assert.equal(conK.body.conductor.rut, '10.000.013-K');
+
+  const malDv = await enviar('12.987.987-6');
+  assert.equal(malDv.status, 400);
+  assert.match(malDv.body.errores.rut, /dígito verificador no corresponde/);
+
+  const malFormato = await enviar('12345');
+  assert.match(malFormato.body.errores.rut, /RUT inválido/);
+});
+
 test('no se puede repetir el RUT de otro conductor', async () => {
   const primero = await aprobar('rut1', 'conductor');
   const segundo = await aprobar('rut2', 'conductor');
@@ -119,6 +140,7 @@ test('un conductor no puede ver ni editar la lista de conductores', async () => 
 test('formatearRut valida el dígito verificador y agrega puntos y guion', () => {
   assert.equal(formatearRut('13987654-7'), '13.987.654-7');
   assert.equal(formatearRut('1.234.567-4'), '1.234.567-4');
+  assert.equal(formatearRut('12.987.987-4'), '12.987.987-4');
   assert.equal(formatearRut('13987654-8'), null);
   assert.equal(formatearRut('abc'), null);
 });
