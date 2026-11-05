@@ -79,7 +79,7 @@ export default function ChoferForm({ initial, onSubmit, onCancel }: Props) {
         {(p) => <input {...p} type="tel" value={telefono} onChange={(e) => setTelefono(e.target.value)} readOnly={deCuenta} placeholder="+56 9 1234 5678" />}
       </Field>
 
-      <Field label="RUT" error={errors.rut} hint="Se valida el dígito verificador.">
+      <Field label="RUT" error={errors.rut} hint="Con o sin puntos y guion. Se puede cambiar cuando quieras.">
         {(p) => <input {...p} value={rut} onChange={(e) => setRut(e.target.value)} placeholder="12.345.678-5" autoComplete="off" />}
       </Field>
 

@@ -57,10 +57,9 @@ export const iniciales = (nombre: string) =>
 
 const limpiarRut = (r: string) => r.replace(/[^0-9kK]/g, '').toUpperCase()
 
-/** Mensaje de error del RUT: distingue un formato incorrecto de un dígito verificador que no calza. */
+/** Error del RUT al editar un conductor: solo revisa que tenga forma de RUT, no el dígito verificador. */
 export function errorRut(r: string): string | null {
-  if (!/^\d{7,8}[0-9K]$/.test(limpiarRut(r))) return 'RUT inválido. Escríbelo con su dígito verificador, por ejemplo 12.345.678-5'
-  if (!validarRut(r)) return 'El dígito verificador no corresponde a este RUT. Revisa el número después del guion.'
+  if (!/^\d{7,8}[0-9K]$/.test(limpiarRut(r))) return 'RUT inválido. Escribe 7 u 8 números y el dígito final, por ejemplo 12.345.678-5'
   return null
 }
 

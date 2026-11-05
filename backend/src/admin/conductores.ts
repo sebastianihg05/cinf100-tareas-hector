@@ -33,21 +33,12 @@ function aConductor(fila: FilaConductor) {
   };
 }
 
-// Devuelve el RUT con puntos y guion (12.345.678-5) o null si el dígito verificador no calza.
+// Devuelve el RUT con puntos y guion (12.345.678-5) o null si no tiene forma de RUT. No revisa el dígito verificador.
 export function formatearRut(valor: string): string | null {
   const limpio = valor.replace(/[.\s-]/g, '').toUpperCase();
   if (!/^\d{7,8}[\dK]$/.test(limpio)) return null;
-  const cuerpo = limpio.slice(0, -1);
-  let suma = 0;
-  let factor = 2;
-  for (let i = cuerpo.length - 1; i >= 0; i--) {
-    suma += Number(cuerpo[i]) * factor;
-    factor = factor === 7 ? 2 : factor + 1;
-  }
-  const resto = 11 - (suma % 11);
-  const dv = resto === 11 ? '0' : resto === 10 ? 'K' : String(resto);
-  if (dv !== limpio.slice(-1)) return null;
-  return `${cuerpo.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}-${dv}`;
+  const cuerpo = limpio.slice(0, -1).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return `${cuerpo}-${limpio.slice(-1)}`;
 }
 
 function esFechaValida(valor: string): boolean {
@@ -79,12 +70,9 @@ rutasConductores.patch('/:id', async (req, res) => {
   const cambios: { columna: string; valor: unknown }[] = [];
 
   if (cuerpo.rut !== undefined) {
-    const texto = typeof cuerpo.rut === 'string' ? cuerpo.rut : '';
-    const rut = formatearRut(texto);
+    const rut = typeof cuerpo.rut === 'string' ? formatearRut(cuerpo.rut) : null;
     if (rut) cambios.push({ columna: 'rut', valor: rut });
-    else if (/^\d{7,8}[\dK]$/.test(texto.replace(/[.\s-]/g, '').toUpperCase())) {
-      errores.rut = 'El dígito verificador no corresponde a este RUT.';
-    } else errores.rut = 'RUT inválido. Escríbelo con su dígito verificador, por ejemplo 12.345.678-5';
+    else errores.rut = 'RUT inválido. Escribe 7 u 8 números y el dígito final, por ejemplo 12.345.678-5';
   }
   if (cuerpo.licenciaHasta !== undefined) {
     if (typeof cuerpo.licenciaHasta === 'string' && esFechaValida(cuerpo.licenciaHasta)) {

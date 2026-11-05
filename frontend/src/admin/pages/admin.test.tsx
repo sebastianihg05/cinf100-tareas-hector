@@ -106,16 +106,14 @@ describe('Choferes', () => {
     await userEvent.clear(within(dlg).getByLabelText('Correo'))
     await userEvent.type(within(dlg).getByLabelText('Correo'), 'pedro.soto@unab.cl')
 
-    await llenar('12.345.678-9')
-    expect(within(dlg).getByText(/dígito verificador no corresponde/)).toBeInTheDocument()
-
     await llenar('12345')
     expect(within(dlg).getByText(/RUT inválido/)).toBeInTheDocument()
 
-    await llenar('12345678-5')
+    // el dígito verificador no se revisa: cualquier RUT bien escrito sirve
+    await llenar('12.345.678-9')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.getByText('Pedro Soto')).toBeInTheDocument()
-    expect(screen.getByText(/12\.345\.678-5/)).toBeInTheDocument()
+    expect(screen.getByText(/12\.345\.678-9/)).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Activos (4)' })).toBeInTheDocument()
   })
 })

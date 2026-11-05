@@ -14,16 +14,15 @@ describe('format', () => {
     for (const c of choferesIniciales) expect(errorRut(c.rut), c.nombre).toBeNull()
   })
 
-  it('acepta cualquier RUT real, no solo el del ejemplo', () => {
-    for (const rut of ['12.987.987-4', '11.111.111-1', '13.987.654-7', '16.987.657-6', '9.876.543-3', '10.000.013-K']) {
+  it('el RUT de un conductor se edita libremente: no se revisa el dígito verificador', () => {
+    for (const rut of ['12.987.987-6', '12.987.987-4', '11.111.111-1', '9.876.543-3', '10.000.013-K', '10000013k', '123456789']) {
       expect(errorRut(rut), rut).toBeNull()
     }
-    expect(errorRut('10000013k')).toBeNull()
   })
 
-  it('el mensaje del RUT dice si falla el formato o el dígito verificador', () => {
-    expect(errorRut('12.987.987-6')).toMatch(/dígito verificador no corresponde/)
+  it('el RUT debe tener 7 u 8 números y el dígito final', () => {
     expect(errorRut('12345')).toMatch(/RUT inválido/)
+    expect(errorRut('abc')).toMatch(/RUT inválido/)
     expect(errorRut('')).toMatch(/RUT inválido/)
   })
 

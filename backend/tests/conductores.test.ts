@@ -82,30 +82,32 @@ test('dar de baja y reactivar un conductor queda guardado', async () => {
 test('rechaza RUT, fecha o activo inválidos', async () => {
   const id = await aprobar('invalido', 'conductor');
 
-  for (const cuerpo of [{ rut: '12.345.678-9' }, { licenciaHasta: '2028-02-30' }, { activo: 'si' }, {}]) {
+  for (const cuerpo of [{ rut: '12345' }, { rut: 'abc' }, { licenciaHasta: '2028-02-30' }, { activo: 'si' }, {}]) {
     const respuesta = await request(app).patch(`/api/admin/conductores/${id}`).set('Authorization', admin).send(cuerpo);
     assert.equal(respuesta.status, 400, JSON.stringify(cuerpo));
   }
 });
 
-test('acepta cualquier RUT real y explica cuando el dígito verificador no calza', async () => {
-  const id = await aprobar('rutreal', 'conductor');
+test('el RUT se edita libremente: basta con que tenga forma de RUT', async () => {
+  const id = await aprobar('rutlibre', 'conductor');
   const enviar = (rut: string) =>
     request(app).patch(`/api/admin/conductores/${id}`).set('Authorization', admin).send({ rut });
 
-  const valido = await enviar('12.987.987-4');
-  assert.equal(valido.status, 200);
-  assert.equal(valido.body.conductor.rut, '12.987.987-4');
+  // el dígito verificador no se revisa
+  const libre = await enviar('12.987.987-6');
+  assert.equal(libre.status, 200);
+  assert.equal(libre.body.conductor.rut, '12.987.987-6');
+
+  const otro = await enviar('129879874');
+  assert.equal(otro.status, 200);
+  assert.equal(otro.body.conductor.rut, '12.987.987-4');
 
   const conK = await enviar('10000013k');
   assert.equal(conK.status, 200);
   assert.equal(conK.body.conductor.rut, '10.000.013-K');
 
-  const malDv = await enviar('12.987.987-6');
-  assert.equal(malDv.status, 400);
-  assert.match(malDv.body.errores.rut, /dígito verificador no corresponde/);
-
   const malFormato = await enviar('12345');
+  assert.equal(malFormato.status, 400);
   assert.match(malFormato.body.errores.rut, /RUT inválido/);
 });
 
@@ -137,10 +139,10 @@ test('un conductor no puede ver ni editar la lista de conductores', async () => 
   assert.equal((await request(app).get('/api/admin/conductores')).status, 401);
 });
 
-test('formatearRut valida el dígito verificador y agrega puntos y guion', () => {
+test('formatearRut agrega puntos y guion sin revisar el dígito verificador', () => {
   assert.equal(formatearRut('13987654-7'), '13.987.654-7');
   assert.equal(formatearRut('1.234.567-4'), '1.234.567-4');
-  assert.equal(formatearRut('12.987.987-4'), '12.987.987-4');
-  assert.equal(formatearRut('13987654-8'), null);
+  assert.equal(formatearRut('13987654-8'), '13.987.654-8');
+  assert.equal(formatearRut('12345'), null);
   assert.equal(formatearRut('abc'), null);
 });
