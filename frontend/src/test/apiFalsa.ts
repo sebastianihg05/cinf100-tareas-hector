@@ -26,6 +26,16 @@ export function agregarConductor(id: number, datos: Partial<DatosConductor> = {}
 /** Lo que quedó guardado en la "base" para ese conductor. */
 export const conductorGuardado = (id: number) => conductores.get(id)
 
+/** La cuenta tal como quedó en la "base" (por ejemplo, para revisar su celular). */
+export const cuentaGuardada = (correo: string) => cuentas.find((c) => c.correo === correo.toLowerCase())
+
+/** Celular en el formato de la base, +569XXXXXXXX, o null si no es válido. */
+const celularBd = (valor: string) => {
+  const digitos = valor.replace(/\D/g, '')
+  const local = digitos.length === 11 && digitos.startsWith('56') ? digitos.slice(2) : digitos
+  return /^9\d{8}$/.test(local) ? `+56${local}` : null
+}
+
 const aConductor = (cuenta: Cuenta): ConductorBd => ({
   id: cuenta.id, nombreCompleto: cuenta.nombreCompleto, correo: cuenta.correo, telefono: cuenta.telefono,
   estado: cuenta.estado, ...conductores.get(cuenta.id)!,
@@ -84,9 +94,18 @@ function atender(url: string, metodo: string, cuerpo: Record<string, string>, to
     return responder(201, { usuario: publica(cuenta) })
   }
 
-  // Administración: exige el token de una cuenta de administrador aprobada.
   const sesion = cuentas.find((c) => token === `token-${c.id}`)
   if (!sesion) return responder(401, { error: 'Debes iniciar sesión.' })
+
+  // Perfil propio: cualquier rol cambia su celular.
+  if (metodo === 'PATCH' && url === '/api/usuarios/me') {
+    const telefono = celularBd(String(cuerpo.telefono ?? ''))
+    if (!telefono) return responder(400, { errores: { telefono: 'Ingresa un celular chileno válido, por ejemplo +56 9 1234 5678.' } })
+    sesion.telefono = telefono
+    return responder(200, { usuario: publica(sesion) })
+  }
+
+  // Administración: exige el token de una cuenta de administrador aprobada.
   if (sesion.rol !== 'administrador' || sesion.estado !== 'aprobada') {
     return responder(403, { error: 'No tienes permiso para realizar esta acción.' })
   }
@@ -112,10 +131,13 @@ function atender(url: string, metodo: string, cuerpo: Record<string, string>, to
     const cuenta = cuentas.find((c) => c.id === Number(conductor[1]))
     const datos = cuenta && conductores.get(cuenta.id)
     if (!cuenta || !datos) return responder(404, { error: 'El conductor no existe.' })
-    const cambios = cuerpo as Partial<DatosConductor>
+    const { telefono, ...cambios } = cuerpo as Partial<DatosConductor> & { telefono?: string }
+    const celular = telefono === undefined ? undefined : celularBd(telefono)
+    if (celular === null) return responder(400, { errores: { telefono: 'Ingresa un celular chileno válido, por ejemplo +56 9 1234 5678.' } })
     const repetido = cambios.rut && [...conductores].some(([id, d]) => id !== cuenta.id && d.rut === cambios.rut)
     if (repetido) return responder(409, { errores: { rut: 'Ya existe un conductor con ese RUT.' } })
     Object.assign(datos, cambios)
+    if (celular) cuenta.telefono = celular
     return responder(200, { conductor: aConductor(cuenta) })
   }
 

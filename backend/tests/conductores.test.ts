@@ -57,14 +57,14 @@ test('el administrador guarda el RUT y la licencia en la base', async () => {
   const respuesta = await request(app)
     .patch(`/api/admin/conductores/${id}`)
     .set('Authorization', admin)
-    .send({ rut: '11111111-1', licenciaHasta: '2028-03-15' });
+    .send({ rut: '45111111-1', licenciaHasta: '2028-03-15' });
 
   assert.equal(respuesta.status, 200);
-  assert.equal(respuesta.body.conductor.rut, '11.111.111-1');
+  assert.equal(respuesta.body.conductor.rut, '45.111.111-1');
   assert.equal(respuesta.body.conductor.licenciaHasta, '2028-03-15');
 
   const guardado = (await listar()).find((c) => c.id === id);
-  assert.equal(guardado?.rut, '11.111.111-1');
+  assert.equal(guardado?.rut, '45.111.111-1');
   assert.equal(guardado?.licenciaHasta, '2028-03-15');
 });
 
@@ -111,15 +111,59 @@ test('el RUT se edita libremente: basta con que tenga forma de RUT', async () =>
   assert.match(malFormato.body.errores.rut, /RUT inválido/);
 });
 
+test('el administrador cambia el celular del conductor y queda guardado en su cuenta', async () => {
+  const id = await aprobar('celular', 'conductor');
+
+  const respuesta = await request(app)
+    .patch(`/api/admin/conductores/${id}`)
+    .set('Authorization', admin)
+    .send({ telefono: '9 8765 4321' });
+  assert.equal(respuesta.status, 200);
+  assert.equal(respuesta.body.conductor.telefono, '+56987654321');
+
+  // es el mismo celular que el conductor ve en su perfil
+  const perfil = await request(app).get('/api/usuarios/me').set('Authorization', autorizacion(id));
+  assert.equal(perfil.body.usuario.telefono, '+56987654321');
+
+  const malo = await request(app).patch(`/api/admin/conductores/${id}`).set('Authorization', admin).send({ telefono: '123' });
+  assert.equal(malo.status, 400);
+  assert.ok(malo.body.errores.telefono);
+});
+
+test('si el RUT falla, el celular tampoco se guarda', async () => {
+  const otro = await aprobar('celrut1', 'conductor');
+  const id = await aprobar('celrut2', 'conductor');
+  await request(app).patch(`/api/admin/conductores/${otro}`).set('Authorization', admin).send({ rut: '45.333.333-3' });
+
+  const respuesta = await request(app)
+    .patch(`/api/admin/conductores/${id}`)
+    .set('Authorization', admin)
+    .send({ rut: '45.333.333-3', telefono: '+56 9 5555 4444' });
+  assert.equal(respuesta.status, 409);
+
+  const { rows } = await pool.query('SELECT telefono FROM usuarios WHERE id = $1', [id]);
+  assert.equal(rows[0].telefono, '+56911112222');
+});
+
+test('cuando el conductor cambia su celular, el administrador lo ve en la lista de conductores', async () => {
+  const id = await aprobar('micelular', 'conductor');
+
+  const cambio = await request(app).patch('/api/usuarios/me').set('Authorization', autorizacion(id)).send({ telefono: '+56 9 1212 3434' });
+  assert.equal(cambio.status, 200);
+
+  const conductor = (await listar()).find((c) => c.id === id) as unknown as { telefono: string };
+  assert.equal(conductor.telefono, '+56912123434');
+});
+
 test('no se puede repetir el RUT de otro conductor', async () => {
   const primero = await aprobar('rut1', 'conductor');
   const segundo = await aprobar('rut2', 'conductor');
-  await request(app).patch(`/api/admin/conductores/${primero}`).set('Authorization', admin).send({ rut: '22.222.222-2' });
+  await request(app).patch(`/api/admin/conductores/${primero}`).set('Authorization', admin).send({ rut: '45.222.222-2' });
 
   const respuesta = await request(app)
     .patch(`/api/admin/conductores/${segundo}`)
     .set('Authorization', admin)
-    .send({ rut: '22222222-2' });
+    .send({ rut: '45222222-2' });
   assert.equal(respuesta.status, 409);
 });
 

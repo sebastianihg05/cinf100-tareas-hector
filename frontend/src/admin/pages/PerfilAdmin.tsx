@@ -1,9 +1,11 @@
+import { useGuardarCelular } from '../../login/useGuardarCelular'
 import PerfilUsuario from '../components/PerfilUsuario'
 import { useAdmin } from '../store/AdminContext'
 
 /** Perfil del administrador. */
 export default function PerfilAdmin() {
   const { state, updateAdmin } = useAdmin()
+  const guardarCelular = useGuardarCelular()
   const { admin } = state
 
   return (
@@ -13,7 +15,7 @@ export default function PerfilAdmin() {
       etiquetas={[admin.cargo, 'Cuenta UNAB']}
       celular={admin.celular}
       ultimoIngreso={admin.ultimoIngreso}
-      onGuardarCelular={(celular) => updateAdmin({ celular })}
+      onGuardarCelular={(celular) => guardarCelular(celular, () => updateAdmin({ celular }))}
     />
   )
 }

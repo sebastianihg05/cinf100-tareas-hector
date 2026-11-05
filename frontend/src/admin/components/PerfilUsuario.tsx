@@ -16,7 +16,8 @@ type Props = {
   celular: string
   /** ISO yyyy-mm-ddThh:mm */
   ultimoIngreso: string
-  onGuardarCelular: (celular: string) => void
+  /** puede devolver un mensaje de error; si lo hace, la ventana sigue abierta mostrándolo */
+  onGuardarCelular: (celular: string) => void | Promise<string | void>
 }
 
 /**
@@ -59,7 +60,11 @@ export default function PerfilUsuario({ nombre, email, etiquetas, filas = [], ce
       {editando && (
         <Modal title="Editar datos de contacto" onClose={() => setEditando(false)}>
           <TelefonoForm initial={celular} onCancel={() => setEditando(false)}
-            onSubmit={(nuevo) => { onGuardarCelular(nuevo); setEditando(false) }} />
+            onSubmit={async (nuevo) => {
+              const fallo = await onGuardarCelular(nuevo)
+              if (typeof fallo === 'string') return fallo
+              setEditando(false)
+            }} />
         </Modal>
       )}
     </div>

@@ -1,12 +1,14 @@
 import PerfilUsuario from '../../admin/components/PerfilUsuario'
 import { useAdmin } from '../../admin/store/AdminContext'
 import { sedeLabel } from '../../admin/types'
+import { useGuardarCelular } from '../../login/useGuardarCelular'
 import { usePasajeroActual } from '../../login/usePasajeroActual'
 import { CARGO_PASAJERO } from '../viajes'
 
 /** Perfil del funcionario que inició sesión. */
 export default function PerfilPasajero() {
   const { patchPasajero } = useAdmin()
+  const guardarCelular = useGuardarCelular()
   const { pasajero, pasajeroId } = usePasajeroActual()
 
   if (!pasajero) return <p className="psj-alert" role="alert">No encontramos tu cuenta de funcionario.</p>
@@ -20,7 +22,7 @@ export default function PerfilPasajero() {
         filas={[{ etiqueta: 'Sede', valor: pasajero.sede ? sedeLabel(pasajero.sede) : 'Sin sede' }]}
         celular={pasajero.celular}
         ultimoIngreso={pasajero.ultimoIngreso}
-        onGuardarCelular={(celular) => patchPasajero(pasajeroId, { celular })}
+        onGuardarCelular={(celular) => guardarCelular(celular, () => patchPasajero(pasajeroId, { celular }))}
       />
     </div>
   )

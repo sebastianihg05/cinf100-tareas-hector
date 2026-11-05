@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { pool } from '../db';
 import type { Estado } from '../usuarios/perfil';
+import { normalizarTelefono } from '../usuarios/validacion';
 
 // Datos de conductor (tabla conductores) junto a su cuenta. Solo administradores: se monta en rutasAdmin.
 export const rutasConductores = Router();
@@ -57,7 +58,7 @@ rutasConductores.get('/', async (_req, res) => {
   res.json({ conductores: rows.map(aConductor) });
 });
 
-// Actualiza el RUT, la licencia o si está activo. El nombre y el celular se cambian desde la cuenta.
+// Actualiza el RUT, la licencia, si está activo o el celular de su cuenta. El nombre no se cambia aquí.
 rutasConductores.patch('/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
@@ -85,32 +86,47 @@ rutasConductores.patch('/:id', async (req, res) => {
     if (typeof cuerpo.activo === 'boolean') cambios.push({ columna: 'activo', valor: cuerpo.activo });
     else errores.activo = 'El campo activo debe ser true o false.';
   }
+  // el celular vive en la tabla usuarios: es el mismo que el conductor ve en su perfil
+  let telefono: string | null = null;
+  if (cuerpo.telefono !== undefined) {
+    telefono = normalizarTelefono(typeof cuerpo.telefono === 'string' ? cuerpo.telefono : '');
+    if (!telefono) errores.telefono = 'Ingresa un celular chileno válido, por ejemplo +56 9 1234 5678.';
+  }
 
   if (Object.keys(errores).length > 0) {
     res.status(400).json({ errores });
     return;
   }
-  if (cambios.length === 0) {
-    res.status(400).json({ error: 'Indica el RUT, la licencia o si el conductor está activo.' });
+  if (cambios.length === 0 && !telefono) {
+    res.status(400).json({ error: 'Indica el RUT, la licencia, el celular o si el conductor está activo.' });
     return;
   }
 
-  const set = cambios.map((c, i) => `${c.columna} = $${i + 2}`).join(', ');
+  const existe = await pool.query('SELECT 1 FROM conductores WHERE usuario_id = $1', [id]);
+  if (existe.rowCount === 0) {
+    res.status(404).json({ error: 'El conductor no existe.' });
+    return;
+  }
+
+  // los dos cambios se guardan juntos o ninguno
+  const cliente = await pool.connect();
   try {
-    const { rowCount } = await pool.query(
-      `UPDATE conductores SET ${set} WHERE usuario_id = $1`,
-      [id, ...cambios.map((c) => c.valor)]
-    );
-    if (rowCount === 0) {
-      res.status(404).json({ error: 'El conductor no existe.' });
-      return;
+    await cliente.query('BEGIN');
+    if (cambios.length > 0) {
+      const set = cambios.map((c, i) => `${c.columna} = $${i + 2}`).join(', ');
+      await cliente.query(`UPDATE conductores SET ${set} WHERE usuario_id = $1`, [id, ...cambios.map((c) => c.valor)]);
     }
+    if (telefono) await cliente.query('UPDATE usuarios SET telefono = $2 WHERE id = $1', [id, telefono]);
+    await cliente.query('COMMIT');
   } catch (error) {
+    await cliente.query('ROLLBACK');
     if ((error as { code?: string }).code === '23505') {
       res.status(409).json({ errores: { rut: 'Ya existe un conductor con ese RUT.' } });
       return;
     }
     throw error;
+  } finally {
+    cliente.release();
   }
 
   const { rows } = await pool.query<FilaConductor>(

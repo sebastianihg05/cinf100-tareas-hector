@@ -44,17 +44,32 @@ describe('asignacionDe', () => {
 })
 
 describe('separarViajes', () => {
+  // fechas relativas a hoy, para que la prueba no dependa del día en que se corre
+  const dia = (n: number) => {
+    const d = new Date()
+    d.setHours(12, 0, 0, 0)
+    d.setDate(d.getDate() + n)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }
   const lista = [
-    viaje('a', '2026-11-05', '17:00', 'pendiente'),
-    viaje('b', '2026-11-05', '06:45', 'pendiente'),
-    viaje('c', '2026-11-01', '06:45', 'en-curso'),
-    viaje('d', '2026-10-01', '06:45', 'completado'),
-    viaje('e', '2026-10-15', '17:00', 'cancelado'),
+    viaje('a', dia(1), '17:00', 'pendiente'),
+    viaje('b', dia(1), '06:45', 'pendiente'),
+    viaje('c', dia(-3), '06:45', 'en-curso'),
+    viaje('d', dia(-30), '06:45', 'completado'),
+    viaje('e', dia(-20), '17:00', 'cancelado'),
+    viaje('f', dia(-5), '06:45', 'pendiente'),
+    viaje('g', dia(0), '06:45', 'pendiente'),
   ]
 
-  it('próximos: pendientes y en curso, el más cercano primero', () => {
-    expect(separarViajes(lista).proximos.map((v) => v.id)).toEqual(['c', 'b', 'a'])
-    expect(lista.filter(esProximo)).toHaveLength(3)
+  it('próximos: en curso y pendientes desde hoy, el más cercano primero', () => {
+    expect(separarViajes(lista).proximos.map((v) => v.id)).toEqual(['c', 'g', 'b', 'a'])
+    expect(lista.filter(esProximo)).toHaveLength(4)
+  })
+
+  it('un viaje pendiente de un día que ya pasó no aparece como próximo ni en el historial', () => {
+    const { proximos, historial } = separarViajes(lista)
+    expect(proximos.some((v) => v.id === 'f')).toBe(false)
+    expect(historial.some((v) => v.id === 'f')).toBe(false)
   })
 
   it('historial: completados y cancelados, el más reciente primero', () => {

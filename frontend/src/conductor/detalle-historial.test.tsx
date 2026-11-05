@@ -94,7 +94,9 @@ describe('detalle del viaje', () => {
     const seccion = await screen.findByRole('region', { name: 'Pasajeros del viaje' })
     expect(within(seccion).getByRole('heading', { name: 'Pasajeros (3)' })).toBeInTheDocument()
     const filas = within(within(seccion).getByRole('list', { name: 'Pasajeros y asientos' })).getAllByRole('listitem')
-    expect(filas.map((li) => li.textContent)).toEqual(['1Bruno Urrutia', '3Constanza Silva', '8Sebastian Hidalgo'])
+    const nombre = (li: HTMLElement) => li.querySelector('.cnd-pasajero__nombre')?.textContent
+    expect(filas.map((li) => `${li.querySelector('.cnd-pasajero__asiento')?.textContent}${nombre(li)}`))
+      .toEqual(['1Bruno Urrutia', '3Constanza Silva', '8Sebastian Hidalgo'])
   })
 
   it('un viaje sin pasajeros lo indica con un mensaje', async () => {
