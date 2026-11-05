@@ -25,6 +25,9 @@
   background: var(--navy); color: #fff; font-size: 14px; font-weight: 800;
 }
 .cnd-pasajero__nombre { min-width: 0; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.cnd-pasajero__datos { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cnd-pasajero__celular { font-size: 13px; color: #5a6575; }
+a.cnd-pasajero__celular { color: var(--navy); text-decoration: none; }
 
 .cnd-trayecto {
   display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px;

@@ -26,7 +26,7 @@ export type ConductorBd = {
   activo: boolean
 }
 
-export type CambiosConductor = { rut?: string; licenciaHasta?: string; activo?: boolean }
+export type CambiosConductor = { rut?: string; licenciaHasta?: string; activo?: boolean; telefono?: string }
 
 export type DatosRegistro = {
   nombreCompleto: string
@@ -78,6 +78,8 @@ export const api = {
   /** BD-18: inicia sesión y devuelve el token y la cuenta. */
   iniciarSesion: (correo: string, contrasena: string) =>
     pedir<{ token: string; usuario: UsuarioBd }>('/auth/login', 'POST', { correo, contrasena }),
+  /** Cambia el celular de la cuenta con sesión iniciada (cualquier rol). */
+  actualizarMiCelular: (telefono: string) => pedir<{ usuario: UsuarioBd }>('/usuarios/me', 'PATCH', { telefono }),
   /** Administración (BD-15, BD-16): requiere sesión de administrador. */
   listarUsuarios: () => pedir<{ usuarios: UsuarioBd[] }>('/admin/usuarios'),
   aprobar: (id: number, rol: Rol) => pedir<{ usuario: UsuarioBd }>(`/admin/solicitudes/${id}/aprobar`, 'POST', { rol }),

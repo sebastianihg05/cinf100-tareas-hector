@@ -25,7 +25,7 @@ function estadoLicencia(iso: string): 'vencida' | 'por-vencer' | 'ok' {
 }
 
 export default function VistaChoferes() {
-  const { state, saveChofer, toggleChofer, vanDeChofer } = useAdmin()
+  const { state, saveChofer, toggleChofer, vanDeChofer, sincronizarConductores } = useAdmin()
   const [filtro, setFiltro] = useState<Filtro>('activos')
   const [dialogo, setDialogo] = useState<Dialogo>(null)
   const [aviso, setAviso] = useState('')
@@ -35,11 +35,15 @@ export default function VistaChoferes() {
   const lista = filtro === 'activos' ? activos : baja
   const cerrar = () => setDialogo(null)
 
-  // Los conductores de la base guardan RUT, licencia y estado en el backend; los de ejemplo, solo aquí.
+  // Los conductores de la base guardan RUT, licencia, celular y estado en el backend; los de ejemplo, solo aquí.
   const guardar = async (chofer: Chofer) => {
     if (chofer.idBd !== undefined) {
-      const r = await api.actualizarConductor(chofer.idBd, { rut: chofer.rut, licenciaHasta: chofer.licenciaHasta })
+      const r = await api.actualizarConductor(chofer.idBd, {
+        rut: chofer.rut, licenciaHasta: chofer.licenciaHasta, telefono: chofer.telefono,
+      })
       if (!r.ok) return r.error
+      // también actualiza el celular en el perfil del conductor
+      sincronizarConductores([r.datos.conductor])
     }
     saveChofer(chofer)
     cerrar()

@@ -1,5 +1,33 @@
 import { describe, expect, it } from 'vitest'
-import { estadoInicial, reducer } from './adminStore'
+import { estadoInicial, reducer, sinViajesPasados } from './adminStore'
+
+describe('sinViajesPasados', () => {
+  it('borra los viajes de días anteriores con sus reservas y avisos, y deja los de hoy en adelante', () => {
+    const antes = {
+      ...estadoInicial(),
+      notificaciones: [{ id: 'n1', tipo: 'viaje-iniciado' as const, viajeId: 't5', fecha: '2026-10-07T17:00', leida: false }],
+    }
+    const hoy = '2026-11-01'
+    const despues = sinViajesPasados(antes, hoy)
+
+    expect(despues.viajes.length).toBeGreaterThan(0)
+    expect(despues.viajes.every((v) => v.fecha >= hoy)).toBe(true)
+    expect(despues.viajes).toEqual(expect.arrayContaining(antes.viajes.filter((v) => v.fecha >= hoy).map((v) => expect.objectContaining({ id: v.id }))))
+    const ids = new Set(despues.viajes.map((v) => v.id))
+    expect(despues.reservas.every((r) => ids.has(r.viajeId))).toBe(true)
+    expect(despues.reservas.length).toBeLessThan(antes.reservas.length)
+    expect(despues.notificaciones).toEqual([])
+    // vans, choferes y cuentas no se tocan
+    expect(despues.vans).toEqual(antes.vans)
+    expect(despues.choferes).toEqual(antes.choferes)
+    expect(despues.pasajeros.map((p) => p.id)).toEqual(antes.pasajeros.map((p) => p.id))
+  })
+
+  it('si no hay viajes pasados, no cambia nada', () => {
+    const s = estadoInicial()
+    expect(sinViajesPasados(s, '2000-01-01')).toBe(s)
+  })
+})
 
 describe('pasajero/eliminar', () => {
   it('borra la cuenta y todas sus reservas, y libera los cupos de sus viajes', () => {

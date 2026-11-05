@@ -260,7 +260,6 @@
 .adm-notif__item.is-unread::before {
   content: ''; position: absolute; left: 12px; top: 18px; width: 8px; height: 8px; border-radius: 50%; background: var(--red);
 }
-.adm-chip--dev { background: transparent; color: rgba(255, 255, 255, .6); border: 1px dashed rgba(255, 255, 255, .4); font-weight: 600; }
 
 /* ---------- Viajes cancelados y botones de la tarjeta ---------- */
 .adm-state--cancelado { background: #fecaca; color: #b91c1c; }

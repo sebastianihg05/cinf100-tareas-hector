@@ -63,7 +63,7 @@ export default function ChoferForm({ initial, onSubmit, onCancel }: Props) {
       <p className="adm-note">
         <IconInfo size={16} />
         {deCuenta
-          ? 'Nombre, correo y celular vienen de su cuenta. Aquí se completan el RUT y la licencia.'
+          ? 'Nombre y correo vienen de su cuenta. Aquí se cambian el celular, el RUT y la licencia.'
           : 'Entrará con su cuenta institucional, sin contraseña propia.'}
       </p>
 
@@ -76,7 +76,7 @@ export default function ChoferForm({ initial, onSubmit, onCancel }: Props) {
       </Field>
 
       <Field label="Celular" error={errors.telefono}>
-        {(p) => <input {...p} type="tel" value={telefono} onChange={(e) => setTelefono(e.target.value)} readOnly={deCuenta} placeholder="+56 9 1234 5678" />}
+        {(p) => <input {...p} type="tel" value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="+56 9 1234 5678" />}
       </Field>
 
       <Field label="RUT" error={errors.rut} hint="Con o sin puntos y guion. Se puede cambiar cuando quieras.">

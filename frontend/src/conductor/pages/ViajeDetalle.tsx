@@ -6,7 +6,7 @@ import TrayectosDelDia from '../components/TrayectosDelDia'
 import { ESTADO_VIAJE } from '../etiquetas'
 import { useAdmin } from '../../admin/store/AdminContext'
 import { motivoSinViajes, useConductorActual } from '../useConductorActual'
-import { pasajerosDelViaje, trayectosDelDia, viajeAsignado } from '../viajes'
+import { pasajerosDelViaje, trayectosDelDia, viajeAsignado, viajeEnCurso } from '../viajes'
 import { useState } from 'react'
 import ConfirmDialog from '../../admin/components/ConfirmDialog'
 /**
@@ -37,6 +37,9 @@ export default function ViajeDetalle() {
   const pasajeros = pasajerosDelViaje(state, viaje.id)
   const trayectos = trayectosDelDia(asignacion, viaje)
   const pasajerosPorViaje = Object.fromEntries(trayectos.map((t) => [t.id, pasajerosDelViaje(state, t.id).length]))
+  // otro viaje de la van que sigue en curso: hay que finalizarlo antes de iniciar este
+  const otroEnCurso = viajeEnCurso(asignacion)
+  const bloqueado = otroEnCurso && otroEnCurso.id !== viaje.id ? otroEnCurso : undefined
 
   return (
     <div className="psj-page">
@@ -57,11 +60,19 @@ export default function ViajeDetalle() {
                 <button
                     type="button"
                     className="adm-btn"
+                    disabled={!!bloqueado}
+                    aria-describedby={bloqueado ? 'cnd-bloqueo' : undefined}
                     onClick={() => setConfirmandoInicio(true)}
                 >
                     Iniciar viaje
                 </button>
             </div>
+        )}
+        {viaje.estado === 'pendiente' && bloqueado && (
+          <p id="cnd-bloqueo" className="psj-alert psj-alert--suave" role="status">
+            Tienes un viaje en curso ({bloqueado.trayecto} de las {bloqueado.hora} hrs).{' '}
+            <Link to={`/conductor/viajes/${bloqueado.id}`} className="psj-link">Finalízalo</Link> antes de iniciar este.
+          </p>
         )}
         {viaje.estado === 'en-curso' && (
             <div className="adm-form__actions">
@@ -87,7 +98,7 @@ export default function ViajeDetalle() {
         <PasajerosViaje pasajeros={pasajeros} />
       </section>
 
-      {confirmandoInicio && (
+      {confirmandoInicio && !bloqueado && (
         <ConfirmDialog
             title="Iniciar viaje"
             message={`¿Confirmas el inicio del viaje ${viaje.origen} → ${viaje.destino}?`}

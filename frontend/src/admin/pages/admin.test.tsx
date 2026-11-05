@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import AdminLayout from '../components/AdminLayout'
 import { viajesIniciales } from '../data/mock'
 import AbrirViaje from './AbrirViaje'
-import { AdminProvider } from '../store/AdminContext'
+import { AdminProvider, useAdmin } from '../store/AdminContext'
 import PerfilAdmin from './PerfilAdmin'
 import SesionCerrada from './SesionCerrada'
 import { diaSemana, fechaDMY, sumarDias, todayISO } from '../utils/format'
@@ -179,10 +179,15 @@ describe('Viajes', () => {
   })
 
   it('cuando el conductor inicia el viaje, cambia el estado y llega una notificación', async () => {
-    r(appViajes, '/admin/viajes')
+    // hace de la app del conductor: usa el mismo estado compartido que el panel
+    const Conductor = () => {
+      const { setEstadoViaje } = useAdmin()
+      return <button onClick={() => setEstadoViaje('f1i', 'en-curso')}>El conductor inicia f1i</button>
+    }
+    r(<>{appViajes}<Conductor /></>, '/admin/viajes')
     expect(screen.queryByRole('button', { name: /^Notificaciones: / })).toBeInTheDocument() // 1 pasajero por aprobar
 
-    await userEvent.click(screen.getAllByRole('button', { name: 'Simular: conductor inicia' })[0])
+    await userEvent.click(screen.getByRole('button', { name: 'El conductor inicia f1i' }))
     await userEvent.click(screen.getByRole('tab', { name: 'En curso' }))
     expect(screen.getAllByText(/Asientos reservados ·/)).toHaveLength(1)
 

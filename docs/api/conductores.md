@@ -39,6 +39,9 @@ Cuerpo con uno o más de estos campos:
 | `rut` | string | RUT válido (dígito verificador). Se guarda como `12.345.678-5`. |
 | `licenciaHasta` | string | Fecha `AAAA-MM-DD`. |
 | `activo` | boolean | `false` lo da de baja. |
+| `telefono` | string | Celular chileno. Se guarda en la cuenta (`usuarios.telefono`) como `+569XXXXXXXX`, el mismo que el conductor ve en su perfil. |
+
+Si un campo falla, no se guarda ninguno (el cambio en `conductores` y en `usuarios` va en una sola transacción).
 
 Respuestas:
 

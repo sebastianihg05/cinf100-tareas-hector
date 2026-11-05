@@ -1,6 +1,7 @@
 import type { State } from '../admin/store/adminStore'
 import { estaActiva } from '../admin/store/reservas'
 import type { Chofer, Van, Viaje } from '../admin/types'
+import { todayISO } from '../admin/utils/format'
 
 /** Lo que el conductor necesita saber de su asignación: quién es, qué van maneja y qué viajes tiene. */
 export type Asignacion = {
@@ -12,8 +13,11 @@ export type Asignacion = {
   viajes: Viaje[]
 }
 
-/** Viajes que el conductor todavía debe realizar (por salir o en curso). */
-export const esProximo = (v: Viaje) => v.estado === 'pendiente' || v.estado === 'en-curso'
+/** Viajes que el conductor todavía debe realizar: en curso, o pendientes desde hoy en adelante. */
+export const esProximo = (v: Viaje) => v.estado === 'en-curso' || (v.estado === 'pendiente' && v.fecha >= todayISO())
+
+/** Viajes ya cerrados: completados o cancelados. */
+const esCerrado = (v: Viaje) => v.estado === 'completado' || v.estado === 'cancelado'
 
 /** Compara fecha y hora de dos viajes (yyyy-mm-dd + hh:mm). */
 const porFechaHora = (a: Viaje, b: Viaje) => (a.fecha + a.hora).localeCompare(b.fecha + b.hora)
@@ -33,7 +37,7 @@ export function asignacionDe(datos: Pick<State, 'choferes' | 'vans' | 'viajes'>,
 export function separarViajes(viajes: Viaje[]): { proximos: Viaje[]; historial: Viaje[] } {
   return {
     proximos: viajes.filter(esProximo).sort(porFechaHora),
-    historial: viajes.filter((v) => !esProximo(v)).sort((a, b) => porFechaHora(b, a)),
+    historial: viajes.filter(esCerrado).sort((a, b) => porFechaHora(b, a)),
   }
 }
 
@@ -59,16 +63,24 @@ export const trayectosDelDia = (asignacion: Asignacion, viaje: Viaje): Viaje[] =
   asignacion.viajes.filter((v) => v.fecha === viaje.fecha).sort(porFechaHora)
 
 /** Un pasajero con reserva en el viaje, tal como lo ve el conductor. */
-export type PasajeroDelViaje = { reservaId: string; asiento: number; nombre: string }
+export type PasajeroDelViaje = { reservaId: string; asiento: number; nombre: string; celular: string }
 
 /** Pasajeros con reserva vigente (no cancelada) en un viaje, ordenados por número de asiento. */
 export function pasajerosDelViaje(datos: Pick<State, 'reservas' | 'pasajeros'>, viajeId: string): PasajeroDelViaje[] {
   return datos.reservas
     .filter((r) => r.viajeId === viajeId && estaActiva(r))
     .sort((a, b) => a.asiento - b.asiento)
-    .map((r) => ({
-      reservaId: r.id,
-      asiento: r.asiento,
-      nombre: datos.pasajeros.find((p) => p.id === r.pasajeroId)?.nombre ?? 'Pasajero no encontrado',
-    }))
+    .map((r) => {
+      const pasajero = datos.pasajeros.find((p) => p.id === r.pasajeroId)
+      return {
+        reservaId: r.id,
+        asiento: r.asiento,
+        nombre: pasajero?.nombre ?? 'Pasajero no encontrado',
+        celular: pasajero?.celular ?? '',
+      }
+    })
 }
+
+/** Viaje de la van que está en curso; mientras exista, no se puede iniciar otro. */
+export const viajeEnCurso = (asignacion: Asignacion): Viaje | undefined =>
+  asignacion.viajes.find((v) => v.estado === 'en-curso')

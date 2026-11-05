@@ -142,14 +142,7 @@ export default function VistaViajes() {
                     <button className="adm-chip adm-chip--ban" onClick={() => setCancelando(v)}>Cancelar viaje</button>
                   )}
                 </div>
-                {/* El conductor inicia y finaliza el viaje desde su app; el administrador solo ve el estado.
-                    Estos botones existen únicamente en desarrollo para simular a la app del conductor. */}
-                {import.meta.env.DEV && v.estado === 'pendiente' && van && (
-                  <button className="adm-chip adm-chip--dev" onClick={() => setEstadoViaje(v.id, 'en-curso')}>Simular: conductor inicia</button>
-                )}
-                {import.meta.env.DEV && v.estado === 'en-curso' && (
-                  <button className="adm-chip adm-chip--dev" onClick={() => setEstadoViaje(v.id, 'completado')}>Simular: conductor finaliza</button>
-                )}
+                {/* el conductor inicia y finaliza el viaje desde su panel; aquí solo se ve el estado */}
               </div>
             </li>
           )

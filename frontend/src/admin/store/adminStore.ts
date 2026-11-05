@@ -1,7 +1,7 @@
 import type { ConductorBd, UsuarioBd } from '../../api'
 import { adminInicial, choferesIniciales, pasajerosIniciales, reservasIniciales, vansIniciales, viajesIniciales } from '../data/mock'
 import type { Admin, Chofer, EstadoViaje, Notificacion, Pasajero, Reserva, Rol, Van, Viaje } from '../types'
-import { isoLocal, normalizarTelefono } from '../utils/format'
+import { isoLocal, normalizarTelefono, todayISO } from '../utils/format'
 import { sincronizar, validarCambioAsientos, validarSolicitud, type CambioAsiento } from './reservas'
 
 export type State = {
@@ -110,7 +110,11 @@ export function reducer(s: State, a: Action): State {
         choferes = actual ? choferes.map((ch) => (ch === actual ? datos : ch)) : [...choferes, datos]
         if (!activo) vans = liberarChofer(vans, datos.id)
       }
-      return { ...s, choferes, vans }
+      // el celular es de la cuenta: también se actualiza en su perfil
+      const celulares = new Map(a.conductores.map((c) => [c.id, normalizarTelefono(c.telefono) ?? c.telefono]))
+      const pasajeros = s.pasajeros.map((p) =>
+        p.idBd !== undefined && celulares.has(p.idBd) ? { ...p, celular: celulares.get(p.idBd)! } : p)
+      return { ...s, choferes, vans, pasajeros }
     }
     case 'pasajero/desdeBd': {
       // Las cuentas viven en PostgreSQL (BD-17/18). Se copian aquí para que el resto de la app
@@ -139,7 +143,12 @@ export function reducer(s: State, a: Action): State {
           ? pasajeros.map((p) => (p === actual ? { ...p, ...datos } : p))
           : [...pasajeros, { id: idLocalDe(pasajeros, u), puedeAbrirViajes: false, ...datos }]
       }
-      return { ...s, pasajeros }
+      // si la cuenta es de un chofer, su celular también cambia en Choferes
+      const choferes = s.choferes.map((ch) => {
+        const u = a.usuarios.find((x) => x.id === ch.idBd || x.correo.toLowerCase() === ch.correo.toLowerCase())
+        return u && u.rol === 'conductor' ? { ...ch, telefono: normalizarTelefono(u.telefono) ?? u.telefono } : ch
+      })
+      return { ...s, pasajeros, choferes }
     }
     case 'pasajero/aprobar':
       // La aprobación se hace una sola vez: solo afecta a solicitudes que siguen por aprobar.
@@ -165,6 +174,8 @@ export function reducer(s: State, a: Action): State {
           const viaje = s.viajes.find((v) => v.id === a.id)
           if (!viaje) return s
           if (a.estado === 'en-curso' && viaje.estado !== 'pendiente') return s
+          // una van hace un viaje a la vez: no se inicia otro mientras haya uno en curso
+          if (a.estado === 'en-curso' && viaje.vanId && s.viajes.some((v) => v.id !== viaje.id && v.vanId === viaje.vanId && v.estado === 'en-curso')) return s
 
           return sincronizar({
               ...s,
@@ -217,6 +228,10 @@ export const idLocalDe = (pasajeros: Pasajero[], u: UsuarioBd) => pasajeroDeCuen
 const KEY = 'unab-admin-v3'
 
 export function cargarEstado(): State {
+  return limpiezaUnica(leerGuardado() ?? estadoInicial())
+}
+
+function leerGuardado(): State | null {
   try {
     const raw = localStorage.getItem(KEY)
     if (raw) {
@@ -228,7 +243,34 @@ export function cargarEstado(): State {
   } catch {
     /* sin almacenamiento o JSON corrupto: se usa el estado inicial */
   }
-  return estadoInicial()
+  return null
+}
+
+/** Quita los viajes de días anteriores a `hoy`, con sus reservas y avisos. */
+export function sinViajesPasados(s: State, hoy: string): State {
+  const pasados = new Set(s.viajes.filter((v) => v.fecha < hoy).map((v) => v.id))
+  if (pasados.size === 0) return s
+  return sincronizar({
+    ...s,
+    viajes: s.viajes.filter((v) => !pasados.has(v.id)),
+    reservas: s.reservas.filter((r) => !pasados.has(r.viajeId)),
+    notificaciones: s.notificaciones.filter((n) => !pasados.has(n.viajeId)),
+  })
+}
+
+// La primera vez que la app abre en un navegador se borran los viajes de ejemplo de fechas pasadas.
+// Las pruebas no la usan: necesitan esos viajes.
+const LIMPIEZA = 'unab-limpieza-viajes-v1'
+
+function limpiezaUnica(s: State): State {
+  if (import.meta.env.MODE === 'test') return s
+  try {
+    if (localStorage.getItem(LIMPIEZA)) return s
+    localStorage.setItem(LIMPIEZA, todayISO())
+  } catch {
+    return s
+  }
+  return sinViajesPasados(s, todayISO())
 }
 
 /** Devuelve `false` si el navegador no pudo guardar (sin espacio, modo privado, etc.). */
