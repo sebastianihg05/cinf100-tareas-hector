@@ -56,11 +56,11 @@ describe('Vans', () => {
     expect(screen.getByRole('tab', { name: 'Activas (4)' })).toBeInTheDocument()
   })
 
-  it('la capacidad de la van es fija en 8 asientos', async () => {
+  it('la capacidad de la van es fija en 9 asientos', async () => {
     r(<VistaVans />)
     await userEvent.click(screen.getAllByRole('button', { name: /Editar/ })[0])
     const asientos = within(screen.getByRole('dialog')).getByLabelText('Cantidad de asientos') as HTMLInputElement
-    expect(asientos.value).toBe('8')
+    expect(asientos.value).toBe('9')
     expect(asientos.readOnly).toBe(true)
   })
 

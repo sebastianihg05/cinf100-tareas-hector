@@ -120,7 +120,8 @@ export const HORA_TRAYECTO: Record<Trayecto, string> = { Ida: '06:45', Vuelta: '
 export const SEDES_ORIGEN = ['Quillota 980']
 
 /** Capacidad fija de cada van */
-export const CAPACIDAD_VAN = 8
+/** (Minivan Hyundai Staria: 9 asientos reservables; el del copiloto no se usa) */
+export const CAPACIDAD_VAN = 9
 
 /** Un viaje se reserva con 1 a 30 días de anticipación */
 export const DIAS_MIN_ANTICIPACION = 1

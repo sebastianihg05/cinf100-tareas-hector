@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { estadoInicial, reducer, sinViajesPasados } from './adminStore'
+import { cargarEstado, estadoInicial, reducer, sinViajesPasados } from './adminStore'
 
 describe('sinViajesPasados', () => {
   it('borra los viajes de días anteriores con sus reservas y avisos, y deja los de hoy en adelante', () => {
@@ -60,5 +60,17 @@ describe('pasajero/eliminar', () => {
     const despues = reducer(antes, { type: 'pasajero/eliminar', id: 'no-existe' })
     expect(despues.pasajeros).toEqual(antes.pasajeros)
     expect(despues.reservas).toEqual(antes.reservas)
+  })
+})
+
+describe('capacidad de las vans', () => {
+  it('las vans de ejemplo tienen 9 asientos (Hyundai Staria)', () => {
+    expect(estadoInicial().vans.every((v) => v.asientos === 9)).toBe(true)
+  })
+
+  it('un estado guardado con la capacidad antigua (8) se corrige a 9 al cargarlo', () => {
+    const viejo = { ...estadoInicial(), vans: estadoInicial().vans.map((v) => ({ ...v, asientos: 8 })) }
+    localStorage.setItem('unab-admin-v3', JSON.stringify(viejo))
+    expect(cargarEstado().vans.every((v) => v.asientos === 9)).toBe(true)
   })
 })

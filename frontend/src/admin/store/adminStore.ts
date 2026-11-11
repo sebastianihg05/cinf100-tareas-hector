@@ -1,6 +1,6 @@
 import type { ConductorBd, UsuarioBd } from '../../api'
 import { adminInicial, choferesIniciales, pasajerosIniciales, reservasIniciales, vansIniciales, viajesIniciales } from '../data/mock'
-import type { Admin, Chofer, EstadoViaje, Notificacion, Pasajero, Reserva, Rol, Van, Viaje } from '../types'
+import { CAPACIDAD_VAN, type Admin, type Chofer, type EstadoViaje, type Notificacion, type Pasajero, type Reserva, type Rol, type Van, type Viaje } from '../types'
 import { isoLocal, normalizarTelefono, todayISO } from '../utils/format'
 import { sincronizar, validarCambioAsientos, validarSolicitud, type CambioAsiento } from './reservas'
 
@@ -237,7 +237,9 @@ function leerGuardado(): State | null {
     if (raw) {
       const p = JSON.parse(raw) as Partial<State>
       if (Array.isArray(p.vans) && Array.isArray(p.choferes) && Array.isArray(p.pasajeros) && Array.isArray(p.viajes) && Array.isArray(p.reservas) && p.admin) {
-        return sincronizar({ ...p, notificaciones: p.notificaciones ?? [] } as State)
+        // la capacidad es fija (Hyundai Staria, 9 asientos): corrige lo guardado con la capacidad antigua
+        const vans = p.vans.map((v) => ({ ...v, asientos: CAPACIDAD_VAN }))
+        return sincronizar({ ...p, vans, notificaciones: p.notificaciones ?? [] } as State)
       }
     }
   } catch {

@@ -1,10 +1,10 @@
 import type { Admin, Chofer, EstadoReserva, Pasajero, Reserva, Trayecto, Van, Viaje } from '../types'
-import { HORA_TRAYECTO, RUTA_TRAYECTO } from '../types'
+import { CAPACIDAD_VAN, HORA_TRAYECTO, RUTA_TRAYECTO } from '../types'
 
 export const vansIniciales: Van[] = [
-  { id: 'v1', patente: 'FG-1251', asientos: 8, choferId: 'c1', activa: true },
-  { id: 'v2', patente: 'SH-8568', asientos: 8, choferId: 'c2', activa: true },
-  { id: 'v3', patente: 'CO-6768', asientos: 8, choferId: 'c3', activa: true },
+  { id: 'v1', patente: 'FG-1251', asientos: CAPACIDAD_VAN, choferId: 'c1', activa: true },
+  { id: 'v2', patente: 'SH-8568', asientos: CAPACIDAD_VAN, choferId: 'c2', activa: true },
+  { id: 'v3', patente: 'CO-6768', asientos: CAPACIDAD_VAN, choferId: 'c3', activa: true },
 ]
 
 export const choferesIniciales: Chofer[] = [

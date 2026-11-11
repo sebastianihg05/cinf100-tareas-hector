@@ -7,21 +7,35 @@ import { reservasIniciales, pasajerosIniciales, vansIniciales, viajesIniciales }
 import { agruparReservas, asientosOcupados, cancelables, sincronizar, validarCambioAsientos, validarSolicitud, type Datos } from '../admin/store/reservas'
 import { sumarDias, todayISO } from '../admin/utils/format'
 import { guardarSesion } from '../login/sesion'
-import { disponerAsientos } from './MapaAsientos'
+import MapaAsientos, { disponerAsientos } from './MapaAsientos'
 
 const datos = (): Datos =>
   sincronizar({ vans: vansIniciales, viajes: viajesIniciales, pasajeros: pasajerosIniciales, reservas: reservasIniciales })
 
 describe('disponerAsientos', () => {
-  it('con 8 asientos replica el diseño: [C,1] [2,3] [4,5] [6,7,8]', () => {
-    expect(disponerAsientos(8)).toEqual([['conductor', 1], [2, 3], [4, 5], [6, 7, 8]])
+  it('con 9 asientos replica la Hyundai Staria: [conductor, copiloto] [1,2] [3,4] [5,6] [7,8,9]', () => {
+    expect(disponerAsientos(9)).toEqual([['conductor', 'copiloto'], [1, 2], [3, 4], [5, 6], [7, 8, 9]])
   })
   it('cubre todas las capacidades sin perder ni repetir asientos', () => {
     for (let n = 1; n <= 14; n++) {
-      const asientos = disponerAsientos(n).flat().filter((c): c is number => c !== 'conductor')
+      const asientos = disponerAsientos(n).flat().filter((c): c is number => c !== 'conductor' && c !== 'copiloto')
       expect(asientos).toEqual(Array.from({ length: n }, (_, i) => i + 1))
     }
     expect(disponerAsientos(0)).toEqual([])
+  })
+})
+
+describe('mapa de asientos de la Hyundai Staria', () => {
+  it('muestra 9 asientos reservables y el del copiloto no se puede elegir', () => {
+    const elegidos: number[] = []
+    render(<MapaAsientos capacidad={9} ocupados={[]} onSeleccionar={(n) => elegidos.push(n)} />)
+    const radios = screen.getAllByRole('radio')
+    expect(radios.map((r) => r.getAttribute('aria-label'))).toEqual(
+      [1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `Asiento ${n}`))
+    const copiloto = screen.getByRole('img', { name: 'Asiento del copiloto, no disponible' })
+    expect(copiloto).not.toHaveAttribute('role', 'radio')
+    expect(elegidos).toEqual([])
+    expect(screen.getByRole('img', { name: 'Conductor' })).toBeInTheDocument()
   })
 })
 

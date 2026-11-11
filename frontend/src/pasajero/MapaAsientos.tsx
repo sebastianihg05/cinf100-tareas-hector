@@ -8,17 +8,18 @@ type Props = {
   onSeleccionar: (asiento: number) => void
 }
 
-type Celda = number | 'conductor'
+type Celda = number | 'conductor' | 'copiloto'
 
 /**
- * Disposición de la van: fila 1 con el conductor y el asiento 1; luego filas de 2 y una última de hasta 3.
- * Con 8 asientos queda como en el diseño: [C,1] [2,3] [4,5] [6,7,8].
+ * Disposición de la Minivan Hyundai Staria: la primera fila lleva al conductor y el asiento del copiloto
+ * (que no se puede reservar); luego vienen filas de 2 asientos y una última de hasta 3.
+ * Con 9 asientos queda: [C, copiloto] [1,2] [3,4] [5,6] [7,8,9].
  */
 export function disponerAsientos(capacidad: number): Celda[][] {
   const total = Math.max(0, Math.floor(capacidad))
   if (total === 0) return []
-  const filas: Celda[][] = [['conductor', 1]]
-  let siguiente = 2
+  const filas: Celda[][] = [['conductor', 'copiloto']]
+  let siguiente = 1
   while (siguiente <= total) {
     const restantes = total - siguiente + 1
     const tam = restantes <= 3 ? restantes : 2
@@ -64,6 +65,13 @@ export default function MapaAsientos({ capacidad, ocupados, seleccionado, onSele
         {filas.map((fila, i) => (
           <div key={i} className={`psj-van__fila psj-van__fila--${modoFila(fila, i)}`}>
             {fila.map((celda) => {
+              if (celda === 'copiloto') {
+                return (
+                  <div key="copiloto" className="psj-asiento psj-asiento--copiloto" role="img" aria-label="Asiento del copiloto, no disponible">
+                    <Butaca />
+                  </div>
+                )
+              }
               if (celda === 'conductor') {
                 return (
                   <div key="conductor" className="psj-asiento psj-asiento--conductor" role="img" aria-label="Conductor">

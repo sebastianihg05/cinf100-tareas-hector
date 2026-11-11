@@ -99,7 +99,7 @@ describe('panel del conductor', () => {
     const primero = esperados[0]
     expect(within(tarjetas[0]).getByText(`${primero.trayecto}: ${primero.origen} → ${primero.destino}`)).toBeInTheDocument()
     expect(within(tarjetas[0]).getByText(`${primero.hora} hrs`)).toBeInTheDocument()
-    expect(within(tarjetas[0]).getByText(/^Asientos reservados: \d+\/8$/)).toBeInTheDocument()
+    expect(within(tarjetas[0]).getByText(/^Asientos reservados: \d+\/9$/)).toBeInTheDocument()
     expect(within(tarjetas[0]).getByText('Pendiente')).toBeInTheDocument()
     // un viaje de otra van (f1... rota v1/v2/v3) no aparece
     const otraVan = viajesIniciales.find((v) => v.vanId === 'v2' && esProximo(v))!

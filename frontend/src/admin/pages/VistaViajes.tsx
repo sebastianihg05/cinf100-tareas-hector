@@ -8,7 +8,7 @@ import Pills from '../components/Pills'
 import ListaPasajerosViaje from '../components/ListaPasajerosViaje'
 import { useAdmin } from '../store/AdminContext'
 import { estaActiva } from '../store/reservas'
-import type { EstadoViaje, Trayecto, Viaje } from '../types'
+import { CAPACIDAD_VAN, type EstadoViaje, type Trayecto, type Viaje } from '../types'
 import { fechaDMY, fechaLarga, todayISO } from '../utils/format'
 
 type Filtro = 'todos' | EstadoViaje
@@ -112,7 +112,7 @@ export default function VistaViajes() {
         {lista.map((v) => {
           const van = state.vans.find((x) => x.id === v.vanId)
           const chofer = van && choferDeVan(van)
-          const capacidad = van?.asientos ?? 8
+          const capacidad = van?.asientos ?? CAPACIDAD_VAN
           return (
             <li key={v.id} className={`adm-card adm-card--trip${v.estado === 'cancelado' ? ' is-cancelled' : ''}`}>
               <div className="adm-card__head">

@@ -85,7 +85,7 @@ describe('detalle del viaje', () => {
     expect(within(resumen).getByText('Pendiente')).toBeInTheDocument()
     expect(within(resumen).getByText('06:45 hrs')).toBeInTheDocument()
     expect(within(resumen).getByText('FG-1251')).toBeInTheDocument()
-    expect(within(resumen).getByText('1/8')).toBeInTheDocument()
+    expect(within(resumen).getByText('1/9')).toBeInTheDocument()
   })
 
   it('lista los pasajeros con su asiento, ordenados por número de asiento', async () => {

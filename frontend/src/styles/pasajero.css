@@ -146,8 +146,8 @@ select.psj-control:disabled { cursor: not-allowed; color: var(--muted); backgrou
 }
 /* Todas las filas miden lo mismo que la de 3 asientos (3 x 54 + 2 x 30 px), así comparten columnas. */
 .psj-van__fila { display: flex; align-items: center; justify-content: flex-start; gap: 30px; width: 222px; max-width: 100%; margin-inline: auto; }
-/* conductor y asiento 1 en los extremos; las filas de 1 o 2 asientos quedan pegadas al lado izquierdo */
-.psj-van__fila--conductor { justify-content: space-between; }
+/* conductor y copiloto en los extremos; las filas de 2 asientos quedan en las mismas columnas (izquierda y derecha) */
+.psj-van__fila--conductor, .psj-van__fila--par { justify-content: space-between; }
 
 .psj-asiento {
   position: relative; flex-shrink: 0; display: block; width: 54px; height: 66px; padding: 0; border: 0; background: none;
@@ -172,6 +172,14 @@ select.psj-control:disabled { cursor: not-allowed; color: var(--muted); backgrou
 .psj-asiento--seleccionado .psj-asiento__resp, .psj-asiento--conductor .psj-asiento__resp { background: var(--psj-seleccionado-resp); }
 .psj-asiento--seleccionado .psj-asiento__base, .psj-asiento--conductor .psj-asiento__base {
   background: var(--navy); border-color: var(--navy); color: #fff;
+}
+
+/* Asiento del copiloto: no se reserva, se muestra tachado */
+.psj-asiento--copiloto { cursor: not-allowed; opacity: .55; }
+.psj-asiento--copiloto .psj-asiento__resp { background: transparent; border: 1px dashed var(--psj-ocupado-borde); }
+.psj-asiento--copiloto .psj-asiento__base {
+  background: linear-gradient(to top right, transparent calc(50% - 1px), #8a93a6 calc(50% - 1px), #8a93a6 calc(50% + 1px), transparent calc(50% + 1px));
+  border: 1px dashed var(--psj-ocupado-borde);
 }
 
 .psj-leyenda { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 20px; margin: 0; padding: 0; list-style: none; font-size: 12px; color: var(--muted); }
