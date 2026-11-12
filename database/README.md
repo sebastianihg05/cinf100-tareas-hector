@@ -52,6 +52,14 @@ docker compose exec database psql -U devhub -d cinf100 -f /database/tests/vans_r
 El modelo de cada tabla está en `docs/database/` (`modelo-viajes.md`,
 `modelo-reservas.md` y `modelo-vans.md`).
 
+Los datos de prueba (vans, viajes y reservas) se comprueban con
+`datos_iniciales.sql`, que debe terminar con
+`Todas las comprobaciones pasaron (16 de 16)`:
+
+```bash
+docker compose exec database psql -U devhub -d cinf100 -f /database/tests/datos_iniciales.sql
+```
+
 Consultar los datos a mano:
 
 ```bash
@@ -119,6 +127,31 @@ defines o la cambias después, el siguiente `docker compose up -d` la aplica a
 las cuentas de prueba que ya existían. `npm run dev` en la raíz genera una si
 está vacía y la muestra al arrancar.
 Para no cargar estos usuarios: `CARGAR_SEED=false`.
+
+## Vans, viajes y reservas de prueba (seed)
+
+| Van | Estado | Conductor |
+|---|---|---|
+| `FG-1251` | activa | `dev.conductor@unab.cl` |
+| `SH-8568` | activa | sin conductor |
+| `CO-6768` | dada de baja | sin conductor |
+
+Los viajes usan fechas relativas al día de la carga (D), para que siempre haya
+viajes próximos:
+
+| Viaje | Estado | Van | Reservas de `dev.funcionario@unab.cl` |
+|---|---|---|---|
+| D-2 Ida | completado | FG-1251 | asiento 4, completada |
+| D-1 Vuelta | cancelado | — | asiento 2, cancelada |
+| D+2 Ida y D+2 Vuelta | pendientes | FG-1251 | asientos 3 y 5, una reserva de ida y vuelta |
+| D+3 Ida | pendiente | sin asignar | — |
+| D+5 Ida | pendiente | SH-8568 (sin conductor) | — |
+
+Las vans se agregan si faltan y no se pisa lo que el administrador haya
+cambiado. Los viajes y reservas **solo se cargan si la tabla `viajes` está
+vacía**, para no duplicarse en cada `up`. Para volver a tenerlos desde cero:
+`docker compose down -v` y `docker compose up -d` (borra todos los datos).
+Detalles en `docs/database/datos-iniciales.md`.
 
 ## Reiniciar y borrar
 
