@@ -11,7 +11,12 @@ import { estaActiva } from '../store/reservas'
 import { SEDES, type EstadoViaje } from '../types'
 import { fechaCorta, inicioSemana, todayISO } from '../utils/format'
 import { estadoLicencia } from '../utils/licencia'
+import AnimatedContent from '../../reactbits/AnimatedContent'
+import Counter from '../../reactbits/Counter'
+import SloshGauge from '../../reactbits/SloshGauge'
+import { ENTRADA_TARJETAS as ENTRADA, UNAB } from '../../reactbits/unab'
 import './PanelPendiente.css'
+
 
 /**
  * Panel (dashboard) del administrador.
@@ -132,11 +137,11 @@ export default function PanelPendiente() {
         </div>
         <p className="dashboard-section__text">Revisa solicitudes pendientes y actualiza el estado de los perfiles.</p>
 
-        <div className="dashboard-counts">
+        <AnimatedContent className="dashboard-counts" {...ENTRADA}>
           <Indicador variante="conteo" to="/admin/pasajeros" etiqueta="Usuarios" valor={usuariosAprobados} />
           <Indicador variante="conteo" to="/admin/choferes" etiqueta="Conductores" valor={conductoresActivos} />
           <Indicador variante="conteo" to="/admin/vans" etiqueta="Vans activas" valor={vansActivas} />
-        </div>
+        </AnimatedContent>
       </section>
 
       {licenciasEnRiesgo > 0 && (
@@ -150,31 +155,50 @@ export default function PanelPendiente() {
         </Link>
       )}
 
-      <section className="dashboard-trips">
+      <AnimatedContent as="section" className="dashboard-trips" {...ENTRADA}>
         <Indicador to="/admin/viajes" etiqueta="Viajes totales" valor={state.viajes.length} tono="blue" icono={<IconRoute size={20} />} />
         <Indicador to="/admin/viajes?filtro=pendiente" etiqueta="Viajes pendientes" valor={cuenta('pendiente')} tono="yellow" icono={<IconClock size={20} />} />
         <Indicador to="/admin/viajes?filtro=en-curso" etiqueta="Viajes en curso" valor={cuenta('en-curso')} tono="blue" icono={<IconTruck size={20} />} />
         <Indicador to="/admin/viajes?filtro=completado" etiqueta="Viajes completados" valor={cuenta('completado')} tono="turquoise" icono={<IconRoute size={20} />} />
-      </section>
+      </AnimatedContent>
 
       <Link to="/admin/viajes?filtro=cancelado" className="dashboard-cancelled">
         <span className="dashboard-cancelled__label">
           <IconBan size={20} />
           <span>Viajes cancelados</span>
         </span>
-        <strong>{cuenta('cancelado')}</strong>
+        <strong><Counter value={cuenta('cancelado')} fontSize="1em" fontWeight="inherit" textColor="currentColor" /></strong>
       </Link>
 
       <section className="dashboard-section">
         <h2>Gráficos de barras</h2>
-        <div className="dashboard-charts">
+        <AnimatedContent className="dashboard-charts" {...ENTRADA}>
           <GraficoBarras titulo="Viajes por estado" subtitulo="Toca una barra para ver los viajes"
             barras={barrasEstado} vacio="Aún no hay viajes." />
           <GraficoBarras titulo="Pasajeros por sede" subtitulo="Toca una barra para filtrar la lista"
             barras={barrasSede} vacio="Aún no hay pasajeros." />
-          <GraficoBarras titulo="Ocupación de los próximos viajes" subtitulo="Asientos reservados sobre la capacidad de la van"
-            barras={barrasOcupacion} vacio="No hay viajes pendientes próximos." />
-        </div>
+          {/* RB-04: la ocupación se ve como el líquido que llena cada van (React Bits SloshGauge) */}
+          <section className="grafico-barras" aria-label="Ocupación de los próximos viajes">
+            <h3>Ocupación de los próximos viajes</h3>
+            <p className="grafico-barras__sub">Asientos reservados sobre la capacidad de la van</p>
+            {barrasOcupacion.length === 0 ? (
+              <p className="grafico-barras__vacio">No hay viajes pendientes próximos.</p>
+            ) : (
+              <ul className="ocupacion">
+                {barrasOcupacion.map((b) => (
+                  <li key={b.clave}>
+                    <Link to={b.to} className="ocupacion__viaje" aria-label={`${b.etiqueta}: ${b.valor}. Ver detalle`}>
+                      <SloshGauge value={Math.round(b.porcentaje)} interactive={false} liquidColor={UNAB.navy} glassColor="#e6ebf1"
+                        width={56} height={84} radius={14} unit="%" ariaLabel={`Ocupación ${b.valor}`} />
+                      <span className="ocupacion__etiqueta">{b.etiqueta}</span>
+                      <strong className="ocupacion__valor">{b.valor}</strong>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </AnimatedContent>
       </section>
 
       <section className="dashboard-section">

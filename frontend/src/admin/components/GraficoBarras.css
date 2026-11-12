@@ -21,3 +21,12 @@
 .grafico-barras__relleno--rojo { background: #cc0033; }
 .grafico-barras__relleno--gris { background: #94a3b8; }
 .grafico-barras__relleno--navy { background: #003366; }
+
+/* RB-04: cada barra crece desde la izquierda al aparecer, una tras otra */
+@keyframes grafico-barras-crecer { from { transform: scaleX(0); } }
+.grafico-barras__relleno { transform-origin: left center; animation: grafico-barras-crecer .8s cubic-bezier(.22, 1, .36, 1) both; }
+.grafico-barras__lista li:nth-child(2) .grafico-barras__relleno { animation-delay: .08s; }
+.grafico-barras__lista li:nth-child(3) .grafico-barras__relleno { animation-delay: .16s; }
+.grafico-barras__lista li:nth-child(4) .grafico-barras__relleno { animation-delay: .24s; }
+.grafico-barras__lista li:nth-child(n+5) .grafico-barras__relleno { animation-delay: .32s; }
+@media (prefers-reduced-motion: reduce) { .grafico-barras__relleno { animation: none; } }

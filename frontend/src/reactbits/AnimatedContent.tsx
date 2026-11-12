@@ -11,6 +11,8 @@ export type AnimatedContentStaggerFrom = 'start' | 'end' | 'center' | 'edges' | 
 
 export interface AnimatedContentProps extends Omit<HTMLAttributes<HTMLDivElement>, 'onAnimationStart'> {
   children?: ReactNode;
+  /** Cambio local (RB-04): etiqueta del contenedor, para animar los <li> de una lista sin envolverlos en un div. */
+  as?: 'div' | 'ul' | 'section';
   container?: Element | string | null;
   distance?: number;
   direction?: 'vertical' | 'horizontal';
@@ -54,6 +56,7 @@ const WIPES: Record<string, string> = {
 
 const AnimatedContent = ({
   children,
+  as = 'div',
   container,
   distance = 100,
   direction = 'vertical',
@@ -239,10 +242,12 @@ const AnimatedContent = ({
     disappearEase
   ]);
 
+  // Se tipa como 'div' porque los props y el ref son de div; en ul/section se comportan igual.
+  const Tag = as as 'div';
   return (
-    <div ref={ref} className={className} style={{ visibility: 'hidden', ...style }} {...props}>
+    <Tag ref={ref} className={className} style={{ visibility: 'hidden', ...style }} {...props}>
       {children}
-    </div>
+    </Tag>
   );
 };
 

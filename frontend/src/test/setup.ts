@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest'
-import { cleanup } from '@testing-library/react'
+import { cleanup, configure } from '@testing-library/react'
 import { afterEach, beforeEach, vi } from 'vitest'
 import { instalarApiFalsa } from './apiFalsa'
 
@@ -25,3 +25,6 @@ window.matchMedia ??= ((query: string) => ({
 class ObservadorVacio { observe() {} unobserve() {} disconnect() {} takeRecords() { return [] } }
 globalThis.IntersectionObserver ??= ObservadorVacio as unknown as typeof IntersectionObserver
 globalThis.ResizeObserver ??= ObservadorVacio as unknown as typeof ResizeObserver
+
+// findBy* espera 1 s por defecto; en computadores lentos el panel animado tarda más en aparecer tras el login.
+configure({ asyncUtilTimeout: 5000 })

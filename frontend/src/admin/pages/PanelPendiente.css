@@ -54,3 +54,13 @@
   .dashboard-section__header h2 { font-size: 20px; }
   .dashboard-section__text { font-size: 13px; }
 }
+
+/* RB-04: ocupación de los próximos viajes, una van con líquido por viaje */
+.ocupacion { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 10px; }
+.ocupacion__viaje {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; border-radius: 10px;
+  color: #003366; text-decoration: none; text-align: center; transition: background-color .15s;
+}
+.ocupacion__viaje:hover { background: rgba(0, 51, 102, .06); }
+.ocupacion__etiqueta { font-size: 11px; font-weight: 700; color: #6b7280; }
+.ocupacion__valor { font-size: 13px; font-weight: 800; }

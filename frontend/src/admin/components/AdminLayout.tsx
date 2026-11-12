@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import Logo from './Logo'
+import TextType from '../../reactbits/TextType'
+import Waves from '../../reactbits/Waves'
+import { UNAB } from '../../reactbits/unab'
 import NotificacionesPanel from './NotificacionesPanel'
 import { api } from '../../api'
 import { cerrarSesion, leerSesion } from '../../login/sesion'
@@ -47,6 +50,10 @@ export default function AdminLayout() {
   return (
     <div className="adm-shell">
       <header className="adm-header">
+        {/* RB-04: fondo de ondas en movimiento (React Bits Waves), detrás del contenido del encabezado */}
+        <div className="adm-header__fondo" aria-hidden="true">
+          <Waves lineColor="rgba(255,255,255,.22)" accentColor={UNAB.rojo} backgroundColor={UNAB.navy} />
+        </div>
         <div className="adm-header__left">
           {enAbrirViaje
             ? <button className="adm-back" onClick={() => navigate('/admin/viajes')} aria-label="Volver a viajes"><IconBack /></button>
@@ -66,7 +73,7 @@ export default function AdminLayout() {
           <div className="adm-greeting__user">
             <div className="adm-avatar">{iniciales(state.admin.nombre)}</div>
             <div>
-              <p className="adm-greeting__name">Hola, Administrador</p>
+              <p className="adm-greeting__name"><TextType as="span" text="Hola, Administrador" typingSpeed={55} loop={false} showCursor={false} /></p>
               <p className="adm-greeting__sub">Sede Central UNAB</p>
             </div>
           </div>

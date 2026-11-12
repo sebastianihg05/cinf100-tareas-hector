@@ -11,6 +11,8 @@ import { borrarAvisosLeidos } from '../../pasajero/useAvisosPasajero'
 import { useAdmin } from '../store/AdminContext'
 import { RUTA_TRAYECTO, SEDES, sedeLabel, type Pasajero, type Rol } from '../types'
 import { fechaCorta, fechaDMY, fechaHora, fechaLarga, iniciales, sinTildes } from '../utils/format'
+import AnimatedContent from '../../reactbits/AnimatedContent'
+import { ENTRADA_TARJETAS } from '../../reactbits/unab'
 
 function TagsReserva({ p }: { p: Pasajero }) {
   const { reserva } = p
@@ -127,7 +129,8 @@ export default function VistaPasajeros() {
 
       {aviso && <p className="adm-field__error" role="alert">{aviso}</p>}
 
-      <ul className="adm-list">
+      {/* RB-04: las tarjetas entran una tras otra; se repite al cambiar de filtro */}
+      <AnimatedContent as="ul" className="adm-list" key={filtro} {...ENTRADA_TARJETAS}>
         {lista.map((p) => (
           <li key={p.id} className={`adm-card adm-card--passenger${p.aprobado ? ' is-clickable' : ' adm-card--solicitud'}`}
             onClick={p.aprobado ? () => abrirDetalle(p.id) : undefined}>
@@ -165,7 +168,7 @@ export default function VistaPasajeros() {
           </li>
         ))}
         {lista.length === 0 && <li className="adm-empty">No hay pasajeros que coincidan.</li>}
-      </ul>
+      </AnimatedContent>
 
       {rechazando && (
         <ConfirmDialog

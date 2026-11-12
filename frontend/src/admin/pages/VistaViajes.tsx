@@ -10,6 +10,8 @@ import { useAdmin } from '../store/AdminContext'
 import { estaActiva } from '../store/reservas'
 import { CAPACIDAD_VAN, type EstadoViaje, type Trayecto, type Viaje } from '../types'
 import { fechaDMY, fechaLarga, todayISO } from '../utils/format'
+import AnimatedContent from '../../reactbits/AnimatedContent'
+import { ENTRADA_TARJETAS } from '../../reactbits/unab'
 
 type Filtro = 'todos' | EstadoViaje
 type FiltroTrayecto = 'todos' | Trayecto
@@ -108,7 +110,8 @@ export default function VistaViajes() {
 
       <p className="adm-today">{fechaLarga(todayISO())} · Hoy</p>
 
-      <ul className="adm-list">
+      {/* RB-04: las tarjetas entran una tras otra; se repite al cambiar de filtro */}
+      <AnimatedContent as="ul" className="adm-list" key={filtro} {...ENTRADA_TARJETAS}>
         {lista.map((v) => {
           const van = state.vans.find((x) => x.id === v.vanId)
           const chofer = van && choferDeVan(van)
@@ -148,7 +151,7 @@ export default function VistaViajes() {
           )
         })}
         {lista.length === 0 && <li className="adm-empty">No hay viajes con ese filtro.</li>}
-      </ul>
+      </AnimatedContent>
       {cancelando && (
         <ConfirmDialog
           title="Cancelar viaje"
