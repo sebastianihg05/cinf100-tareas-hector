@@ -40,16 +40,17 @@ Corre 23 pruebas de las restricciones de `usuarios` dentro de una transacción
 que se revierte, así que no deja datos. Debe terminar con
 `Todas las pruebas pasaron (23 de 23)`.
 
-Las tablas `viajes` y `reservas` tienen sus propias pruebas (21 cada una), con el
+Las tablas `viajes` y `reservas` tienen sus propias pruebas (21 cada una), y `vans` las suyas (20), con el
 mismo formato:
 
 ```bash
 docker compose exec database psql -U devhub -d cinf100 -f /database/tests/viajes_restricciones.sql
 docker compose exec database psql -U devhub -d cinf100 -f /database/tests/reservas_restricciones.sql
+docker compose exec database psql -U devhub -d cinf100 -f /database/tests/vans_restricciones.sql
 ```
 
-El modelo de cada tabla está en `docs/database/` (`modelo-viajes.md` y
-`modelo-reservas.md`).
+El modelo de cada tabla está en `docs/database/` (`modelo-viajes.md`,
+`modelo-reservas.md` y `modelo-vans.md`).
 
 Consultar los datos a mano:
 

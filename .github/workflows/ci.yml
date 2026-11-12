@@ -92,6 +92,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f database/tests/usuarios_restricciones.sql
           psql -v ON_ERROR_STOP=1 -f database/tests/viajes_restricciones.sql
           psql -v ON_ERROR_STOP=1 -f database/tests/reservas_restricciones.sql
+          psql -v ON_ERROR_STOP=1 -f database/tests/vans_restricciones.sql
 
       - name: Setup Node
         uses: actions/setup-node@v4
