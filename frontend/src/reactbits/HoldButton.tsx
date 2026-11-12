@@ -309,8 +309,9 @@ const HoldButton: React.FC<HoldButtonProps> = ({
           <span className="hold-button__label hold-button__label--fill">{labels}</span>
         </span>
       </span>
-      <span id={hintId} className="hold-button__sr">
-        Press and hold for {Math.round(holdTime / 100) / 10} seconds to confirm
+      {/* Cambio local (RB-06): ayuda en español, y aria-hidden para que no se sume al nombre del botón (sigue leyéndose como descripción) */}
+      <span id={hintId} className="hold-button__sr" aria-hidden="true">
+        Mantén presionado {String(Math.round(holdTime / 100) / 10).replace('.', ',')} segundos para confirmar
       </span>
     </button>
   );

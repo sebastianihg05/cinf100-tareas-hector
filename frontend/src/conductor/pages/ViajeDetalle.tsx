@@ -10,6 +10,7 @@ import { pasajerosDelViaje, trayectosDelDia, viajeAsignado, viajeEnCurso } from 
 import { useState } from 'react'
 import ConfirmDialog from '../../admin/components/ConfirmDialog'
 import FadeContent from '../../reactbits/FadeContent'
+import HoldButton from '../../reactbits/HoldButton'
 import SloshGauge from '../../reactbits/SloshGauge'
 import { UNAB } from '../../reactbits/unab'
 /**
@@ -69,15 +70,12 @@ export default function ViajeDetalle() {
 
         {viaje.estado === 'pendiente' && (
             <div className="adm-form__actions">
-                <button
-                    type="button"
-                    className="adm-btn"
-                    disabled={!!bloqueado}
-                    aria-describedby={bloqueado ? 'cnd-bloqueo' : undefined}
-                    onClick={() => setConfirmandoInicio(true)}
-                >
+                {/* RB-06: mantener presionado inicia el viaje (React Bits HoldButton); un toque o el teclado abren la confirmación */}
+                <HoldButton backgroundColor={UNAB.navy} fillColor={UNAB.rojo} textColor={UNAB.blanco} fillTextColor={UNAB.blanco}
+                    holdTime={900} doneLabel="¡En marcha!" disabled={!!bloqueado}
+                    onHold={() => setEstadoViaje(viaje.id, 'en-curso')} onTap={() => setConfirmandoInicio(true)}>
                     Iniciar viaje
-                </button>
+                </HoldButton>
             </div>
         )}
         {viaje.estado === 'pendiente' && bloqueado && (
@@ -88,13 +86,11 @@ export default function ViajeDetalle() {
         )}
         {viaje.estado === 'en-curso' && (
             <div className="adm-form__actions">
-                <button
-                    type="button"
-                    className="adm-btn"
-                    onClick={() => setConfirmandoFinalizacion(true)}
-                >
+                <HoldButton backgroundColor={UNAB.navy} fillColor={UNAB.rojo} textColor={UNAB.blanco} fillTextColor={UNAB.blanco}
+                    holdTime={900} doneLabel="¡Viaje completado!"
+                    onHold={() => setEstadoViaje(viaje.id, 'completado')} onTap={() => setConfirmandoFinalizacion(true)}>
                     Finalizar viaje
-                </button>
+                </HoldButton>
             </div>  
         )}
 
