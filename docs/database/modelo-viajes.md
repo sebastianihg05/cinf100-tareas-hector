@@ -53,6 +53,7 @@ Qué transición está permitida en cada momento (por ejemplo, que solo se inici
 - El término no puede ser anterior al inicio.
 - No hay dos viajes activos del mismo trayecto el mismo día (`viajes_fecha_trayecto_activo_unique`).
 - El conductor y la cuenta que abrió el viaje deben existir. Si se borran, el viaje se conserva sin ese dato (`ON DELETE SET NULL`).
+- La van asignada debe existir, y una van con viajes no se puede borrar (`viajes_van_id_fkey`).
 - Un viaje con reservas no se puede borrar (lo impide la tabla `reservas`).
 
 ## 6. Relación con las vans (#2596)
@@ -66,10 +67,12 @@ Que la van esté activa al asignarla lo valida el backend (#2602).
 | Archivo | Contenido |
 |---|---|
 | `database/migrations/004_viajes.sql` | Tabla, restricciones, índices y trigger. |
-| `database/tests/viajes_restricciones.sql` | 21 pruebas de las restricciones, dentro de una transacción que se revierte. |
+| `database/tests/viajes_restricciones.sql` | 23 pruebas de las restricciones, dentro de una transacción que se revierte. |
 
 ```bash
 docker compose exec database psql -U devhub -d cinf100 -f /database/tests/viajes_restricciones.sql
 ```
 
-Debe terminar con `Todas las pruebas pasaron (21 de 21)`. El CI las ejecuta en cada push.
+Debe terminar con `Todas las pruebas pasaron (23 de 23)`. El CI las ejecuta en cada push.
+
+Los viajes quedan en el volumen de PostgreSQL, así que se mantienen al reiniciar los servicios. Se comprobó creando un viaje con su van, reiniciando el contenedor (`docker compose restart database`) y consultándolo de nuevo.
