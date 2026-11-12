@@ -142,6 +142,15 @@ SELECT pg_temp.debe_fallar('conductor inexistente',
 SELECT pg_temp.debe_fallar('creador inexistente',
     format('UPDATE viajes SET creado_por = -1 WHERE id = %s', :ida),
     'viajes_creado_por_fkey');
+SELECT pg_temp.debe_fallar('van inexistente',
+    format('UPDATE viajes SET van_id = -1 WHERE id = %s', :ida),
+    'viajes_van_id_fkey');
+SELECT pg_temp.debe_fallar('una van con viajes no se puede borrar',
+    format($sql$
+        UPDATE viajes SET van_id = (SELECT max(id) FROM vans) WHERE id = %s;
+        DELETE FROM vans WHERE id = (SELECT max(id) FROM vans)
+    $sql$, :ida),
+    'viajes_van_id_fkey');
 SELECT pg_temp.debe_funcionar('al borrar al conductor el viaje se conserva sin conductor', format($sql$
 DO $$
 BEGIN
