@@ -3,7 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import Logo from './Logo'
 import TextType from '../../reactbits/TextType'
 import Waves from '../../reactbits/Waves'
-import { UNAB } from '../../reactbits/unab'
+import { ONDAS_ENCABEZADO } from '../../reactbits/unab'
 import NotificacionesPanel from './NotificacionesPanel'
 import { api } from '../../api'
 import { cerrarSesion, leerSesion } from '../../login/sesion'
@@ -52,7 +52,7 @@ export default function AdminLayout() {
       <header className="adm-header">
         {/* RB-04: fondo de ondas en movimiento (React Bits Waves), detrás del contenido del encabezado */}
         <div className="adm-header__fondo" aria-hidden="true">
-          <Waves lineColor="rgba(255,255,255,.22)" accentColor={UNAB.rojo} backgroundColor={UNAB.navy} />
+          <Waves {...ONDAS_ENCABEZADO} />
         </div>
         <div className="adm-header__left">
           {enAbrirViaje

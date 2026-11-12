@@ -12,7 +12,7 @@ import SloshGauge from './SloshGauge'
 import StarBorder from './StarBorder'
 import TextType from './TextType'
 import Waves from './Waves'
-import { UNAB } from './unab'
+import { ONDAS_ENCABEZADO, UNAB } from './unab'
 
 const datos = [
   { etiqueta: 'Usuarios activos', valor: 128, tono: 'navy' },
@@ -32,7 +32,7 @@ export default function DemoReactBits() {
   return (
     <div className="adm-shell">
       <header className="adm-header" style={{ position: 'relative', overflow: 'hidden', minHeight: 84 }}>
-        <Waves lineColor="rgba(255,255,255,.28)" backgroundColor={UNAB.navy} accentColor={UNAB.rojo} style={{ position: 'absolute', inset: 0 }} />
+        <Waves {...ONDAS_ENCABEZADO} style={{ position: 'absolute', inset: 0 }} />
         <h1 className="adm-title" style={{ position: 'relative' }}>
           <TextType text="Hola, Administrador" typingSpeed={55} loop={false} showCursor={false} />
         </h1>
