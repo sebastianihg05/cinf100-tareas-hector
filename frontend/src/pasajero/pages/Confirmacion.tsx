@@ -2,6 +2,8 @@ import { Link, Navigate, useLocation } from 'react-router-dom'
 import { useAdmin } from '../../admin/store/AdminContext'
 import { usePasajeroActual } from '../../login/usePasajeroActual'
 import { DESTINO, destinoLabel } from '../viajes'
+import ShinyText from '../../reactbits/ShinyText'
+import { UNAB } from '../../reactbits/unab'
 
 export default function Confirmacion() {
   const { reservasDe } = useAdmin()
@@ -24,7 +26,8 @@ export default function Confirmacion() {
             <circle cx="12" cy="12" r="9" /><path d="m8 12.5 2.7 2.7L16 9.8" />
           </svg>
         </div>
-        <h2 className="psj-exito__title">¡Reserva Confirmada!</h2>
+        {/* RB-05: brillo que cruza el título (React Bits ShinyText) */}
+        <h2 className="psj-exito__title"><ShinyText text="¡Reserva Confirmada!" color={UNAB.navy} shineColor={UNAB.navyClaro} speed={2.5} /></h2>
         <p className="psj-exito__sub">Tu viaje ha sido agendado con éxito</p>
       </section>
 

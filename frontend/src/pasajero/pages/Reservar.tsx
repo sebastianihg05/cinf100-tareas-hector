@@ -8,6 +8,8 @@ import {
   CARGO_PASAJERO, DESTINO, MODALIDADES, SEDES_ORIGEN,
   fechasDisponibles, trayectosDe, useViajesSede, ventanaReserva, type Modalidad,
 } from '../viajes'
+import StarBorder from '../../reactbits/StarBorder'
+import { UNAB } from '../../reactbits/unab'
 
 export default function Reservar() {
   const { borrador, setBorrador } = useBorrador()
@@ -104,7 +106,9 @@ export default function Reservar() {
           </div>
 
           <div className="psj-footer psj-footer--sobre-nav">
-            <button type="submit" className="psj-btn psj-btn--primary" disabled={!fechas.includes(fecha)}>Seleccionar asientos</button>
+            {/* RB-05: luz que recorre el borde del botón principal (React Bits StarBorder) */}
+            <StarBorder type="submit" disabled={!fechas.includes(fecha)} color={UNAB.rojo} trailColor={UNAB.blanco}
+              backgroundColor={UNAB.navy} textColor={UNAB.blanco} radius={10} style={{ width: '100%' }}>Seleccionar asientos</StarBorder>
           </div>
         </form>
       )}

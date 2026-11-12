@@ -6,6 +6,8 @@ import type { Trayecto } from '../admin/types'
 import { usePasajeroActual } from '../login/usePasajeroActual'
 import { borradorInicial, useBorrador } from './borrador'
 import MapaAsientos from './MapaAsientos'
+import ClickSpark from '../reactbits/ClickSpark'
+import { UNAB } from '../reactbits/unab'
 import { fechaTexto, trayectosDe, useViajesSede } from './viajes'
 
 export default function SeleccionAsiento({ trayecto }: { trayecto: Trayecto }) {
@@ -116,10 +118,13 @@ export default function SeleccionAsiento({ trayecto }: { trayecto: Trayecto }) {
       </p>
 
       <div className="psj-footer">
-        <button type="button" className="psj-btn psj-btn--primary" onClick={confirmar}
-          disabled={elegido === undefined || enviando || faltaIda}>
-          {enviando ? 'Reservando…' : `Confirmar Asiento ${trayecto}`}
-        </button>
+        {/* RB-05: chispas al confirmar el asiento (React Bits ClickSpark) */}
+        <ClickSpark sparkColor={[UNAB.rojo, UNAB.navy]} sparkCount={12} sparkRadius={34} shape="star" style={{ height: 'auto' }}>
+          <button type="button" className="psj-btn psj-btn--primary" onClick={confirmar}
+            disabled={elegido === undefined || enviando || faltaIda}>
+            {enviando ? 'Reservando…' : `Confirmar Asiento ${trayecto}`}
+          </button>
+        </ClickSpark>
       </div>
     </div>
   )

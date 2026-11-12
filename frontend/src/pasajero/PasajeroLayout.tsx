@@ -5,6 +5,8 @@ import Logo from '../admin/components/Logo'
 import PanelAvisos from '../admin/components/PanelAvisos'
 import { BorradorProvider, useBorrador } from './borrador'
 import { useAvisosPasajero } from './useAvisosPasajero'
+import Waves from '../reactbits/Waves'
+import { UNAB } from '../reactbits/unab'
 
 const TITULOS: Record<string, string> = {
   '/pasajero/reservar': 'Reservar Asiento',
@@ -38,6 +40,10 @@ function Marco() {
   return (
     <div className="psj-shell">
       <header className="psj-header">
+        {/* RB-05: mismo fondo de ondas que el panel administrativo */}
+        <div className="adm-header__fondo" aria-hidden="true">
+          <Waves lineColor="rgba(255,255,255,.22)" accentColor={UNAB.rojo} backgroundColor={UNAB.navy} />
+        </div>
         <div className="psj-header__left">
           {enAsiento
             ? <button type="button" className="psj-back" onClick={volver} aria-label="Volver"><IconBack /></button>
@@ -63,7 +69,10 @@ function Marco() {
         )}
       </header>
 
-      <main className="psj-main"><Outlet /></main>
+      <main className="psj-main">
+        {/* RB-05: cada vista aparece con un fundido (CSS .psj-vista); solo opacidad, porque un transform rompería el pie fijo */}
+        <div key={pathname} className="psj-vista"><Outlet /></div>
+      </main>
 
       {/* En el celular solo aparece en las pantallas principales; en escritorio es la barra lateral y siempre se ve. */}
       <nav className={`psj-nav${conNavegacion ? '' : ' psj-nav--solo-movil'}`} aria-label="Navegación pasajero">

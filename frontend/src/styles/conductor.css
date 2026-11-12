@@ -38,3 +38,6 @@ a.cnd-trayecto:focus-visible { outline: 3px solid rgba(0, 51, 102, .4); outline-
 .cnd-trayecto.is-actual { border-color: var(--navy); background: #eef2f8; }
 .cnd-trayecto.is-actual small { margin-left: auto; font-size: 11px; font-weight: 700; color: var(--navy); }
 .cnd-trayecto__info { flex: 1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; font-size: 13px; color: var(--muted); }
+
+/* RB-05: ocupación de la van en el detalle del viaje */
+.cnd-ocupacion { display: flex; align-items: center; gap: 12px; margin-top: 12px; color: var(--muted); font-size: 12px; font-weight: 700; }
