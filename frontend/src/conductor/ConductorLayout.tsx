@@ -1,12 +1,14 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
-import { IconBack, IconCalendar, IconRoute, IconUser } from '../admin/components/icons'
+import { IconBack, IconBell, IconCalendar, IconRoute, IconUser } from '../admin/components/icons'
 import Logo from '../admin/components/Logo'
 import Waves from '../reactbits/Waves'
 import { ONDAS_ENCABEZADO } from '../reactbits/unab'
+import { useAvisosConductor } from './useAvisosConductor'
 
 const TITULOS: Record<string, string> = {
   '/conductor/viajes': 'Panel del conductor',
   '/conductor/historial': 'Historial de viajes',
+  '/conductor/avisos': 'Notificaciones',
   '/conductor/perfil': 'Mi perfil',
 }
 
@@ -21,15 +23,22 @@ export default function ConductorLayout() {
   // Al abrir un viaje desde el historial, "volver" y la pestaña marcada son los del historial.
   const origen = enDetalle ? (state as { desde?: string } | null)?.desde : undefined
   const desdeHistorial = origen === 'historial'
+  const desdeAvisos = origen === 'avisos'
   const volverA = desdeHistorial
     ? '/conductor/historial'
-    : origen === 'listado-historial'
+    : desdeAvisos
+      ? '/conductor/avisos'
+      : origen === 'listado-historial'
       ? '/conductor/viajes?tab=historial'
       : '/conductor/viajes'
   const titulo = enDetalle ? 'Detalle del viaje' : TITULOS[ruta] ?? 'Panel del conductor'
 
   const clase = (activa: boolean) => `psj-nav__tab${activa ? ' is-active' : ''}`
-  const enViajes = ruta === '/conductor/viajes' || (enDetalle && !desdeHistorial)
+  const enViajes = ruta === '/conductor/viajes' || (enDetalle && !desdeHistorial && !desdeAvisos)
+  const enAvisos = ruta === '/conductor/avisos' || desdeAvisos
+  // Se calculan aquí para que el contador del menú y la vista compartan lo leído.
+  const avisos = useAvisosConductor()
+  const { sinLeer } = avisos
   const enPerfil = ruta === '/conductor/perfil'
   const enHistorial = ruta === '/conductor/historial' || desdeHistorial
 
@@ -42,7 +51,7 @@ export default function ConductorLayout() {
         </div>
         <div className="psj-header__left">
           {enDetalle
-            ? <Link to={volverA} className="psj-back" aria-label={desdeHistorial ? 'Volver al historial' : 'Volver a mis viajes'}><IconBack /></Link>
+            ? <Link to={volverA} className="psj-back" aria-label={desdeHistorial ? 'Volver al historial' : desdeAvisos ? 'Volver a las notificaciones' : 'Volver a mis viajes'}><IconBack /></Link>
             : <Logo variante="simbolo" alto={36} className="psj-logo" />}
           <h1 className="psj-title">{titulo}</h1>
         </div>
@@ -50,7 +59,7 @@ export default function ConductorLayout() {
 
       <main className="psj-main">
         {/* RB-05: cada vista aparece con un fundido (CSS .psj-vista); solo opacidad, porque un transform rompería el pie fijo */}
-        <div key={pathname} className="psj-vista"><Outlet /></div>
+        <div key={pathname} className="psj-vista"><Outlet context={avisos} /></div>
       </main>
 
       <nav className="psj-nav" aria-label="Navegación conductor">
@@ -60,6 +69,14 @@ export default function ConductorLayout() {
         </Link>
         <Link to="/conductor/historial" className={clase(enHistorial)} aria-current={enHistorial ? 'page' : undefined}>
           <IconCalendar size={22} /><span>Historial</span>
+        </Link>
+        <Link to="/conductor/avisos" className={clase(enAvisos)} aria-current={enAvisos ? 'page' : undefined}
+          aria-label={sinLeer > 0 ? `Avisos: ${sinLeer} sin leer` : 'Avisos'}>
+          <span className="cnd-nav__icono">
+            <IconBell size={22} />
+            {sinLeer > 0 && <span className="adm-bell__count cnd-nav__count" aria-hidden="true">{sinLeer > 9 ? '9+' : sinLeer}</span>}
+          </span>
+          <span>Avisos</span>
         </Link>
         <Link to="/conductor/perfil" className={clase(enPerfil)} aria-current={enPerfil ? 'page' : undefined}>
           <IconUser size={22} /><span>Perfil</span>

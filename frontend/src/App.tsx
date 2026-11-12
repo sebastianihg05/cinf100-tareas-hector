@@ -21,6 +21,7 @@ import PerfilPasajero from './pasajero/pages/PerfilPasajero'
 
 import ConductorLayout from './conductor/ConductorLayout'
 import HistorialViajes from './conductor/pages/HistorialViajes'
+import NotificacionesConductor from './conductor/pages/NotificacionesConductor'
 import PerfilConductor from './conductor/pages/PerfilConductor'
 import ViajeDetalle from './conductor/pages/ViajeDetalle'
 import ViajesAsignados from './conductor/pages/ViajesAsignados'
@@ -77,6 +78,7 @@ export default function App() {
             <Route path="viajes" element={<ViajesAsignados />} />
             <Route path="viajes/:viajeId" element={<ViajeDetalle />} />
             <Route path="historial" element={<HistorialViajes />} />
+            <Route path="avisos" element={<NotificacionesConductor />} />
             <Route path="perfil" element={<PerfilConductor />} />
           </Route>
         </Route>
