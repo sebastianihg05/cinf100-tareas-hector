@@ -2,7 +2,7 @@ import { Link, Outlet, useLocation } from 'react-router-dom'
 import { IconBack, IconBell, IconCalendar, IconRoute, IconUser } from '../admin/components/icons'
 import Logo from '../admin/components/Logo'
 import Waves from '../reactbits/Waves'
-import { UNAB } from '../reactbits/unab'
+import { ONDAS_ENCABEZADO } from '../reactbits/unab'
 import { useAvisosConductor } from './useAvisosConductor'
 
 const TITULOS: Record<string, string> = {
@@ -47,7 +47,7 @@ export default function ConductorLayout() {
       <header className="psj-header">
         {/* RB-05: mismo fondo de ondas que el panel administrativo */}
         <div className="adm-header__fondo" aria-hidden="true">
-          <Waves lineColor="rgba(255,255,255,.22)" accentColor={UNAB.rojo} backgroundColor={UNAB.navy} />
+          <Waves {...ONDAS_ENCABEZADO} />
         </div>
         <div className="psj-header__left">
           {enDetalle
