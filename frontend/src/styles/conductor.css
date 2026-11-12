@@ -41,3 +41,23 @@ a.cnd-trayecto:focus-visible { outline: 3px solid rgba(0, 51, 102, .4); outline-
 
 /* RB-05: ocupación de la van en el detalle del viaje */
 .cnd-ocupacion { display: flex; align-items: center; gap: 12px; margin-top: 12px; color: var(--muted); font-size: 12px; font-weight: 700; }
+
+/* Notificaciones: contador en el menú y tarjetas leídas / no leídas */
+.cnd-nav__icono { position: relative; display: inline-flex; }
+.cnd-nav__count { top: -6px; right: -10px; border-color: #fff; }
+.cnd-avisos__barra { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.cnd-avisos__marcar {
+  padding: 6px 0; background: none; border: 0; font: inherit; font-size: 13px; font-weight: 700;
+  color: var(--navy); text-decoration: underline; cursor: pointer;
+}
+.cnd-aviso {
+  width: 100%; display: flex; flex-direction: column; gap: 6px; text-align: left; font: inherit; color: inherit;
+  border: 0; border-left: 4px solid transparent; cursor: pointer; transition: box-shadow .15s;
+}
+.cnd-aviso:hover { box-shadow: 0 2px 8px rgba(16, 24, 40, .16); }
+.cnd-aviso:focus-visible { outline: 3px solid rgba(0, 51, 102, .4); outline-offset: 2px; }
+.cnd-aviso.is-unread { border-left-color: var(--red); background: #fff7f8; }
+.cnd-aviso__titulo { font-size: 15px; font-weight: 800; color: var(--navy); }
+.cnd-aviso__linea { font-size: 13px; overflow-wrap: anywhere; }
+.cnd-badge--nueva { background: #fde3e5; color: #cc0033; }
+.cnd-badge--leida { background: #eef0f3; color: #5a6575; }

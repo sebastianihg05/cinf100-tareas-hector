@@ -230,10 +230,11 @@ describe('historial de viajes finalizados', () => {
     expect(screen.getByRole('link', { name: 'Volver al historial' })).toHaveAttribute('href', '/conductor/historial')
   })
 
-  it('la navegación tiene Mis viajes, Historial y Perfil, y marca la activa', async () => {
+  it('la navegación tiene Mis viajes, Historial, Avisos y Perfil, y marca la activa', async () => {
     abrir()
     const nav = await screen.findByRole('navigation', { name: 'Navegación conductor' })
-    expect(within(nav).getAllByRole('link').map((l) => l.textContent)).toEqual(['Mis viajes', 'Historial', 'Perfil'])
+    // "Avisos" puede llevar delante el contador de no leídas
+    expect(within(nav).getAllByRole('link').map((l) => l.textContent)).toEqual(['Mis viajes', 'Historial', expect.stringMatching(/Avisos$/), 'Perfil'])
     expect(within(nav).getByRole('link', { name: 'Historial' })).toHaveAttribute('aria-current', 'page')
     await userEvent.click(within(nav).getByRole('link', { name: 'Mis viajes' }))
     expect(await screen.findByRole('heading', { name: 'Panel del conductor' })).toBeInTheDocument()
