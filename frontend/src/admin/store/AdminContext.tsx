@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useReducer, useRef, type
 import type { ConductorBd, UsuarioBd } from '../../api'
 import type { Admin, Chofer, EstadoViaje, Pasajero, Reserva, Rol, Van, Viaje } from '../types'
 import { ahoraISO } from '../utils/format'
-import { cargarEstado, guardarEstado, nuevoId, reducer, type Action, type State } from './adminStore'
+import { cargarEstado, guardarEstado, KEY, leerEstadoGuardado, nuevoId, reducer, type Action, type State } from './adminStore'
 import {
   agruparReservas, asientosOcupados, cancelables, capacidadDeViaje, validarCambioAsientos, validarSolicitud,
   type CambioAsiento, type GrupoReserva, type ResultadoReserva, type SolicitudReserva,
@@ -63,6 +63,18 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   estadoActual.current = state
 
   useEffect(() => { guardarEstado(state) }, [state])
+
+  // Vans, viajes y reservas viven en localStorage: si otra pestaña los cambia (ej. el admin abre un viaje),
+  // esta adopta el cambio sin recargar. El navegador avisa solo a las demás pestañas, no a la que guardó.
+  useEffect(() => {
+    const alCambiar = (e: StorageEvent) => {
+      if (e.key !== KEY || e.newValue === null || e.newValue === JSON.stringify(estadoActual.current)) return
+      const otro = leerEstadoGuardado()
+      if (otro) dispatch({ type: 'estado/otraPestana', state: otro })
+    }
+    window.addEventListener('storage', alCambiar)
+    return () => window.removeEventListener('storage', alCambiar)
+  }, [])
 
   const api = useMemo<AdminApi>(
     () => ({

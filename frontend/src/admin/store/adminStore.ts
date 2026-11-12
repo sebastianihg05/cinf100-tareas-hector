@@ -35,6 +35,8 @@ export type Action =
   | { type: 'notif/leer'; id: string }
   | { type: 'notif/leerTodas' }
   | { type: 'admin/update'; patch: Partial<Admin> }
+  /** Otra pestaña del mismo navegador guardó cambios: se adopta su estado. */
+  | { type: 'estado/otraPestana'; state: State }
 
 export const estadoInicial = (): State =>
   sincronizar({
@@ -213,6 +215,8 @@ export function reducer(s: State, a: Action): State {
       return { ...s, viajes: s.viajes.map((v) => (v.id === a.id ? { ...v, vanId: a.vanId } : v)) }
     case 'admin/update':
       return { ...s, admin: { ...s.admin, ...a.patch } }
+    case 'estado/otraPestana':
+      return a.state
   }
 }
 
@@ -225,7 +229,11 @@ export const idLocalDe = (pasajeros: Pasajero[], u: UsuarioBd) => pasajeroDeCuen
 
 /* ---------- Persistencia local (vans, viajes y reservas siguen siendo de ejemplo) ---------- */
 
-const KEY = 'unab-admin-v3'
+/** Clave del estado en localStorage; AdminProvider la escucha para sincronizar pestañas. */
+export const KEY = 'unab-admin-v3'
+
+/** Estado guardado (por esta u otra pestaña), o null si no hay uno válido. */
+export const leerEstadoGuardado = (): State | null => leerGuardado()
 
 export function cargarEstado(): State {
   return limpiezaUnica(leerGuardado() ?? estadoInicial())
