@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 
 import AdminLayout from './admin/components/AdminLayout'
@@ -29,6 +30,9 @@ import Register from "./login/pages/Register";
 import RegisterSuccess from "./login/pages/RegisterSuccess";
 import ForgotPassword from "./login/pages/ForgotPassword";
 import RequiereRol from './login/RequiereRol'
+
+// RB-03: muestra de animaciones. Carga diferida y solo en desarrollo, para que no pese en producción.
+const DemoReactBits = import.meta.env.DEV ? lazy(() => import('./reactbits/DemoReactBits')) : null
 
 export default function App() {
   return (
@@ -76,6 +80,8 @@ export default function App() {
             <Route path="perfil" element={<PerfilConductor />} />
           </Route>
         </Route>
+
+        {DemoReactBits && <Route path="/demo-animaciones" element={<Suspense fallback={null}><DemoReactBits /></Suspense>} />}
 
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
