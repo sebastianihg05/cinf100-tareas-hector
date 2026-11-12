@@ -9,6 +9,10 @@ import { motivoSinViajes, useConductorActual } from '../useConductorActual'
 import { pasajerosDelViaje, trayectosDelDia, viajeAsignado, viajeEnCurso } from '../viajes'
 import { useState } from 'react'
 import ConfirmDialog from '../../admin/components/ConfirmDialog'
+import FadeContent from '../../reactbits/FadeContent'
+import HoldButton from '../../reactbits/HoldButton'
+import SloshGauge from '../../reactbits/SloshGauge'
+import { UNAB } from '../../reactbits/unab'
 /**
  * Detalle de un viaje asignado al conductor: resumen, trayectos del día y pasajeros con su asiento.
  * Ruta: /conductor/viajes/:viajeId (solo abre viajes de la van del conductor).
@@ -43,6 +47,8 @@ export default function ViajeDetalle() {
 
   return (
     <div className="psj-page">
+      {/* RB-05: al iniciar o finalizar, el resumen vuelve a aparecer con desenfoque para marcar el cambio de estado */}
+      <FadeContent key={viaje.estado} trigger="mount" blur duration={0.5}>
       <section className="psj-card" aria-label="Resumen del viaje">
         <div className="psj-reserva__head">
           <h2 className="psj-card__title cnd-titulo">{viaje.trayecto}: {viaje.origen} → {viaje.destino}</h2>
@@ -54,18 +60,22 @@ export default function ViajeDetalle() {
           <div><dt>Van:</dt><dd>{van.patente}</dd></div>
           <div><dt>Asientos reservados:</dt><dd>{viaje.reservados}/{van.asientos}</dd></div>
         </dl>
+        {/* RB-05: ocupación de la van como líquido (React Bits SloshGauge) */}
+        <div className="cnd-ocupacion">
+          <SloshGauge value={van.asientos ? Math.round((viaje.reservados / van.asientos) * 100) : 0} interactive={false}
+            liquidColor={UNAB.navy} glassColor="#e6ebf1" width={56} height={84} radius={14} unit="%"
+            ariaLabel={`Ocupación de la van: ${viaje.reservados} de ${van.asientos} asientos`} />
+          <span>Ocupación de la van</span>
+        </div>
 
         {viaje.estado === 'pendiente' && (
             <div className="adm-form__actions">
-                <button
-                    type="button"
-                    className="adm-btn"
-                    disabled={!!bloqueado}
-                    aria-describedby={bloqueado ? 'cnd-bloqueo' : undefined}
-                    onClick={() => setConfirmandoInicio(true)}
-                >
+                {/* RB-06: mantener presionado inicia el viaje (React Bits HoldButton); un toque o el teclado abren la confirmación */}
+                <HoldButton backgroundColor={UNAB.navy} fillColor={UNAB.rojo} textColor={UNAB.blanco} fillTextColor={UNAB.blanco}
+                    holdTime={900} doneLabel="¡En marcha!" disabled={!!bloqueado}
+                    onHold={() => setEstadoViaje(viaje.id, 'en-curso')} onTap={() => setConfirmandoInicio(true)}>
                     Iniciar viaje
-                </button>
+                </HoldButton>
             </div>
         )}
         {viaje.estado === 'pendiente' && bloqueado && (
@@ -76,17 +86,16 @@ export default function ViajeDetalle() {
         )}
         {viaje.estado === 'en-curso' && (
             <div className="adm-form__actions">
-                <button
-                    type="button"
-                    className="adm-btn"
-                    onClick={() => setConfirmandoFinalizacion(true)}
-                >
+                <HoldButton backgroundColor={UNAB.navy} fillColor={UNAB.rojo} textColor={UNAB.blanco} fillTextColor={UNAB.blanco}
+                    holdTime={900} doneLabel="¡Viaje completado!"
+                    onHold={() => setEstadoViaje(viaje.id, 'completado')} onTap={() => setConfirmandoFinalizacion(true)}>
                     Finalizar viaje
-                </button>
+                </HoldButton>
             </div>  
         )}
 
       </section>
+      </FadeContent>
 
       <section className="psj-card" aria-label="Trayectos del día">
         <h2 className="psj-card__title">Trayectos del {fechaCorta(viaje.fecha)}</h2>

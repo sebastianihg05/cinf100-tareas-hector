@@ -5,6 +5,8 @@ import { iniciales, todayISO } from '../../admin/utils/format'
 import { fechaTexto } from '../../pasajero/viajes'
 import { ESTADO_VIAJE } from '../etiquetas'
 import { motivoSinViajes, useConductorActual } from '../useConductorActual'
+import AnimatedContent from '../../reactbits/AnimatedContent'
+import { ENTRADA_TARJETAS } from '../../reactbits/unab'
 
 function TarjetaViaje({ viaje, capacidad, desdeHistorial }: { viaje: Viaje; capacidad: number; desdeHistorial: boolean }) {
   const estado = ESTADO_VIAJE[viaje.estado]
@@ -77,9 +79,9 @@ export default function ViajesAsignados() {
             <p>{pestana === 'proximos' ? 'No tienes viajes asignados próximamente.' : 'Aún no tienes viajes en tu historial.'}</p>
           </div>
         ) : (
-          <ul className="psj-lista">
+          <AnimatedContent as="ul" className="psj-lista" key={pestana} {...ENTRADA_TARJETAS}>
             {lista.map((v) => <TarjetaViaje key={v.id} viaje={v} capacidad={van!.asientos} desdeHistorial={pestana === 'historial'} />)}
-          </ul>
+          </AnimatedContent>
         )}
       </div>
     </div>

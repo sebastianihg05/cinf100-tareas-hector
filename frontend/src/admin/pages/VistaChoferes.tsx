@@ -10,6 +10,8 @@ import Pills from '../components/Pills'
 import { useAdmin } from '../store/AdminContext'
 import type { Chofer } from '../types'
 import { fechaLarga, iniciales, todayISO } from '../utils/format'
+import AnimatedContent from '../../reactbits/AnimatedContent'
+import { ENTRADA_TARJETAS } from '../../reactbits/unab'
 
 type Filtro = 'activos' | 'baja'
 type Dialogo = { kind: 'form'; chofer?: Chofer } | { kind: 'baja'; chofer: Chofer } | null
@@ -70,7 +72,8 @@ export default function VistaChoferes() {
       <AddButton label="Agregar Conductor" onClick={() => setDialogo({ kind: 'form' })} />
       {aviso && <p className="adm-field__error" role="alert">{aviso}</p>}
 
-      <ul className="adm-list">
+      {/* RB-04: las tarjetas entran una tras otra; se repite al cambiar de filtro */}
+      <AnimatedContent as="ul" className="adm-list" key={filtro} {...ENTRADA_TARJETAS}>
         {lista.map((c) => {
           const van = vanDeChofer(c)
           const sinDatos = !c.rut || !c.licenciaHasta
@@ -105,7 +108,7 @@ export default function VistaChoferes() {
           )
         })}
         {lista.length === 0 && <li className="adm-empty">No hay conductores en esta lista.</li>}
-      </ul>
+      </AnimatedContent>
 
       {dialogo?.kind === 'form' && (
         <Modal title={dialogo.chofer ? `Editar a ${dialogo.chofer.nombre}` : 'Agregar conductor'} onClose={cerrar}>

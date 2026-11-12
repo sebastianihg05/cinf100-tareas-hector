@@ -8,6 +8,8 @@ import Pills from '../components/Pills'
 import VanForm from '../components/VanForm'
 import { useAdmin } from '../store/AdminContext'
 import type { Van } from '../types'
+import AnimatedContent from '../../reactbits/AnimatedContent'
+import { ENTRADA_TARJETAS } from '../../reactbits/unab'
 
 type Filtro = 'activas' | 'baja'
 type Dialogo = { kind: 'form'; van?: Van } | { kind: 'baja'; van: Van } | null
@@ -30,7 +32,8 @@ export default function VistaVans() {
       ]} />
       <AddButton label="Agregar van" onClick={() => setDialogo({ kind: 'form' })} />
 
-      <ul className="adm-list">
+      {/* RB-04: las tarjetas entran una tras otra; se repite al cambiar de filtro */}
+      <AnimatedContent as="ul" className="adm-list" key={filtro} {...ENTRADA_TARJETAS}>
         {lista.map((v) => {
           const chofer = choferDeVan(v)
           return (
@@ -51,7 +54,7 @@ export default function VistaVans() {
           )
         })}
         {lista.length === 0 && <li className="adm-empty">No hay vans en esta lista.</li>}
-      </ul>
+      </AnimatedContent>
 
       {dialogo?.kind === 'form' && (
         <Modal title={dialogo.van ? `Editar van ${dialogo.van.patente}` : 'Agregar van'} onClose={cerrar}>

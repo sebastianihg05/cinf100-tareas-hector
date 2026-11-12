@@ -6,6 +6,8 @@ import { fechaTexto } from '../../pasajero/viajes'
 import { ESTADO_VIAJE } from '../etiquetas'
 import { motivoSinViajes, useConductorActual } from '../useConductorActual'
 import { pasajerosDelViaje } from '../viajes'
+import AnimatedContent from '../../reactbits/AnimatedContent'
+import { ENTRADA_TARJETAS } from '../../reactbits/unab'
 
 function TarjetaFinalizado({ viaje, patente, pasajeros }: { viaje: Viaje; patente: string; pasajeros: number }) {
   const estado = ESTADO_VIAJE[viaje.estado]
@@ -44,11 +46,11 @@ export default function HistorialViajes() {
           <p className="cnd-resumen">
             {finalizados.length === 1 ? '1 viaje finalizado' : `${finalizados.length} viajes finalizados`}
           </p>
-          <ul className="psj-lista">
+          <AnimatedContent as="ul" className="psj-lista" {...ENTRADA_TARJETAS}>
             {finalizados.map((v) => (
               <TarjetaFinalizado key={v.id} viaje={v} patente={van!.patente} pasajeros={pasajerosDelViaje(state, v.id).length} />
             ))}
-          </ul>
+          </AnimatedContent>
         </>
       )}
     </div>

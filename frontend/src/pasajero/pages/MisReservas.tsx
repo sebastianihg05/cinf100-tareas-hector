@@ -8,6 +8,8 @@ import type { EstadoReserva } from '../../admin/types'
 import { usePasajeroActual } from '../../login/usePasajeroActual'
 import EditarReserva from '../EditarReserva'
 import { fechaTexto } from '../viajes'
+import AnimatedContent from '../../reactbits/AnimatedContent'
+import { ENTRADA_TARJETAS } from '../../reactbits/unab'
 
 const ESTADO: Record<EstadoReserva, { texto: string; clase: string }> = {
   pendiente: { texto: 'Pendiente', clase: 'psj-badge--pendiente' },
@@ -85,13 +87,13 @@ export default function MisReservas() {
             {pestana === 'proximas' && <Link to="/pasajero/reservar" className="psj-link">Reservar un asiento</Link>}
           </div>
         ) : (
-          <ul className="psj-lista">
+          <AnimatedContent as="ul" className="psj-lista" {...ENTRADA_TARJETAS}>
             {lista.map((g) => (
               <TarjetaReserva key={g.grupoId} grupo={g}
                 onEditar={() => { setAviso(''); setEditando(g) }}
                 onCancelar={cancelables(state, pasajeroId, g.grupoId).length > 0 ? () => { setAviso(''); setCancelando(g) } : undefined} />
             ))}
-          </ul>
+          </AnimatedContent>
         )}
       </div>
 

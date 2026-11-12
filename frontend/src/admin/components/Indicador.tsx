@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import Counter from '../../reactbits/Counter'
 import './Indicador.css'
 
 type Props = {
@@ -18,7 +19,10 @@ export default function Indicador({ to, etiqueta, valor, variante = 'tarjeta', t
   return (
     <Link to={to} className={`indicador indicador--${variante} indicador--${tono}`}>
       <span className="indicador__etiqueta">{etiqueta}</span>
-      <strong className="indicador__valor">{valor}</strong>
+      {/* RB-04: los números ruedan hasta su valor (React Bits Counter); el tamaño lo da el CSS del indicador */}
+      <strong className="indicador__valor">
+        {typeof valor === 'number' ? <Counter value={valor} fontSize="1em" fontWeight="inherit" textColor="currentColor" /> : valor}
+      </strong>
       {icono && <span className="indicador__icono" aria-hidden="true">{icono}</span>}
     </Link>
   )

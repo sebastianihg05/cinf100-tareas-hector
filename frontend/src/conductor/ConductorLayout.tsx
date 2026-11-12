@@ -1,6 +1,8 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { IconBack, IconCalendar, IconRoute, IconUser } from '../admin/components/icons'
 import Logo from '../admin/components/Logo'
+import Waves from '../reactbits/Waves'
+import { UNAB } from '../reactbits/unab'
 
 const TITULOS: Record<string, string> = {
   '/conductor/viajes': 'Panel del conductor',
@@ -34,6 +36,10 @@ export default function ConductorLayout() {
   return (
     <div className="psj-shell">
       <header className="psj-header">
+        {/* RB-05: mismo fondo de ondas que el panel administrativo */}
+        <div className="adm-header__fondo" aria-hidden="true">
+          <Waves lineColor="rgba(255,255,255,.22)" accentColor={UNAB.rojo} backgroundColor={UNAB.navy} />
+        </div>
         <div className="psj-header__left">
           {enDetalle
             ? <Link to={volverA} className="psj-back" aria-label={desdeHistorial ? 'Volver al historial' : 'Volver a mis viajes'}><IconBack /></Link>
@@ -42,7 +48,10 @@ export default function ConductorLayout() {
         </div>
       </header>
 
-      <main className="psj-main"><Outlet /></main>
+      <main className="psj-main">
+        {/* RB-05: cada vista aparece con un fundido (CSS .psj-vista); solo opacidad, porque un transform rompería el pie fijo */}
+        <div key={pathname} className="psj-vista"><Outlet /></div>
+      </main>
 
       <nav className="psj-nav" aria-label="Navegación conductor">
         {/* Link y no NavLink: la pestaña activa también depende de desde dónde se abrió el detalle de un viaje. */}
