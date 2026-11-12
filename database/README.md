@@ -135,4 +135,4 @@ Para no cargar estos usuarios: `CARGAR_SEED=false`.
 - **`password authentication failed`**: el volumen se creó con otras
   credenciales. Usa las originales o ejecuta `docker compose down -v`.
 - **El servicio `migrate` terminó con error**: `docker compose logs migrate`
-  muestra la migración y la línea que falló; nada de esa migración quedó aplicado.
+  muestra la migración y la línea que falló; nada de esa migración quedó aplicado.
