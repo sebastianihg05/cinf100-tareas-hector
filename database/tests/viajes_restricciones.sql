@@ -57,6 +57,8 @@ INSERT INTO usuarios (nombre_completo, correo, hash_contrasena, telefono, sede)
 VALUES ('Carla Conductora', 'carla.viaje.test@unab.cl', '$2a$10$x', '+56933333333', 'Quintay')
 RETURNING id AS carla \gset
 INSERT INTO conductores (usuario_id) VALUES (:carla);
+-- Desde 006_vans.sql, van_id es llave foránea: los casos usan esta van (la última creada, max(id)).
+INSERT INTO vans (patente) VALUES ('ZZ-9901');
 
 \set dia 'CURRENT_DATE + 400'
 INSERT INTO viajes (fecha, hora, trayecto, origen, destino)
@@ -74,7 +76,7 @@ SELECT pg_temp.debe_funcionar('ida y vuelta el mismo día',
     :'ins' || format('(%s, %s, NULL, NULL, ''pendiente'', NULL, NULL, NULL)', :'dia', :'vuelta_ok'));
 SELECT pg_temp.debe_funcionar('ciclo completo: pendiente, en curso y completado',
     format($sql$
-        UPDATE viajes SET van_id = 1, conductor_id = %s WHERE id = %s;
+        UPDATE viajes SET van_id = (SELECT max(id) FROM vans), conductor_id = %s WHERE id = %s;
         UPDATE viajes SET estado = 'en-curso', iniciado_en = now() WHERE id = %s;
         UPDATE viajes SET estado = 'completado', finalizado_en = now() WHERE id = %s
     $sql$, :carla, :ida, :ida, :ida));
@@ -103,10 +105,10 @@ SELECT pg_temp.debe_fallar('iniciar sin van ni conductor',
     format('UPDATE viajes SET estado = ''en-curso'', iniciado_en = now() WHERE id = %s', :ida),
     'viajes_recursos_check');
 SELECT pg_temp.debe_fallar('en curso sin fecha de inicio',
-    format('UPDATE viajes SET van_id = 1, conductor_id = %s, estado = ''en-curso'' WHERE id = %s', :carla, :ida),
+    format('UPDATE viajes SET van_id = (SELECT max(id) FROM vans), conductor_id = %s, estado = ''en-curso'' WHERE id = %s', :carla, :ida),
     'viajes_fechas_estado_check');
 SELECT pg_temp.debe_fallar('completado sin fecha de término',
-    format('UPDATE viajes SET van_id = 1, conductor_id = %s, estado = ''completado'', iniciado_en = now() WHERE id = %s', :carla, :ida),
+    format('UPDATE viajes SET van_id = (SELECT max(id) FROM vans), conductor_id = %s, estado = ''completado'', iniciado_en = now() WHERE id = %s', :carla, :ida),
     'viajes_fechas_estado_check');
 SELECT pg_temp.debe_fallar('cancelado sin fecha de cancelación',
     format('UPDATE viajes SET estado = ''cancelado'' WHERE id = %s', :ida),
@@ -116,7 +118,7 @@ SELECT pg_temp.debe_fallar('pendiente con fecha de cancelación',
     'viajes_fechas_estado_check');
 SELECT pg_temp.debe_fallar('término antes del inicio',
     format($sql$
-        UPDATE viajes SET van_id = 1, conductor_id = %s, estado = 'completado',
+        UPDATE viajes SET van_id = (SELECT max(id) FROM vans), conductor_id = %s, estado = 'completado',
                iniciado_en = now(), finalizado_en = now() - INTERVAL '1 hour'
          WHERE id = %s
     $sql$, :carla, :ida),
@@ -158,7 +160,7 @@ DECLARE antes TIMESTAMPTZ; despues TIMESTAMPTZ;
 BEGIN
     SELECT actualizado_en INTO antes FROM viajes WHERE id = %s;
     PERFORM pg_sleep(0.01);
-    UPDATE viajes SET van_id = 1 WHERE id = %s;
+    UPDATE viajes SET van_id = (SELECT max(id) FROM vans) WHERE id = %s;
     SELECT actualizado_en INTO despues FROM viajes WHERE id = %s;
     IF despues <= antes THEN
         RAISE EXCEPTION 'actualizado_en no cambió';

@@ -23,7 +23,7 @@ Documentar la tabla `viajes` del proyecto CINF100 Grupo 02 (PostgreSQL 16), dond
 | `trayecto` | `VARCHAR(10)` | Sí | `Ida` o `Vuelta`. |
 | `origen` | `VARCHAR(30)` | Sí | Sede de salida según el trayecto. |
 | `destino` | `VARCHAR(30)` | Sí | Sede de llegada según el trayecto. |
-| `van_id` | `INTEGER` | No | Van asignada. `NULL` mientras la administración no la asigna. |
+| `van_id` | `INTEGER` | No | Van asignada (clave foránea a `vans.id`). `NULL` mientras la administración no la asigna. |
 | `conductor_id` | `INTEGER` | No | Conductor asignado (clave foránea a `conductores.usuario_id`). |
 | `estado` | `VARCHAR(20)` | Sí | `pendiente`, `en-curso`, `completado` o `cancelado`. Inicia en `pendiente`. |
 | `creado_por` | `INTEGER` | No | Cuenta que abrió el viaje (clave foránea a `usuarios.id`). |
@@ -57,14 +57,9 @@ Qué transición está permitida en cada momento (por ejemplo, que solo se inici
 
 ## 6. Relación con las vans (#2596)
 
-La tabla de vans todavía no existe, así que `van_id` queda sin llave foránea. La migración de vans debe agregarla al final:
+La migración de vans (`006_vans.sql`) agregó la llave foránea `viajes_van_id_fkey` (`ON DELETE RESTRICT`): un viaje solo apunta a una van existente y una van con viajes no se borra. Detalles en `modelo-vans.md`.
 
-```sql
-ALTER TABLE viajes ADD CONSTRAINT viajes_van_id_fkey
-    FOREIGN KEY (van_id) REFERENCES vans (id) ON DELETE RESTRICT;
-```
-
-Mientras tanto, el backend valida que la van exista y esté activa al asignarla (#2602).
+Que la van esté activa al asignarla lo valida el backend (#2602).
 
 ## 7. Implementación y pruebas
 

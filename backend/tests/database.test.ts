@@ -8,7 +8,7 @@ test('conecta a PostgreSQL y ejecuta una consulta de prueba', async () => {
   assert.equal(result.rows[0].ok, 1);
 });
 
-test('las migraciones 001 a 005 están aplicadas', async () => {
+test('las migraciones 001 a 006 están aplicadas', async () => {
   const { rows } = await pool.query('SELECT version FROM schema_migrations');
   const versiones = rows.map((row) => row.version);
 
@@ -17,6 +17,7 @@ test('las migraciones 001 a 005 están aplicadas', async () => {
   assert.ok(versiones.includes('003_conductores.sql'));
   assert.ok(versiones.includes('004_viajes.sql'));
   assert.ok(versiones.includes('005_reservas.sql'));
+  assert.ok(versiones.includes('006_vans.sql'));
 });
 
 test('la base rechaza un viaje de ida con otro horario', async () => {
@@ -36,6 +37,13 @@ test('la base rechaza el asiento 10 (la Staria tiene 9 reservables)', async () =
        VALUES (gen_random_uuid(), -1, -1, 10)`
     ),
     { constraint: 'reservas_asiento_check' }
+  );
+});
+
+test('la base rechaza una patente de van sin guion', async () => {
+  await assert.rejects(
+    pool.query(`INSERT INTO vans (patente) VALUES ('FG1251')`),
+    { constraint: 'vans_patente_formato_check' }
   );
 });
 
