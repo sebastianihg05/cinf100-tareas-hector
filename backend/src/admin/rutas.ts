@@ -1,14 +1,17 @@
+
 import { Router, type Response } from 'express';
 import { requiereRol, requiereSesion } from '../auth/middleware';
 import { pool } from '../db';
 import { aPerfil, COLUMNAS_PERFIL, type Rol } from '../usuarios/perfil';
 import { rutasConductores } from './conductores';
+import { rutasVans } from './vans';
 
 // Rutas solo para administradores (BD-14).
 export const rutasAdmin = Router();
 
 rutasAdmin.use(requiereSesion, requiereRol('administrador'));
 rutasAdmin.use('/conductores', rutasConductores);
+rutasAdmin.use('/vans', rutasVans);
 
 // Roles que un administrador puede asignar al aprobar. 'administrador' no se
 // entrega desde la API: así nadie puede crear administradores por error.
