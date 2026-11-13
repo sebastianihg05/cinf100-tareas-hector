@@ -5,6 +5,7 @@ import { config } from './config';
 import { pool } from './db';
 import { rutasAuth } from './usuarios/rutas';
 import { rutasPerfil } from './usuarios/rutas-perfil';
+import { rutasReservas } from './reservas/rutas';
 
 export const app = express();
 
@@ -43,3 +44,4 @@ const manejarErrores: ErrorRequestHandler = (error, _req, res, _next) => {
 };
 
 app.use(manejarErrores);
+app.use('/api/reservas', rutasReservas);

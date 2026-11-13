@@ -88,4 +88,6 @@ export const api = {
   listarConductores: () => pedir<{ conductores: ConductorBd[] }>('/admin/conductores'),
   actualizarConductor: (id: number, cambios: CambiosConductor) =>
     pedir<{ conductor: ConductorBd }>(`/admin/conductores/${id}`, 'PATCH', cambios),
+  crearReservas: (solicitudes: { viajeId: number; asiento: number }[]) =>
+    pedir<{ grupoId: string; reservas: unknown[] }>('/reservas', 'POST', { solicitudes }),
 }
