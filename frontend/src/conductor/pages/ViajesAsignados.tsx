@@ -4,6 +4,7 @@ import type { Viaje } from '../../admin/types'
 import { iniciales, todayISO } from '../../admin/utils/format'
 import { fechaTexto } from '../../pasajero/viajes'
 import { ESTADO_VIAJE } from '../etiquetas'
+import { AvisoViajesBd, useEstadoViajesBd } from '../../admin/store/useViajesBd'
 import { motivoSinViajes, useConductorActual } from '../useConductorActual'
 import AnimatedContent from '../../reactbits/AnimatedContent'
 import { ENTRADA_TARJETAS } from '../../reactbits/unab'
@@ -36,6 +37,7 @@ function TarjetaViaje({ viaje, capacidad, desdeHistorial }: { viaje: Viaje; capa
 /** Listado de los viajes que la administración asignó al conductor (por su van). */
 export default function ViajesAsignados() {
   const { nombre, chofer, van, proximos, historial } = useConductorActual()
+  const { cargando } = useEstadoViajesBd()
   // La pestaña se conserva en la URL para restaurarla al volver del detalle.
   const [parametros, cambiarParametros] = useSearchParams()
   const pestana = parametros.get('tab') === 'historial' ? 'historial' : 'proximos'
@@ -64,6 +66,9 @@ export default function ViajesAsignados() {
         </div>
       </div>
 
+      {/* S3-CON-02: los viajes se leen de PostgreSQL; se avisa mientras cargan o si falla la conexión */}
+      <AvisoViajesBd />
+
       <div className="psj-tabs" role="tablist" aria-label="Mis viajes">
         <button type="button" role="tab" id="cnd-tab-proximos" aria-selected={pestana === 'proximos'} aria-controls="cnd-panel-viajes"
           className={`psj-tab${pestana === 'proximos' ? ' is-active' : ''}`} onClick={() => elegirPestana('proximos')}>Próximos</button>
@@ -75,7 +80,7 @@ export default function ViajesAsignados() {
         {sinAsignacion ? (
           <p className="psj-alert psj-alert--suave" role="status">{sinAsignacion}</p>
         ) : lista.length === 0 ? (
-          <div className="psj-vacio">
+          cargando ? null : <div className="psj-vacio">
             <p>{pestana === 'proximos' ? 'No tienes viajes asignados próximamente.' : 'Aún no tienes viajes en tu historial.'}</p>
           </div>
         ) : (

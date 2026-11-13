@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
@@ -238,8 +238,9 @@ describe('Viajes', () => {
     const lunes = proximoDia(1)
     fireEvent.change(screen.getByLabelText('Fecha del viaje'), { target: { value: lunes } })
     await userEvent.click(screen.getByRole('button', { name: /Abrir viaje/ }))
+    // abrir un viaje es una acción asíncrona (S3-VIA-03): vuelve al listado cuando termina de guardarse
+    expect((await screen.findAllByText(fechaDMY(lunes))).length).toBeGreaterThan(0)
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    expect(screen.getAllByText(fechaDMY(lunes)).length).toBeGreaterThan(0)
   })
 
   it('la fecha de un viaje nuevo debe estar entre 1 y 30 días desde hoy', async () => {
@@ -284,12 +285,12 @@ describe('Viajes', () => {
     await userEvent.click(screen.getByRole('button', { name: /Abrir viaje/ }))
 
     // volvió al listado con 2 viajes nuevos sin van asignada
-    expect(screen.getAllByText('Sin van asignada')).toHaveLength(2)
+    expect(await screen.findAllByText('Sin van asignada')).toHaveLength(2)
     await userEvent.click(screen.getAllByRole('button', { name: 'Asignar van' })[0])
     const dlg = screen.getByRole('dialog')
     await userEvent.selectOptions(within(dlg).getByLabelText('Van'), within(dlg).getAllByRole('option')[1])
     await userEvent.click(within(dlg).getByRole('button', { name: 'Asignar van' }))
-    expect(screen.getAllByText('Sin van asignada')).toHaveLength(1)
+    await waitFor(() => expect(screen.getAllByText('Sin van asignada')).toHaveLength(1))
   })
 })
 

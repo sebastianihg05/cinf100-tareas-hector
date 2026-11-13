@@ -42,6 +42,59 @@ a.cnd-trayecto:focus-visible { outline: 3px solid rgba(0, 51, 102, .4); outline-
 /* RB-05: ocupación de la van en el detalle del viaje */
 .cnd-ocupacion { display: flex; align-items: center; gap: 12px; margin-top: 12px; color: var(--muted); font-size: 12px; font-weight: 700; }
 
+/* ---------- Navegación GPS (GPS-03) ---------- */
+.cnd-ir-navegacion { margin-top: 12px; text-decoration: none; justify-content: center; }
+
+/* La pantalla ocupa todo el alto disponible: el mapa se lleva el espacio y el panel de datos queda abajo. */
+.cnd-nav { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.cnd-nav__mapa { position: relative; flex: 1; min-height: 46vh; min-height: 46dvh; background: #dfe6ee; }
+.cnd-mapa__marco, .cnd-mapa { position: absolute; inset: 0; width: 100%; height: 100%; }
+.cnd-mapa { z-index: 0; font-family: inherit; }
+.cnd-nav__cargando { margin: 0; padding: 24px; text-align: center; color: var(--muted); font-size: 14px; }
+.cnd-nav__centrar {
+  position: absolute; right: 12px; bottom: 28px; z-index: 500; min-height: 44px; padding: 0 16px; border: 0; border-radius: 22px;
+  background: var(--navy); color: #fff; font-family: inherit; font-size: 14px; font-weight: 700; box-shadow: 0 2px 8px rgba(16, 24, 40, .3);
+}
+
+/* Marcadores dibujados con CSS */
+.cnd-marcador { background: none; border: 0; }
+.cnd-marcador--yo span {
+  display: block; width: 22px; height: 22px; border-radius: 50%; background: #1d6fe5; border: 3px solid #fff;
+  box-shadow: 0 0 0 6px rgba(29, 111, 229, .25), 0 1px 4px rgba(16, 24, 40, .4);
+}
+.cnd-marcador--destino span {
+  display: block; width: 24px; height: 24px; margin: 0 3px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg);
+  background: var(--red); border: 3px solid #fff; box-shadow: 0 1px 4px rgba(16, 24, 40, .4);
+}
+
+/* Panel inferior: sube sobre el borde del mapa, como en las aplicaciones de transporte */
+.cnd-nav__panel {
+  position: relative; z-index: 1; display: flex; flex-direction: column; gap: 12px; margin-top: -16px;
+  padding: 16px var(--psj-pad) calc(16px + env(safe-area-inset-bottom)); border-radius: 18px 18px 0 0;
+  background: #fff; box-shadow: 0 -4px 16px rgba(16, 24, 40, .12);
+}
+.cnd-nav__etiqueta { margin: 0; font-size: 11.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.cnd-nav__nombre { margin: 2px 0 0; font-size: 17px; font-weight: 800; color: var(--navy); }
+.cnd-nav__direccion { margin: 2px 0 0; font-size: 12.5px; color: var(--muted); }
+.cnd-nav__datos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0; }
+.cnd-nav__datos div { padding: 10px 8px; border-radius: 12px; background: #f4f5f7; text-align: center; }
+.cnd-nav__datos dt { font-size: 11px; font-weight: 700; color: var(--muted); }
+.cnd-nav__datos dd { margin: 4px 0 0; font-size: 16px; font-weight: 800; color: var(--navy); }
+.cnd-nav__gps { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 13px; font-weight: 700; color: var(--navy); }
+.cnd-nav__punto { width: 10px; height: 10px; border-radius: 50%; background: #9aa3b2; }
+.cnd-nav__gps--activo .cnd-nav__punto { background: #1f9d55; }
+.cnd-nav__gps--sin-senal .cnd-nav__punto, .cnd-nav__gps--denegado .cnd-nav__punto { background: var(--red); }
+.cnd-nav__nota { margin: 0; font-size: 12.5px; color: var(--muted); }
+.cnd-nav__acciones { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cnd-nav__acciones .psj-btn { min-height: 48px; justify-content: center; text-decoration: none; }
+.cnd-nav__acciones .psj-btn--primary { grid-column: 1 / -1; }
+
+@media (min-width: 900px) {
+  .cnd-nav { flex-direction: row; min-height: calc(100vh - 80px); }
+  .cnd-nav__mapa { min-height: 0; }
+  .cnd-nav__panel { width: 380px; flex-shrink: 0; margin-top: 0; border-radius: 0; box-shadow: -4px 0 16px rgba(16, 24, 40, .08); overflow-y: auto; }
+}
+
 /* Notificaciones: contador en el menú y tarjetas leídas / no leídas */
 .cnd-nav__icono { position: relative; display: inline-flex; }
 .cnd-nav__count { top: -6px; right: -10px; border-color: #fff; }

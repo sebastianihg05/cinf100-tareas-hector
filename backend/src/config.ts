@@ -29,4 +29,8 @@ export const config = {
   jwtSecret: claveJwt(),
   // Dirección del frontend de Vite, autorizada a llamar a la API (CORS).
   frontendOrigin: process.env.FRONTEND_ORIGIN ?? 'http://localhost:5173',
+  // GPS-05: cálculo de rutas con openrouteservice. La clave vive solo en el backend; sin ella el GPS
+  // sigue mostrando la posición, pero la ruta responde "servicio no configurado".
+  orsApiKey: process.env.ORS_API_KEY ?? '',
+  orsUrl: process.env.ORS_URL ?? 'https://api.heigit.org/openrouteservice/v2/directions/driving-car/geojson',
 };

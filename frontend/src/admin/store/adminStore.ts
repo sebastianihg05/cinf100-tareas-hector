@@ -1,8 +1,9 @@
-import type { ConductorBd, UsuarioBd } from '../../api'
+import type { ConductorBd, UsuarioBd, ViajeBd } from '../../api'
 import { adminInicial, choferesIniciales, pasajerosIniciales, reservasIniciales, vansIniciales, viajesIniciales } from '../data/mock'
 import { CAPACIDAD_VAN, type Admin, type Chofer, type EstadoViaje, type Notificacion, type Pasajero, type Reserva, type Rol, type Van, type Viaje } from '../types'
 import { isoLocal, normalizarTelefono, todayISO } from '../utils/format'
 import { sincronizar, validarCambioAsientos, validarSolicitud, type CambioAsiento } from './reservas'
+import { aplicarViajesBd, type AlcanceViajes } from './viajesBd'
 
 export type State = {
   vans: Van[]
@@ -27,6 +28,8 @@ export type Action =
   | { type: 'pasajero/eliminar'; id: string }
   | { type: 'pasajero/patch'; id: string; patch: Partial<Pasajero> }
   | { type: 'viaje/add'; viajes: Viaje[] }
+  /** Viajes que devolvió el backend (S3-VIA-03 / S3-CON-02): la base manda sobre lo guardado en este navegador. */
+  | { type: 'viaje/desdeBd'; viajes: ViajeBd[]; alcance: AlcanceViajes }
   | { type: 'viaje/estado'; id: string; estado: EstadoViaje; notificacion?: Notificacion }
   | { type: 'viaje/van'; id: string; vanId: string }
   | { type: 'reserva/crear'; reservas: Reserva[] }
@@ -172,6 +175,8 @@ export function reducer(s: State, a: Action): State {
       return { ...s, pasajeros: s.pasajeros.map((p) => (p.id === a.id ? { ...p, ...a.patch } : p)) }
     case 'viaje/add':
       return { ...s, viajes: [...s.viajes, ...a.viajes] }
+    case 'viaje/desdeBd':
+      return aplicarViajesBd(s, a.viajes, a.alcance)
       case 'viaje/estado': {
           const viaje = s.viajes.find((v) => v.id === a.id)
           if (!viaje) return s

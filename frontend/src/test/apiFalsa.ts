@@ -1,5 +1,5 @@
 import { vi } from 'vitest'
-import type { ConductorBd, UsuarioBd } from '../api'
+import type { ConductorBd, RutaBd, UsuarioBd, ViajeBd } from '../api'
 
 /**
  * Backend falso para las pruebas: responde como la API real (docs/api/) pero guarda las cuentas en memoria.
@@ -40,6 +40,38 @@ const aConductor = (cuenta: Cuenta): ConductorBd => ({
   id: cuenta.id, nombreCompleto: cuenta.nombreCompleto, correo: cuenta.correo, telefono: cuenta.telefono,
   estado: cuenta.estado, ...conductores.get(cuenta.id)!,
 })
+
+/* ---------- Viajes (S3-VIA-03, S3-CON-02): la tabla viajes y sus reservas, en memoria ---------- */
+
+let viajes: ViajeBd[] = []
+let siguienteViaje = 1
+/** Ruta que responde el GPS falso: una ruta fija, o un error { status, error }. */
+let respuestaRuta: RutaBd | { status: number; error: string } = {
+  coordenadas: [[-33.2, -71.4], [-33.435172, -70.634]], distanciaM: 120000, duracionS: 5400,
+}
+/** Posiciones recibidas por la ruta falsa, para comprobar cuántas consultas se hacen. */
+export const consultasRuta: { id: number; lat: number; lon: number }[] = []
+
+/** Agrega un viaje a la "base" (por defecto, una ida pendiente sin asignar) y lo devuelve. */
+export function agregarViajeBd(datos: Partial<ViajeBd> = {}): ViajeBd {
+  const trayecto = datos.trayecto ?? 'Ida'
+  const viaje: ViajeBd = {
+    id: siguienteViaje++, fecha: '2099-01-01', hora: trayecto === 'Ida' ? '06:45' : '17:00', trayecto,
+    origen: trayecto === 'Ida' ? 'Quillota 980' : 'Santiago', destino: trayecto === 'Ida' ? 'Santiago' : 'Quillota 980',
+    vanId: null, conductorId: null, estado: 'pendiente', iniciadoEn: null, finalizadoEn: null, canceladoEn: null, reservas: [],
+    ...datos,
+  }
+  viajes.push(viaje)
+  return viaje
+}
+
+/** El viaje tal como quedó guardado en la "base". */
+export const viajeBdGuardado = (id: number) => viajes.find((v) => v.id === id)
+
+/** Cambia lo que responde la ruta falsa. */
+export function configurarRutaFalsa(respuesta: typeof respuestaRuta) {
+  respuestaRuta = respuesta
+}
 
 /** Agrega una cuenta (por ejemplo, una desactivada) y la devuelve. */
 export function agregarCuenta(datos: Partial<Cuenta> & Pick<UsuarioBd, 'nombreCompleto' | 'correo'>): Cuenta {
@@ -105,11 +137,75 @@ function atender(url: string, metodo: string, cuerpo: Record<string, string>, to
     return responder(200, { usuario: publica(sesion) })
   }
 
+  // Panel del conductor: solo ve y cambia los viajes que tiene asignados.
+  if (url.startsWith('/api/conductor/')) {
+    if (sesion.rol !== 'conductor' || sesion.estado !== 'aprobada') {
+      return responder(403, { error: 'No tienes permiso para realizar esta acción.' })
+    }
+    if (metodo === 'GET' && url === '/api/conductor/viajes') {
+      return responder(200, { viajes: viajes.filter((v) => v.conductorId === sesion.id) })
+    }
+    const accion = url.match(/^\/api\/conductor\/viajes\/(\d+)\/(iniciar|finalizar)$/)
+    if (metodo === 'POST' && accion) {
+      const viaje = viajes.find((v) => v.id === Number(accion[1]) && v.conductorId === sesion.id)
+      if (!viaje) return responder(404, { error: 'No encontramos este viaje entre los que tienes asignados.' })
+      const iniciar = accion[2] === 'iniciar'
+      if (viaje.estado !== (iniciar ? 'pendiente' : 'en-curso')) {
+        return responder(409, { error: iniciar ? 'Solo se puede iniciar un viaje pendiente.' : 'Solo se puede finalizar un viaje en curso.' })
+      }
+      if (iniciar && viajes.some((v) => v.id !== viaje.id && v.estado === 'en-curso' && (v.conductorId === sesion.id || (viaje.vanId !== null && v.vanId === viaje.vanId)))) {
+        return responder(409, { error: 'Ya tienes un viaje en curso. Finalízalo antes de iniciar otro.' })
+      }
+      const ahora = new Date().toISOString()
+      if (iniciar) Object.assign(viaje, { estado: 'en-curso', iniciadoEn: ahora })
+      else {
+        Object.assign(viaje, { estado: 'completado', finalizadoEn: ahora })
+        viaje.reservas = viaje.reservas.map((r) => (r.estado === 'pendiente' ? { ...r, estado: 'completada' } : r))
+      }
+      return responder(200, { viaje })
+    }
+    const ruta = url.match(/^\/api\/conductor\/viajes\/(\d+)\/ruta\?lat=(-?[\d.]+)&lon=(-?[\d.]+)$/)
+    if (metodo === 'GET' && ruta) {
+      const viaje = viajes.find((v) => v.id === Number(ruta[1]) && v.conductorId === sesion.id)
+      if (!viaje) return responder(404, { error: 'No encontramos este viaje entre los que tienes asignados.' })
+      if (viaje.estado !== 'en-curso') return responder(409, { error: 'La navegación solo está disponible para un viaje en curso.' })
+      consultasRuta.push({ id: viaje.id, lat: Number(ruta[2]), lon: Number(ruta[3]) })
+      return 'error' in respuestaRuta ? responder(respuestaRuta.status, { error: respuestaRuta.error }) : responder(200, { ruta: respuestaRuta })
+    }
+    return responder(404, { error: 'Ruta no encontrada.' })
+  }
+
   // Administración: exige el token de una cuenta de administrador aprobada.
   if (sesion.rol !== 'administrador' || sesion.estado !== 'aprobada') {
     return responder(403, { error: 'No tienes permiso para realizar esta acción.' })
   }
   if (metodo === 'GET' && url === '/api/admin/usuarios') return responder(200, { usuarios: cuentas.map(publica) })
+
+  if (metodo === 'GET' && url === '/api/admin/viajes') return responder(200, { viajes })
+
+  if (metodo === 'POST' && url === '/api/admin/viajes') {
+    const trayectos = (cuerpo as unknown as { trayectos: ('Ida' | 'Vuelta')[] }).trayectos
+    const fecha = String(cuerpo.fecha)
+    if (viajes.some((v) => v.fecha === fecha && v.estado !== 'cancelado' && trayectos.includes(v.trayecto))) {
+      return responder(409, { error: 'Ya hay un viaje abierto ese día para el trayecto elegido.' })
+    }
+    return responder(201, { viajes: trayectos.map((trayecto) => agregarViajeBd({ fecha, trayecto })) })
+  }
+
+  const cambioViaje = url.match(/^\/api\/admin\/viajes\/(\d+)$/)
+  if (metodo === 'PATCH' && cambioViaje) {
+    const viaje = viajes.find((v) => v.id === Number(cambioViaje[1]))
+    if (!viaje) return responder(404, { error: 'El viaje no existe.' })
+    if (viaje.estado !== 'pendiente') return responder(409, { error: 'Solo se puede modificar un viaje pendiente.' })
+    if (cuerpo.estado === 'cancelado') {
+      Object.assign(viaje, { estado: 'cancelado', canceladoEn: new Date().toISOString() })
+      viaje.reservas = viaje.reservas.map((r) => (r.estado === 'pendiente' ? { ...r, estado: 'cancelada' } : r))
+    } else {
+      const c = cuerpo as unknown as { vanId: number | null; conductorId: number | null }
+      Object.assign(viaje, { vanId: c.vanId ?? null, conductorId: c.conductorId ?? null })
+    }
+    return responder(200, { viaje })
+  }
 
   const decision = url.match(/^\/api\/admin\/solicitudes\/(\d+)\/(aprobar|rechazar)$/)
   if (metodo === 'POST' && decision) {
@@ -148,6 +244,10 @@ function atender(url: string, metodo: string, cuerpo: Record<string, string>, to
 export function instalarApiFalsa() {
   cuentas = []
   conductores = new Map()
+  viajes = []
+  siguienteViaje = 1
+  consultasRuta.length = 0
+  respuestaRuta = { coordenadas: [[-33.2, -71.4], [-33.435172, -70.634]], distanciaM: 120000, duracionS: 5400 }
   agregarCuenta({ nombreCompleto: 'Administrador Desarrollo', correo: 'dev.admin@unab.cl', sede: null, rol: 'administrador', estado: 'aprobada' })
   agregarCuenta({ nombreCompleto: 'Constanza Silva', correo: 'S.constanza@uandresbello.edu', rol: 'funcionario', estado: 'aprobada' })
 

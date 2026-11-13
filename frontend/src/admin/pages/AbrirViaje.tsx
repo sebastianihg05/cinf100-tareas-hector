@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { IconCalendar, IconInfo } from '../components/icons'
 import Field from '../components/Field'
 import { useAdmin } from '../store/AdminContext'
-import { nuevoId } from '../store/adminStore'
-import { DIAS_MAX_ANTICIPACION, DIAS_MIN_ANTICIPACION, HORA_TRAYECTO, RUTA_TRAYECTO, type Trayecto, type Viaje } from '../types'
+import { DIAS_MAX_ANTICIPACION, DIAS_MIN_ANTICIPACION, HORA_TRAYECTO, type Trayecto } from '../types'
 import { sumarDias, todayISO } from '../utils/format'
 
 type Opcion = 'Ida' | 'Vuelta' | 'Ida y vuelta'
@@ -14,17 +13,18 @@ const trayectosDe = (o: Opcion): Trayecto[] => (o === 'Ida y vuelta' ? ['Ida', '
 
 /** Formulario para abrir un viaje en un día sin viaje fijo (los miércoles y jueves ya tienen). */
 export default function AbrirViaje() {
-  const { state, addViajes } = useAdmin()
+  const { state, abrirViajes } = useAdmin()
   const navigate = useNavigate()
   const [fecha, setFecha] = useState('')
   const [opcion, setOpcion] = useState<Opcion>('Ida')
   const [error, setError] = useState('')
+  const [guardando, setGuardando] = useState(false)
 
   const volver = () => navigate('/admin/viajes')
   const desde = sumarDias(todayISO(), DIAS_MIN_ANTICIPACION)
   const hasta = sumarDias(todayISO(), DIAS_MAX_ANTICIPACION)
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault()
     const trayectos = trayectosDe(opcion)
 
@@ -35,17 +35,11 @@ export default function AbrirViaje() {
       return setError('Ya hay un viaje abierto ese día para el trayecto elegido')
     }
 
-    const nuevos: Viaje[] = trayectos.map((t) => ({
-      id: nuevoId('t'),
-      ...RUTA_TRAYECTO[t],
-      trayecto: t,
-      fecha,
-      hora: HORA_TRAYECTO[t],
-      vanId: null,
-      reservados: 0,
-      estado: 'pendiente',
-    }))
-    addViajes(nuevos)
+    // se guarda en PostgreSQL; si el servidor rechaza el viaje, el motivo se muestra en el formulario
+    setGuardando(true)
+    const resultado = await abrirViajes(fecha, trayectos)
+    setGuardando(false)
+    if (!resultado.ok) return setError(resultado.error)
     volver()
   }
 
@@ -79,7 +73,9 @@ export default function AbrirViaje() {
         </div>
       </section>
 
-      <button type="submit" className="adm-btn adm-btn--primary adm-btn--block"><IconCalendar size={18} /> Abrir viaje</button>
+      <button type="submit" className="adm-btn adm-btn--primary adm-btn--block" disabled={guardando}>
+        <IconCalendar size={18} /> {guardando ? 'Abriendo viaje…' : 'Abrir viaje'}
+      </button>
     </form>
   )
 }

@@ -1,6 +1,7 @@
 import cors from 'cors';
 import express, { type ErrorRequestHandler } from 'express';
 import { rutasAdmin } from './admin/rutas';
+import { rutasConductor } from './conductor/rutas';
 import { config } from './config';
 import { pool } from './db';
 import { rutasAuth } from './usuarios/rutas';
@@ -15,6 +16,7 @@ app.use(express.json());
 app.use('/api/auth', rutasAuth);
 app.use('/api/usuarios', rutasPerfil);
 app.use('/api/admin', rutasAdmin);
+app.use('/api/conductor', rutasConductor);
 
 // Estado de la API y de la conexión con PostgreSQL
 app.get('/api/health', async (_req, res) => {

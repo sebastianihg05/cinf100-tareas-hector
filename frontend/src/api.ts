@@ -1,4 +1,4 @@
-import type { Rol } from './admin/types'
+import type { EstadoViaje, Rol, Trayecto } from './admin/types'
 import { leerSesion } from './login/sesion'
 
 /** Cuenta tal como la devuelve el backend (ver docs/api/autenticacion.md). Nunca trae la contraseña. */
@@ -27,6 +27,41 @@ export type ConductorBd = {
 }
 
 export type CambiosConductor = { rut?: string; licenciaHasta?: string; activo?: boolean; telefono?: string }
+
+/** Asiento reservado en un viaje, con los datos del pasajero que ve el administrador o el conductor. */
+export type ReservaViajeBd = {
+  id: number
+  grupoId: string
+  usuarioId: number
+  nombre: string
+  telefono: string
+  asiento: number
+  estado: 'pendiente' | 'completada' | 'cancelada'
+  creadaEn: string
+}
+
+/** Viaje tal como lo devuelve el backend (ver docs/api/viajes.md). */
+export type ViajeBd = {
+  id: number
+  fecha: string
+  hora: string
+  trayecto: Trayecto
+  origen: string
+  destino: string
+  vanId: number | null
+  conductorId: number | null
+  estado: EstadoViaje
+  iniciadoEn: string | null
+  finalizadoEn: string | null
+  canceladoEn: string | null
+  reservas: ReservaViajeBd[]
+}
+
+/** Un cambio por solicitud: asignar van y conductor, o cancelar. */
+export type CambiosViaje = { vanId: number | null; conductorId: number | null } | { estado: 'cancelado' }
+
+/** Ruta por carretera hacia la sede de destino: puntos [latitud, longitud], metros y segundos. */
+export type RutaBd = { coordenadas: [number, number][]; distanciaM: number; duracionS: number }
 
 export type DatosRegistro = {
   nombreCompleto: string
@@ -88,4 +123,15 @@ export const api = {
   listarConductores: () => pedir<{ conductores: ConductorBd[] }>('/admin/conductores'),
   actualizarConductor: (id: number, cambios: CambiosConductor) =>
     pedir<{ conductor: ConductorBd }>(`/admin/conductores/${id}`, 'PATCH', cambios),
+  /** S3-VIA-03, administrador: todos los viajes, abrir ida/vuelta, asignar van y conductor o cancelar. */
+  listarViajes: () => pedir<{ viajes: ViajeBd[] }>('/admin/viajes'),
+  abrirViajes: (fecha: string, trayectos: Trayecto[]) => pedir<{ viajes: ViajeBd[] }>('/admin/viajes', 'POST', { fecha, trayectos }),
+  actualizarViaje: (id: number, cambios: CambiosViaje) => pedir<{ viaje: ViajeBd }>(`/admin/viajes/${id}`, 'PATCH', cambios),
+  /** S3-CON-02, conductor: sus viajes (con pasajeros), iniciar y finalizar. */
+  listarMisViajes: () => pedir<{ viajes: ViajeBd[] }>('/conductor/viajes'),
+  iniciarViaje: (id: number) => pedir<{ viaje: ViajeBd }>(`/conductor/viajes/${id}/iniciar`, 'POST'),
+  finalizarViaje: (id: number) => pedir<{ viaje: ViajeBd }>(`/conductor/viajes/${id}/finalizar`, 'POST'),
+  /** GPS-05, conductor: ruta desde su posición hasta el destino del viaje (el destino lo decide el backend). */
+  calcularRuta: (id: number, latitud: number, longitud: number) =>
+    pedir<{ ruta: RutaBd }>(`/conductor/viajes/${id}/ruta?lat=${latitud}&lon=${longitud}`),
 }

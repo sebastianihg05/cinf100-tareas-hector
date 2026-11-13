@@ -4,6 +4,7 @@ import { useAdmin } from '../../admin/store/AdminContext'
 import type { Viaje } from '../../admin/types'
 import { fechaTexto } from '../../pasajero/viajes'
 import { ESTADO_VIAJE } from '../etiquetas'
+import { AvisoViajesBd, useEstadoViajesBd } from '../../admin/store/useViajesBd'
 import { motivoSinViajes, useConductorActual } from '../useConductorActual'
 import { pasajerosDelViaje } from '../viajes'
 import AnimatedContent from '../../reactbits/AnimatedContent'
@@ -33,14 +34,16 @@ function TarjetaFinalizado({ viaje, patente, pasajeros }: { viaje: Viaje; patent
 export default function HistorialViajes() {
   const { state } = useAdmin()
   const { chofer, van, finalizados } = useConductorActual()
+  const { cargando } = useEstadoViajesBd()
   const sinAsignacion = motivoSinViajes({ chofer, van })
 
   return (
     <div className="psj-page">
+      <AvisoViajesBd />
       {sinAsignacion ? (
         <p className="psj-alert psj-alert--suave" role="status">{sinAsignacion}</p>
       ) : finalizados.length === 0 ? (
-        <div className="psj-vacio"><p>Aún no tienes viajes finalizados.</p></div>
+        cargando ? null : <div className="psj-vacio"><p>Aún no tienes viajes finalizados.</p></div>
       ) : (
         <>
           <p className="cnd-resumen">
