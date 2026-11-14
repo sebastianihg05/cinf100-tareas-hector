@@ -16,6 +16,7 @@ app.use(express.json());
 app.use('/api/auth', rutasAuth);
 app.use('/api/usuarios', rutasPerfil);
 app.use('/api/admin', rutasAdmin);
+app.use('/api/reservas', rutasReservas);
 
 // Estado de la API y de la conexión con PostgreSQL
 app.get('/api/health', async (_req, res) => {
@@ -44,4 +45,3 @@ const manejarErrores: ErrorRequestHandler = (error, _req, res, _next) => {
 };
 
 app.use(manejarErrores);
-app.use('/api/reservas', rutasReservas);
