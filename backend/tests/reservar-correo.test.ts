@@ -24,6 +24,7 @@ const viaje = {
   estado: 'pendiente',
   capacidad: 8,
   activa: true,
+  dias: 7,
 };
 
 function crearBaseDatosSimulada(opciones?: {

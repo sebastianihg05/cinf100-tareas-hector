@@ -36,6 +36,10 @@ export class ErrorReserva extends Error {
   }
 }
 
+// HU-03: un viaje se reserva con 1 a 30 días de anticipación (igual que el frontend).
+export const DIAS_MIN_ANTICIPACION = 1;
+export const DIAS_MAX_ANTICIPACION = 30;
+
 interface DatosViaje {
   id: number;
   fecha: string;
@@ -46,6 +50,8 @@ interface DatosViaje {
   estado: string;
   capacidad: number;
   activa: boolean;
+  // días que faltan para el viaje, contados con la fecha de Chile
+  dias: number;
 }
 
 async function validarViaje(
@@ -64,14 +70,15 @@ async function validarViaje(
   const { rows } = await cliente.query(
     `SELECT
        v.id,
-       v.fecha,
-       v.hora,
+       to_char(v.fecha, 'YYYY-MM-DD') AS fecha,
+       to_char(v.hora, 'HH24:MI') AS hora,
        v.trayecto,
        v.origen,
        v.destino,
        v.estado,
        COALESCE(va.capacidad, 0) AS capacidad,
-       COALESCE(va.activa, FALSE) AS activa
+       COALESCE(va.activa, FALSE) AS activa,
+       v.fecha - (CURRENT_TIMESTAMP AT TIME ZONE 'America/Santiago')::date AS dias
      FROM viajes v
      LEFT JOIN vans va ON va.id = v.van_id
      WHERE v.id = $1
@@ -87,6 +94,13 @@ async function validarViaje(
 
   if (viaje.estado !== 'pendiente') {
     throw new ErrorReserva('El viaje no está disponible para reservas.', 409);
+  }
+
+  if (viaje.dias < DIAS_MIN_ANTICIPACION || viaje.dias > DIAS_MAX_ANTICIPACION) {
+    throw new ErrorReserva(
+      `Solo se puede reservar con ${DIAS_MIN_ANTICIPACION} a ${DIAS_MAX_ANTICIPACION} días de anticipación.`,
+      409
+    );
   }
 
   if (!viaje.activa) {
@@ -123,6 +137,10 @@ export function crearServicioReservas(dependencias?: {
       throw new ErrorReserva('No puedes reservar más de dos trayectos.');
     }
 
+    if (solicitudes.some((s) => !s || typeof s !== 'object')) {
+      throw new ErrorReserva('Cada reserva debe indicar el viaje y el asiento.');
+    }
+
     const viajesSolicitados = solicitudes.map((s) => s.viajeId);
 
     if (new Set(viajesSolicitados).size !== viajesSolicitados.length) {
@@ -139,14 +157,23 @@ export function crearServicioReservas(dependencias?: {
         await cliente.query('SELECT gen_random_uuid() AS id')
       ).rows[0].id;
 
+      // Se bloquean los viajes en orden de id: dos reservas cruzadas no se esperan entre sí.
+      const viajes = new Map<SolicitudReserva, DatosViaje>();
+      for (const solicitud of [...solicitudes].sort((a, b) => a.viajeId - b.viajeId)) {
+        viajes.set(solicitud, await validarViaje(cliente, solicitud.viajeId, solicitud.asiento));
+      }
+
+      if (solicitudes.length === 2) {
+        const [primero, segundo] = solicitudes.map((s) => viajes.get(s)!);
+        if (primero.fecha !== segundo.fecha || primero.trayecto === segundo.trayecto) {
+          throw new ErrorReserva('Una reserva de ida y vuelta debe tener la ida y la vuelta del mismo día.');
+        }
+      }
+
       const reservas: ResultadoReserva['reservas'] = [];
 
       for (const solicitud of solicitudes) {
-        const viaje = await validarViaje(
-          cliente,
-          solicitud.viajeId,
-          solicitud.asiento
-        );
+        const viaje = viajes.get(solicitud)!;
 
         const resultado = await cliente.query(
           `INSERT INTO reservas (
@@ -213,9 +240,15 @@ export function crearServicioReservas(dependencias?: {
     } catch (error) {
       await cliente.query('ROLLBACK');
 
-      if ((error as { code?: string }).code === '23505') {
+      // Los índices únicos de 005_reservas.sql deciden si dos personas piden lo mismo a la vez.
+      const { code, constraint } = error as { code?: string; constraint?: string };
+      if (code === '23505') {
+        const mensajes: Record<string, string> = {
+          reservas_asiento_activo_unique: 'El asiento ya fue reservado por otra persona. Elige otro.',
+          reservas_usuario_viaje_activo_unique: 'Ya tienes una reserva en este viaje.',
+        };
         throw new ErrorReserva(
-          'El asiento ya está ocupado o ya tienes una reserva para este viaje.',
+          mensajes[constraint ?? ''] ?? 'El asiento ya está ocupado o ya tienes una reserva para este viaje.',
           409
         );
       }
