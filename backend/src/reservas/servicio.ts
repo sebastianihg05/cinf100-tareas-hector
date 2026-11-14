@@ -40,6 +40,9 @@ export class ErrorReserva extends Error {
 export const DIAS_MIN_ANTICIPACION = 1;
 export const DIAS_MAX_ANTICIPACION = 30;
 
+// Días que faltan para el viaje `v`, con la fecha de Chile. Lo usan la reserva y las consultas.
+export const SQL_DIAS_HASTA_VIAJE = `v.fecha - (CURRENT_TIMESTAMP AT TIME ZONE 'America/Santiago')::date`;
+
 interface DatosViaje {
   id: number;
   fecha: string;
@@ -78,7 +81,7 @@ async function validarViaje(
        v.estado,
        COALESCE(va.capacidad, 0) AS capacidad,
        COALESCE(va.activa, FALSE) AS activa,
-       v.fecha - (CURRENT_TIMESTAMP AT TIME ZONE 'America/Santiago')::date AS dias
+       ${SQL_DIAS_HASTA_VIAJE} AS dias
      FROM viajes v
      LEFT JOIN vans va ON va.id = v.van_id
      WHERE v.id = $1
