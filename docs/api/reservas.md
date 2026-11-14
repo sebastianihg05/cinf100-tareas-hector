@@ -89,12 +89,54 @@ se mantiene y el error queda registrado en la consola del backend.
 
 Todos responden `{ "error": "mensaje" }`. Sin sesión: 401. Con otro rol: 403.
 
+## Cancelar y cambiar asiento (S3-RES-03, #2607)
+
+Ambas rutas exigen sesión de **funcionario** y trabajan sobre una reserva propia (`:grupoId` es el `grupoId`
+que devolvió `POST /api/reservas`). Solo se modifican trayectos `pendiente` de viajes `pendiente` que todavía
+no salen (fecha y hora de Chile). Todo va en una transacción: se aplican todos los cambios o ninguno.
+
+### POST /api/reservas/:grupoId/cancelar
+
+Sin cuerpo cancela todos los trayectos que se puedan cancelar. Para cancelar solo algunos:
+
+```json
+{ "reservaIds": [42] }
+```
+
+Cada trayecto queda `cancelada` con `cancelada_en`, y su asiento queda libre para otros funcionarios.
+
+### PATCH /api/reservas/:grupoId/asientos
+
+```json
+{ "cambios": [ { "reservaId": 41, "asiento": 6 }, { "reservaId": 42, "asiento": 1 } ] }
+```
+
+Uno o dos cambios. El asiento anterior queda libre.
+
+### Respuesta 200 (las dos rutas)
+
+```json
+{
+  "grupoId": "2f0c4c4e-8a1d-4a53-9d3e-6a3f0f6e2b10",
+  "reservas": [
+    { "id": 41, "viajeId": 12, "trayecto": "Ida", "fecha": "2026-11-20", "hora": "06:45",
+      "origen": "Quillota 980", "destino": "Santiago", "asiento": 6, "estado": "pendiente" }
+  ]
+}
+```
+
+### Errores
+
+| Código | Cuándo |
+|---|---|
+| 400 | Lista de `reservaIds` o `cambios` vacía, mal formada o con trayectos repetidos; asiento que no existe en la van. |
+| 404 | La reserva no existe o es de otra persona (no se revela cuál de las dos), o el trayecto no es de esa reserva. |
+| 409 | El trayecto ya no se puede modificar (viaje que salió o se canceló, o reserva ya cancelada), o el asiento nuevo ya está ocupado. |
+
 ## Pruebas
 
-`backend/tests/reservas.test.ts` (23 pruebas contra PostgreSQL; 9 son de las consultas de #2605): acceso por rol, reserva de ida y de ida y
+`backend/tests/reservas.test.ts` (35 pruebas contra PostgreSQL: 14 de #2606, 9 de #2605 y 12 de #2607): acceso por rol, reserva de ida y de ida y
 vuelta, asiento ocupado, reserva duplicada, reserva simultánea del mismo asiento, rollback de ida y vuelta,
 datos inválidos, capacidad de la van, viajes no disponibles y ventana de 1 a 30 días.
 
 `backend/tests/reservar-correo.test.ts` comprueba el correo de confirmación con una base simulada.
-
-Pendiente en otra tarea: cancelación y cambio de asiento (#2607).
