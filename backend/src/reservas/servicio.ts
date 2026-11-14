@@ -43,6 +43,23 @@ export const DIAS_MAX_ANTICIPACION = 30;
 // Días que faltan para el viaje `v`, con la fecha de Chile. Lo usan la reserva y las consultas.
 export const SQL_DIAS_HASTA_VIAJE = `v.fecha - (CURRENT_TIMESTAMP AT TIME ZONE 'America/Santiago')::date`;
 
+// El viaje `v` todavía no sale (fecha y hora de salida después de la hora actual de Chile).
+export const SQL_VIAJE_NO_SALIO = `(v.fecha + v.hora) > (CURRENT_TIMESTAMP AT TIME ZONE 'America/Santiago')`;
+
+// Traduce el rechazo de los índices únicos de 005_reservas.sql a un 409 con un mensaje claro.
+export function aErrorDeConflicto(error: unknown): ErrorReserva | null {
+  const { code, constraint } = error as { code?: string; constraint?: string };
+  if (code !== '23505') return null;
+  const mensajes: Record<string, string> = {
+    reservas_asiento_activo_unique: 'El asiento ya fue reservado por otra persona. Elige otro.',
+    reservas_usuario_viaje_activo_unique: 'Ya tienes una reserva en este viaje.',
+  };
+  return new ErrorReserva(
+    mensajes[constraint ?? ''] ?? 'El asiento ya está ocupado o ya tienes una reserva para este viaje.',
+    409
+  );
+}
+
 interface DatosViaje {
   id: number;
   fecha: string;
@@ -244,19 +261,7 @@ export function crearServicioReservas(dependencias?: {
       await cliente.query('ROLLBACK');
 
       // Los índices únicos de 005_reservas.sql deciden si dos personas piden lo mismo a la vez.
-      const { code, constraint } = error as { code?: string; constraint?: string };
-      if (code === '23505') {
-        const mensajes: Record<string, string> = {
-          reservas_asiento_activo_unique: 'El asiento ya fue reservado por otra persona. Elige otro.',
-          reservas_usuario_viaje_activo_unique: 'Ya tienes una reserva en este viaje.',
-        };
-        throw new ErrorReserva(
-          mensajes[constraint ?? ''] ?? 'El asiento ya está ocupado o ya tienes una reserva para este viaje.',
-          409
-        );
-      }
-
-      throw error;
+      throw aErrorDeConflicto(error) ?? error;
     } finally {
       cliente.release();
     }

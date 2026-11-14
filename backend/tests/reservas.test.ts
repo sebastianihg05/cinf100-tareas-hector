@@ -1,4 +1,4 @@
-import test from 'node:test';
+import test, { afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import request from 'supertest';
 import { app } from '../src/app';
@@ -70,13 +70,21 @@ async function ocupado(dias: number, trayecto: string): Promise<boolean> {
 }
 
 // Busca hacia atrás desde el día 30 para no chocar con los seeds ni con las pruebas de viajes, que parten del día 2.
-let siguiente = 30;
 async function diaLibre(): Promise<number> {
-  for (; siguiente >= 1; siguiente--) {
-    if (!(await ocupado(siguiente, 'Ida')) && !(await ocupado(siguiente, 'Vuelta'))) return siguiente--;
+  for (let dias = 30; dias >= 1; dias--) {
+    if (!(await ocupado(dias, 'Ida')) && !(await ocupado(dias, 'Vuelta'))) return dias;
   }
   throw new Error('no quedan días libres para la prueba');
 }
+
+// Al terminar cada prueba sus viajes se cancelan: liberan el día para las siguientes (solo hay 30 días reservables).
+afterEach(async () => {
+  await pool.query(
+    `UPDATE viajes SET estado = 'cancelado', cancelado_en = CURRENT_TIMESTAMP
+      WHERE id = ANY($1) AND estado = 'pendiente'`,
+    [viajesCreados]
+  );
+});
 
 async function viaje(opciones: { dias?: number; trayecto?: 'Ida' | 'Vuelta'; vanId?: number | null; estado?: string } = {}) {
   const trayecto = opciones.trayecto ?? 'Ida';
@@ -355,4 +363,137 @@ test('asientos: id inválido 400, viaje inexistente 404 y viaje no disponible 40
   assert.equal((await asientos(ana, 999999999)).status, 404);
   const cancelado = await viaje({ estado: 'cancelado' });
   assert.equal((await asientos(ana, cancelado.id)).status, 409);
+});
+
+/* ---------- S3-RES-03 (#2607): cancelar y cambiar asiento ---------- */
+
+const cancelar = (sesion: string, grupoId: string, reservaIds?: unknown) =>
+  request(app).post(`/api/reservas/${grupoId}/cancelar`).set('Authorization', sesion)
+    .send(reservaIds === undefined ? {} : { reservaIds });
+
+const cambiar = (sesion: string, grupoId: string, cambios: unknown) =>
+  request(app).patch(`/api/reservas/${grupoId}/asientos`).set('Authorization', sesion).send({ cambios });
+
+// Reserva de ida y vuelta de Ana en un día libre; devuelve los ids para las pruebas.
+async function idaYVueltaDeAna(asientoIda = 2, asientoVuelta = 3) {
+  const ida = await viaje();
+  const vuelta = await viaje({ dias: ida.dias, trayecto: 'Vuelta' });
+  const r = await reservar(ana, [{ viajeId: ida.id, asiento: asientoIda }, { viajeId: vuelta.id, asiento: asientoVuelta }]);
+  assert.equal(r.status, 201);
+  const [enIda, enVuelta] = r.body.reservas as { id: number }[];
+  return { grupoId: r.body.grupoId as string, ida, vuelta, idIda: enIda.id, idVuelta: enVuelta.id };
+}
+
+const estados = async (grupoId: string) =>
+  (await pool.query('SELECT estado, cancelada_en, asiento FROM reservas WHERE grupo_id = $1 ORDER BY id', [grupoId])).rows;
+
+test('solo un funcionario con sesión cancela o cambia reservas', async () => {
+  const { grupoId } = await idaYVueltaDeAna();
+  assert.equal((await request(app).post(`/api/reservas/${grupoId}/cancelar`)).status, 401);
+  assert.equal((await cancelar(admin, grupoId)).status, 403);
+  assert.equal((await cambiar(conductor, grupoId, [])).status, 403);
+});
+
+test('cancelar sin indicar trayectos cancela toda la reserva y libera los asientos', async () => {
+  const { grupoId, ida } = await idaYVueltaDeAna(4, 4);
+
+  const r = await cancelar(ana, grupoId);
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.body.reservas.map((t: { estado: string }) => t.estado), ['cancelada', 'cancelada']);
+  assert.ok((await estados(grupoId)).every((t) => t.estado === 'cancelada' && t.cancelada_en));
+
+  assert.deepEqual((await asientos(beto, ida.id)).body.ocupados, []);
+  assert.equal((await reservar(beto, [{ viajeId: ida.id, asiento: 4 }])).status, 201);
+});
+
+test('se puede cancelar solo un trayecto y el otro sigue vigente', async () => {
+  const { grupoId, idVuelta } = await idaYVueltaDeAna();
+
+  const r = await cancelar(ana, grupoId, [idVuelta]);
+  assert.equal(r.status, 200);
+  assert.deepEqual((await estados(grupoId)).map((t) => t.estado), ['pendiente', 'cancelada']);
+});
+
+test('no se cancela ni se cambia una reserva ajena o inexistente', async () => {
+  const { grupoId, idIda } = await idaYVueltaDeAna();
+
+  assert.equal((await cancelar(beto, grupoId)).status, 404);
+  assert.equal((await cambiar(beto, grupoId, [{ reservaId: idIda, asiento: 7 }])).status, 404);
+  assert.equal((await cancelar(ana, '00000000-0000-0000-0000-000000000000')).status, 404);
+  assert.equal((await cancelar(ana, 'no-es-un-id')).status, 404);
+  assert.deepEqual((await estados(grupoId)).map((t) => t.estado), ['pendiente', 'pendiente']);
+});
+
+test('un trayecto de otro grupo no se cancela desde este', async () => {
+  const una = await idaYVueltaDeAna();
+  const otra = await idaYVueltaDeAna();
+  assert.equal((await cancelar(ana, una.grupoId, [otra.idIda])).status, 404);
+  assert.deepEqual((await estados(otra.grupoId)).map((t) => t.estado), ['pendiente', 'pendiente']);
+});
+
+test('no se modifica una reserva ya cancelada', async () => {
+  const { grupoId, idIda } = await idaYVueltaDeAna();
+  assert.equal((await cancelar(ana, grupoId)).status, 200);
+
+  assert.equal((await cancelar(ana, grupoId)).status, 409);
+  assert.equal((await cambiar(ana, grupoId, [{ reservaId: idIda, asiento: 8 }])).status, 409);
+});
+
+test('no se modifica una reserva de un viaje cancelado o que ya salió', async () => {
+  const cancelado = await idaYVueltaDeAna();
+  await pool.query(`UPDATE viajes SET estado = 'cancelado', cancelado_en = CURRENT_TIMESTAMP WHERE id = $1`, [cancelado.ida.id]);
+  assert.equal((await cancelar(ana, cancelado.grupoId, [cancelado.idIda])).status, 409);
+  assert.equal((await cambiar(ana, cancelado.grupoId, [{ reservaId: cancelado.idIda, asiento: 8 }])).status, 409);
+
+  const salio = await idaYVueltaDeAna();
+  await pool.query('UPDATE viajes SET fecha = CURRENT_DATE - 1 WHERE id = $1', [salio.ida.id]);
+  const r = await cancelar(ana, salio.grupoId, [salio.idIda]);
+  assert.equal(r.status, 409);
+  assert.match(r.body.error, /ya no se puede modificar/);
+  // la vuelta del mismo grupo sí se puede cancelar
+  assert.equal((await cancelar(ana, salio.grupoId, [salio.idVuelta])).status, 200);
+});
+
+test('rechaza listas de trayectos inválidas con 400', async () => {
+  const { grupoId, idIda } = await idaYVueltaDeAna();
+  for (const reservaIds of [[], ['1'], [0], [idIda, idIda], 'todos']) {
+    assert.equal((await cancelar(ana, grupoId, reservaIds)).status, 400, JSON.stringify(reservaIds));
+  }
+});
+
+test('cambiar de asiento guarda el nuevo y libera el anterior', async () => {
+  const { grupoId, ida, idIda } = await idaYVueltaDeAna(2, 3);
+
+  const r = await cambiar(ana, grupoId, [{ reservaId: idIda, asiento: 6 }]);
+  assert.equal(r.status, 200);
+  assert.equal(r.body.reservas[0].asiento, 6);
+  assert.deepEqual((await asientos(ana, ida.id)).body.ocupados, [6]);
+  assert.equal((await reservar(beto, [{ viajeId: ida.id, asiento: 2 }])).status, 201);
+});
+
+test('se cambian los asientos de la ida y la vuelta a la vez', async () => {
+  const { grupoId, idIda, idVuelta } = await idaYVueltaDeAna(2, 3);
+  const r = await cambiar(ana, grupoId, [{ reservaId: idIda, asiento: 9 }, { reservaId: idVuelta, asiento: 1 }]);
+  assert.equal(r.status, 200);
+  assert.deepEqual((await estados(grupoId)).map((t) => t.asiento), [9, 1]);
+});
+
+test('no se cambia a un asiento ocupado y no se guarda ningún cambio', async () => {
+  const { grupoId, ida, idIda, idVuelta } = await idaYVueltaDeAna(2, 3);
+  assert.equal((await reservar(beto, [{ viajeId: ida.id, asiento: 5 }])).status, 201);
+
+  const r = await cambiar(ana, grupoId, [{ reservaId: idVuelta, asiento: 8 }, { reservaId: idIda, asiento: 5 }]);
+  assert.equal(r.status, 409);
+  assert.match(r.body.error, /otra persona/);
+  assert.deepEqual((await estados(grupoId)).map((t) => t.asiento), [2, 3]);
+});
+
+test('el nuevo asiento debe existir en la van y los cambios deben estar bien formados', async () => {
+  const { grupoId, idIda } = await idaYVueltaDeAna();
+  assert.equal((await cambiar(ana, grupoId, [{ reservaId: idIda, asiento: 10 }])).status, 400);
+  assert.equal((await cambiar(ana, grupoId, [{ reservaId: idIda, asiento: 0 }])).status, 400);
+  for (const cambios of [undefined, [], [null], [{ reservaId: idIda }], [{ reservaId: idIda, asiento: '4' }],
+    [{ reservaId: idIda, asiento: 4 }, { reservaId: idIda, asiento: 5 }]]) {
+    assert.equal((await cambiar(ana, grupoId, cambios)).status, 400, JSON.stringify(cambios));
+  }
 });
