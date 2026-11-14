@@ -242,3 +242,117 @@ test('solo se reserva con 1 a 30 días de anticipación', async () => {
     assert.match(r.body.error, /anticipación/);
   }
 });
+
+/* ---------- S3-RES-01 (#2605): viajes disponibles y asientos ocupados ---------- */
+
+const disponibles = (sesion: string, consulta = '') =>
+  request(app).get(`/api/viajes/disponibles${consulta}`).set('Authorization', sesion);
+
+const asientos = (sesion: string, viajeId: number | string) =>
+  request(app).get(`/api/viajes/${viajeId}/asientos`).set('Authorization', sesion);
+
+const fechaDe = async (viajeId: number) =>
+  (await pool.query(`SELECT to_char(fecha, 'YYYY-MM-DD') AS fecha FROM viajes WHERE id = $1`, [viajeId])).rows[0].fecha as string;
+
+const cancelada = (usuarioId: number, viajeId: number, asiento: number) =>
+  pool.query(
+    `INSERT INTO reservas (grupo_id, usuario_id, viaje_id, asiento, estado, cancelada_en)
+     VALUES (gen_random_uuid(), $1, $2, $3, 'cancelada', CURRENT_TIMESTAMP)`,
+    [usuarioId, viajeId, asiento]
+  );
+
+test('solo un funcionario con sesión consulta viajes y asientos', async () => {
+  assert.equal((await request(app).get('/api/viajes/disponibles')).status, 401);
+  assert.equal((await disponibles(admin)).status, 403);
+  assert.equal((await disponibles(conductor)).status, 403);
+  assert.equal((await asientos(conductor, 1)).status, 403);
+});
+
+test('lista un viaje reservable con su capacidad, ocupación real y si ya reservé', async () => {
+  const ida = await viaje();
+  assert.equal((await reservar(ana, [{ viajeId: ida.id, asiento: 2 }])).status, 201);
+  await cancelada(idBeto, ida.id, 5);
+
+  const deAna = (await disponibles(ana)).body.viajes.find((v: { id: number }) => v.id === ida.id);
+  assert.deepEqual(
+    { ...deAna, fecha: undefined },
+    { id: ida.id, fecha: undefined, hora: '06:45', trayecto: 'Ida', origen: 'Quillota 980', destino: 'Santiago',
+      capacidad: 9, ocupados: 1, libres: 8, tengoReserva: true }
+  );
+  assert.equal(deAna.fecha, await fechaDe(ida.id));
+
+  const deBeto = (await disponibles(beto)).body.viajes.find((v: { id: number }) => v.id === ida.id);
+  assert.equal(deBeto.tengoReserva, false);
+});
+
+test('no lista viajes cancelados, sin van, con van dada de baja ni fuera de 1 a 30 días', async () => {
+  const noDisponibles = [
+    await viaje({ estado: 'cancelado' }),
+    await viaje({ vanId: null }),
+    await viaje({ vanId: vanBaja }),
+  ];
+  for (const dias of [0, 31]) {
+    if (!(await ocupado(dias, 'Vuelta'))) noDisponibles.push(await viaje({ dias, trayecto: 'Vuelta' }));
+  }
+
+  const ids = (await disponibles(ana)).body.viajes.map((v: { id: number }) => v.id);
+  for (const v of noDisponibles) assert.ok(!ids.includes(v.id), `viaje del día ${v.dias}`);
+});
+
+test('ordena del más cercano al más lejano y filtra por fecha y trayecto', async () => {
+  const ida = await viaje();
+  const vuelta = await viaje({ dias: ida.dias, trayecto: 'Vuelta' });
+  const fecha = await fechaDe(ida.id);
+
+  const todos = (await disponibles(ana)).body.viajes as { fecha: string; hora: string }[];
+  const claves = todos.map((v) => `${v.fecha} ${v.hora}`);
+  assert.deepEqual(claves, [...claves].sort());
+
+  const delDia = (await disponibles(ana, `?fecha=${fecha}`)).body.viajes.map((v: { id: number }) => v.id);
+  assert.deepEqual(delDia, [ida.id, vuelta.id]);
+
+  const soloVuelta = (await disponibles(ana, `?fecha=${fecha}&trayecto=Vuelta`)).body.viajes;
+  assert.deepEqual(soloVuelta.map((v: { id: number }) => v.id), [vuelta.id]);
+});
+
+test('un día sin viajes responde una lista vacía', async () => {
+  const r = await disponibles(ana, '?fecha=2099-01-01');
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.body.viajes, []);
+});
+
+test('rechaza filtros inválidos con 400', async () => {
+  for (const consulta of ['?fecha=hoy', '?fecha=2026-02-31', '?fecha=2026-13-01', '?trayecto=ida', '?trayecto=Ida%20y%20vuelta']) {
+    const r = await disponibles(ana, consulta);
+    assert.equal(r.status, 400, consulta);
+    assert.ok(r.body.errores, consulta);
+  }
+});
+
+test('entrega los asientos ocupados en orden, sin las canceladas, y el asiento propio', async () => {
+  const ida = await viaje();
+  assert.equal((await asientos(ana, ida.id)).body.ocupados.length, 0);
+
+  assert.equal((await reservar(beto, [{ viajeId: ida.id, asiento: 8 }])).status, 201);
+  assert.equal((await reservar(ana, [{ viajeId: ida.id, asiento: 3 }])).status, 201);
+  await cancelada(idBeto, ida.id, 5);
+
+  const r = await asientos(ana, ida.id);
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.body, { viajeId: ida.id, capacidad: 9, ocupados: [3, 8], miAsiento: 3 });
+  assert.equal((await asientos(beto, ida.id)).body.miAsiento, 8);
+});
+
+test('los asientos respetan la capacidad de la van', async () => {
+  const ida = await viaje({ vanId: vanChica });
+  assert.equal((await asientos(ana, ida.id)).body.capacidad, 4);
+  const listado = (await disponibles(ana)).body.viajes.find((v: { id: number }) => v.id === ida.id);
+  assert.equal(listado.libres, 4);
+});
+
+test('asientos: id inválido 400, viaje inexistente 404 y viaje no disponible 409', async () => {
+  assert.equal((await asientos(ana, 'abc')).status, 400);
+  assert.equal((await asientos(ana, 999999999)).status, 404);
+  const cancelado = await viaje({ estado: 'cancelado' });
+  assert.equal((await asientos(ana, cancelado.id)).status, 409);
+});
