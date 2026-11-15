@@ -1,6 +1,7 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { IconBack, IconBell, IconCalendar, IconRoute, IconUser } from '../admin/components/icons'
 import Logo from '../admin/components/Logo'
+import { ProveedorViajesBd } from '../admin/store/useViajesBd'
 import Waves from '../reactbits/Waves'
 import { ONDAS_ENCABEZADO } from '../reactbits/unab'
 import { useAvisosConductor } from './useAvisosConductor'
@@ -19,19 +20,22 @@ const TITULOS: Record<string, string> = {
 export default function ConductorLayout() {
   const { pathname, state } = useLocation()
   const ruta = pathname.replace(/\/+$/, '')
+  const enNavegacion = /^\/conductor\/viajes\/[^/]+\/navegacion$/.test(ruta)
   const enDetalle = ruta.startsWith('/conductor/viajes/')
   // Al abrir un viaje desde el historial, "volver" y la pestaña marcada son los del historial.
   const origen = enDetalle ? (state as { desde?: string } | null)?.desde : undefined
   const desdeHistorial = origen === 'historial'
   const desdeAvisos = origen === 'avisos'
-  const volverA = desdeHistorial
-    ? '/conductor/historial'
-    : desdeAvisos
-      ? '/conductor/avisos'
-      : origen === 'listado-historial'
-      ? '/conductor/viajes?tab=historial'
-      : '/conductor/viajes'
-  const titulo = enDetalle ? 'Detalle del viaje' : TITULOS[ruta] ?? 'Panel del conductor'
+  const volverA = enNavegacion
+    ? ruta.replace(/\/navegacion$/, '')
+    : desdeHistorial
+      ? '/conductor/historial'
+      : desdeAvisos
+        ? '/conductor/avisos'
+        : origen === 'listado-historial'
+          ? '/conductor/viajes?tab=historial'
+          : '/conductor/viajes'
+  const titulo = enNavegacion ? 'Navegación' : enDetalle ? 'Detalle del viaje' : TITULOS[ruta] ?? 'Panel del conductor'
 
   const clase = (activa: boolean) => `psj-nav__tab${activa ? ' is-active' : ''}`
   const enViajes = ruta === '/conductor/viajes' || (enDetalle && !desdeHistorial && !desdeAvisos)
@@ -51,16 +55,18 @@ export default function ConductorLayout() {
         </div>
         <div className="psj-header__left">
           {enDetalle
-            ? <Link to={volverA} className="psj-back" aria-label={desdeHistorial ? 'Volver al historial' : desdeAvisos ? 'Volver a las notificaciones' : 'Volver a mis viajes'}><IconBack /></Link>
+            ? <Link to={volverA} className="psj-back" aria-label={enNavegacion ? 'Volver al viaje' : desdeHistorial ? 'Volver al historial' : desdeAvisos ? 'Volver a las notificaciones' : 'Volver a mis viajes'}><IconBack /></Link>
             : <Logo variante="simbolo" alto={36} className="psj-logo" />}
           <h1 className="psj-title">{titulo}</h1>
         </div>
       </header>
 
+      <ProveedorViajesBd rol="conductor">
       <main className="psj-main">
         {/* RB-05: cada vista aparece con un fundido (CSS .psj-vista); solo opacidad, porque un transform rompería el pie fijo */}
         <div key={pathname} className="psj-vista"><Outlet context={avisos} /></div>
       </main>
+      </ProveedorViajesBd>
 
       <nav className="psj-nav" aria-label="Navegación conductor">
         {/* Link y no NavLink: la pestaña activa también depende de desde dónde se abrió el detalle de un viaje. */}

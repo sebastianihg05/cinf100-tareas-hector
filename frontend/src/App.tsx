@@ -32,6 +32,9 @@ import RegisterSuccess from "./login/pages/RegisterSuccess";
 import ForgotPassword from "./login/pages/ForgotPassword";
 import RequiereRol from './login/RequiereRol'
 
+// GPS-03: la pantalla de navegación (con el mapa) se descarga solo cuando el conductor la abre.
+const NavegacionViaje = lazy(() => import('./conductor/pages/NavegacionViaje'))
+
 // RB-03: muestra de animaciones. Carga diferida y solo en desarrollo, para que no pese en producción.
 const DemoReactBits = import.meta.env.DEV ? lazy(() => import('./reactbits/DemoReactBits')) : null
 
@@ -77,6 +80,7 @@ export default function App() {
             <Route index element={<Navigate to="viajes" replace />} />
             <Route path="viajes" element={<ViajesAsignados />} />
             <Route path="viajes/:viajeId" element={<ViajeDetalle />} />
+            <Route path="viajes/:viajeId/navegacion" element={<Suspense fallback={null}><NavegacionViaje /></Suspense>} />
             <Route path="historial" element={<HistorialViajes />} />
             <Route path="avisos" element={<NotificacionesConductor />} />
             <Route path="perfil" element={<PerfilConductor />} />

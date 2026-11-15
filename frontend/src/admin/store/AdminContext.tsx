@@ -8,9 +8,12 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { api as clienteApi, type ConductorBd, type UsuarioBd } from '../../api'
-import type { Admin, Chofer, EstadoViaje, Pasajero, Reserva, Rol, Van, Viaje } from '../types'
+import { api as clienteApi, type ConductorBd, type UsuarioBd, type ViajeBd } from '../../api'
+import { leerSesion } from '../../login/sesion'
+import { HORA_TRAYECTO, RUTA_TRAYECTO, type Admin, type Chofer, type EstadoViaje, type Pasajero, type Reserva, type Rol, type Trayecto, type Van, type Viaje } from '../types'
 import { ahoraISO } from '../utils/format'
+import { numeroDeVan } from '../utils/vanBd'
+import { type AlcanceViajes } from './viajesBd'
 import {
   cargarEstado,
   guardarEstado,
@@ -61,6 +64,16 @@ type AdminApi = {
   rechazarSolicitud: (id: string) => void
   addViajes: (viajes: Viaje[]) => void
   setEstadoViaje: (id: string, estado: EstadoViaje) => void
+  /** Copia en la app los viajes que devolvió el backend (S3-VIA-03 y S3-CON-02) */
+  sincronizarViajes: (viajes: ViajeBd[], alcance: AlcanceViajes) => void
+  /** Abre ida, vuelta o ambos en una fecha; con sesión del servidor se guardan en PostgreSQL */
+  abrirViajes: (fecha: string, trayectos: Trayecto[]) => Promise<ResultadoEdicion>
+  /** Asigna una van (y su conductor) a un viaje pendiente */
+  asignarVan: (viajeId: string, vanId: string) => Promise<ResultadoEdicion>
+  /** Cancela un viaje pendiente (administración) */
+  cancelarViaje: (viajeId: string) => Promise<ResultadoEdicion>
+  /** El conductor inicia o finaliza su viaje; en los viajes de la base se registra mediante la API */
+  cambiarEstadoViaje: (viajeId: string, estado: 'en-curso' | 'completado') => Promise<ResultadoEdicion>
   marcarLeida: (id: string) => void
   marcarTodasLeidas: () => void
   sinLeer: number
@@ -77,6 +90,9 @@ type AdminApi = {
 }
 
 const AdminContext = createContext<AdminApi | null>(null)
+
+/** Solo las sesiones iniciadas en el servidor (con token) guardan en PostgreSQL; sin token se trabaja con los datos locales. */
+const conServidor = () => Boolean(leerSesion()?.token)
 
 export function AdminProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, cargarEstado)
@@ -274,6 +290,64 @@ export function AdminProvider({ children }: { children: ReactNode }) {
             ? { id: nuevoId('n'), tipo: 'viaje-iniciado', viajeId: id, fecha: ahoraISO(), leida: false }
             : undefined,
         }),
+      sincronizarViajes: (viajes, alcance) => dispatch({ type: 'viaje/desdeBd', viajes, alcance }),
+      abrirViajes: async (fecha, trayectos) => {
+        if (!conServidor()) {
+          dispatch({ type: 'viaje/add', viajes: trayectos.map((t) => ({
+            id: nuevoId('t'), ...RUTA_TRAYECTO[t], trayecto: t, fecha, hora: HORA_TRAYECTO[t], vanId: null, reservados: 0, estado: 'pendiente' as const,
+          })) })
+          return { ok: true }
+        }
+        const r = await clienteApi.abrirViajes(fecha, trayectos)
+        if (!r.ok) return { ok: false, error: r.error }
+        dispatch({ type: 'viaje/desdeBd', viajes: r.datos.viajes, alcance: { tipo: 'parcial' } })
+        return { ok: true }
+      },
+      asignarVan: async (viajeId, vanId) => {
+        const actual = estadoActual.current
+        const viaje = actual.viajes.find((v) => v.id === viajeId)
+        if (!viaje) return { ok: false, error: 'El viaje ya no existe.' }
+        if (viaje.idBd === undefined || !conServidor()) {
+          dispatch({ type: 'viaje/van', id: viajeId, vanId })
+          return { ok: true }
+        }
+        const van = actual.vans.find((v) => v.id === vanId)
+        const chofer = actual.choferes.find((c) => c.id === van?.choferId)
+        const r = await clienteApi.actualizarViaje(viaje.idBd, { vanId: numeroDeVan(vanId), conductorId: chofer?.idBd ?? null })
+        if (!r.ok) return { ok: false, error: r.error }
+        dispatch({ type: 'viaje/desdeBd', viajes: [r.datos.viaje], alcance: { tipo: 'parcial' } })
+        return { ok: true }
+      },
+      cancelarViaje: async (viajeId) => {
+        const viaje = estadoActual.current.viajes.find((v) => v.id === viajeId)
+        if (!viaje) return { ok: false, error: 'El viaje ya no existe.' }
+        if (viaje.idBd === undefined || !conServidor()) {
+          dispatch({ type: 'viaje/estado', id: viajeId, estado: 'cancelado' })
+          return { ok: true }
+        }
+        const r = await clienteApi.actualizarViaje(viaje.idBd, { estado: 'cancelado' })
+        if (!r.ok) return { ok: false, error: r.error }
+        dispatch({ type: 'viaje/desdeBd', viajes: [r.datos.viaje], alcance: { tipo: 'parcial' } })
+        return { ok: true }
+      },
+      cambiarEstadoViaje: async (viajeId, estado) => {
+        const viaje = estadoActual.current.viajes.find((v) => v.id === viajeId)
+        if (!viaje) return { ok: false, error: 'No encontramos este viaje entre los que tienes asignados.' }
+        if (viaje.idBd === undefined || !conServidor()) {
+          // viaje de ejemplo: se guarda solo en este navegador, como antes
+          dispatch({
+            type: 'viaje/estado', id: viajeId, estado,
+            notificacion: estado === 'en-curso'
+              ? { id: nuevoId('n'), tipo: 'viaje-iniciado', viajeId, fecha: ahoraISO(), leida: false }
+              : undefined,
+          })
+          return { ok: true }
+        }
+        const r = estado === 'en-curso' ? await clienteApi.iniciarViaje(viaje.idBd) : await clienteApi.finalizarViaje(viaje.idBd)
+        if (!r.ok) return { ok: false, error: r.error }
+        dispatch({ type: 'viaje/desdeBd', viajes: [r.datos.viaje], alcance: { tipo: 'parcial' } })
+        return { ok: true }
+      },
       marcarLeida: (id) => dispatch({ type: 'notif/leer', id }),
       marcarTodasLeidas: () => dispatch({ type: 'notif/leerTodas' }),
       asignarVanViaje: (id, vanId) => dispatch({ type: 'viaje/van', id, vanId }),

@@ -67,6 +67,10 @@ export type Viaje = {
   vanId: string | null
   reservados: number
   estado: EstadoViaje
+  /** id del viaje en PostgreSQL; los viajes de ejemplo (mock) no lo tienen y solo existen en este navegador */
+  idBd?: number
+  /** id de la cuenta del conductor asignado en PostgreSQL (`null` sin asignar); solo viajes de la base */
+  conductorIdBd?: number | null
 }
 
 export type EstadoReserva = 'pendiente' | 'completada' | 'cancelada'

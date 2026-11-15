@@ -7,6 +7,7 @@ import Modal from '../components/Modal'
 import Pills from '../components/Pills'
 import ListaPasajerosViaje from '../components/ListaPasajerosViaje'
 import { useAdmin } from '../store/AdminContext'
+import { AvisoViajesBd, useEstadoViajesBd } from '../store/useViajesBd'
 import { estaActiva } from '../store/reservas'
 import { CAPACIDAD_VAN, type EstadoViaje, type Trayecto, type Viaje } from '../types'
 import { fechaDMY, fechaLarga, todayISO } from '../utils/format'
@@ -21,9 +22,10 @@ const ETIQUETA: Record<EstadoViaje, string> = {
 }
 
 function AsignarVan({ viaje, onClose }: { viaje: Viaje; onClose: () => void }) {
-  const { state, choferDeVan, asignarVanViaje } = useAdmin()
+  const { state, choferDeVan, asignarVan } = useAdmin()
   const [vanId, setVanId] = useState('')
   const [error, setError] = useState('')
+  const [guardando, setGuardando] = useState(false)
 
   // activas, con conductor y sin otro viaje en el mismo día y horario
   const disponibles = state.vans.filter(
@@ -31,10 +33,13 @@ function AsignarVan({ viaje, onClose }: { viaje: Viaje; onClose: () => void }) {
       !state.viajes.some((x) => x.id !== viaje.id && x.estado !== 'cancelado' && x.vanId === v.id && x.fecha === viaje.fecha && x.hora === viaje.hora),
   )
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault()
     if (!vanId) return setError('Selecciona una van')
-    asignarVanViaje(viaje.id, vanId)
+    setGuardando(true)
+    const resultado = await asignarVan(viaje.id, vanId)
+    setGuardando(false)
+    if (!resultado.ok) return setError(resultado.error)
     onClose()
   }
 
@@ -53,14 +58,15 @@ function AsignarVan({ viaje, onClose }: { viaje: Viaje; onClose: () => void }) {
       </Field>
       <div className="adm-form__actions">
         <button type="button" className="adm-btn adm-btn--ghost" onClick={onClose}>Cancelar</button>
-        <button type="submit" className="adm-btn adm-btn--primary">Asignar van</button>
+        <button type="submit" className="adm-btn adm-btn--primary" disabled={guardando}>{guardando ? 'Asignando…' : 'Asignar van'}</button>
       </div>
     </form>
   )
 }
 
 export default function VistaViajes() {
-  const { state, setEstadoViaje, choferDeVan } = useAdmin()
+  const { state, cancelarViaje, choferDeVan } = useAdmin()
+  const { cargando } = useEstadoViajesBd()
   const navigate = useNavigate()
   const [filtro, setFiltro] = useState<Filtro>('todos')
   const [fecha, setFecha] = useState('')
@@ -69,6 +75,7 @@ export default function VistaViajes() {
   const [asignando, setAsignando] = useState<string | null>(null)
   const [cancelando, setCancelando] = useState<Viaje | null>(null)
   const [viendoPasajeros, setViendoPasajeros] = useState<Viaje | null>(null)
+  const [errorCancelar, setErrorCancelar] = useState('')
 
   const lista = state.viajes
     .filter((v) => (filtro === 'todos' || v.estado === filtro) && (!fecha || v.fecha === fecha))
@@ -110,6 +117,10 @@ export default function VistaViajes() {
 
       <p className="adm-today">{fechaLarga(todayISO())} · Hoy</p>
 
+      {/* S3-VIA-03: los viajes vienen de PostgreSQL; aquí se avisa mientras cargan o si el servidor falla */}
+      <AvisoViajesBd claseCarga="adm-note" claseError="adm-note adm-note--box" claseBoton="adm-chip" />
+      {errorCancelar && <p className="adm-note adm-note--box" role="alert">{errorCancelar}</p>}
+
       {/* RB-04: las tarjetas entran una tras otra; se repite al cambiar de filtro */}
       <AnimatedContent as="ul" className="adm-list" key={filtro} {...ENTRADA_TARJETAS}>
         {lista.map((v) => {
@@ -150,7 +161,7 @@ export default function VistaViajes() {
             </li>
           )
         })}
-        {lista.length === 0 && <li className="adm-empty">No hay viajes con ese filtro.</li>}
+        {lista.length === 0 && !cargando && <li className="adm-empty">No hay viajes con ese filtro.</li>}
       </AnimatedContent>
       {cancelando && (
         <ConfirmDialog
@@ -158,7 +169,11 @@ export default function VistaViajes() {
           message={`¿Cancelar el viaje ${cancelando.origen} → ${cancelando.destino} del ${fechaDMY(cancelando.fecha)} (${cancelando.hora} hrs)? Dejará de estar disponible para reservar.`}
           confirmLabel="Cancelar viaje"
           onCancel={() => setCancelando(null)}
-          onConfirm={() => { setEstadoViaje(cancelando.id, 'cancelado'); setCancelando(null) }}
+          onConfirm={async () => {
+            const resultado = await cancelarViaje(cancelando.id)
+            setErrorCancelar(resultado.ok ? '' : resultado.error)
+            setCancelando(null)
+          }}
         />
       )}
 

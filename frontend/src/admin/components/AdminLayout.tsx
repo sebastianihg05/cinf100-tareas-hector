@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import Logo from './Logo'
+import { ProveedorViajesBd } from '../store/useViajesBd'
 import TextType from '../../reactbits/TextType'
 import Waves from '../../reactbits/Waves'
 import { ONDAS_ENCABEZADO } from '../../reactbits/unab'
@@ -84,7 +85,7 @@ export default function AdminLayout() {
         </NavLink>
       )}
 
-      <main className="adm-content"><Outlet /></main>
+      <main className="adm-content"><ProveedorViajesBd rol="admin"><Outlet /></ProveedorViajesBd></main>
 
       <nav className="adm-nav" aria-label="Navegación administrador">
         {tabs.map((t) => (
