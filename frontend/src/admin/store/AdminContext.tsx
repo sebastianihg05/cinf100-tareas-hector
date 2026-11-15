@@ -1,38 +1,66 @@
-import { createContext, useContext, useEffect, useMemo, useReducer, useRef, type ReactNode } from 'react'
-import { api as servidor, type ConductorBd, type UsuarioBd, type ViajeBd } from '../../api'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
+import { api as clienteApi, type ConductorBd, type UsuarioBd, type ViajeBd } from '../../api'
 import { leerSesion } from '../../login/sesion'
 import { HORA_TRAYECTO, RUTA_TRAYECTO, type Admin, type Chofer, type EstadoViaje, type Pasajero, type Reserva, type Rol, type Trayecto, type Van, type Viaje } from '../types'
 import { ahoraISO } from '../utils/format'
 import { numeroDeVan } from '../utils/vanBd'
-
-import { cargarEstado, guardarEstado, KEY, leerEstadoGuardado, nuevoId, reducer, type Action, type State } from './adminStore'
 import { type AlcanceViajes } from './viajesBd'
 import {
-  agruparReservas, asientosOcupados, cancelables, capacidadDeViaje, validarCambioAsientos, validarSolicitud,
-  type CambioAsiento, type GrupoReserva, type ResultadoReserva, type SolicitudReserva,
+  cargarEstado,
+  guardarEstado,
+  KEY,
+  leerEstadoGuardado,
+  nuevoId,
+  reducer,
+  type Action,
+  type State,
+} from './adminStore'
+import {
+  agruparReservas,
+  asientosOcupados,
+  cancelables,
+  capacidadDeViaje,
+  validarCambioAsientos,
+  validarSolicitud,
+  type CambioAsiento,
+  type GrupoReserva,
+  type ResultadoReserva,
+  type SolicitudReserva,
 } from './reservas'
 
-export type ResultadoCancelacion = { ok: true; cantidad: number } | { ok: false; error: string }
+export type ResultadoCancelacion =
+  | { ok: true; cantidad: number }
+  | { ok: false; error: string }
 
-export type ResultadoEdicion = { ok: true } | { ok: false; error: string }
+export type ResultadoEdicion =
+  | { ok: true }
+  | { ok: false; error: string }
 
 type AdminApi = {
   state: State
   pendientes: number
-  saveVan: (van: Van) => void
-  toggleVan: (id: string) => void
+  vansCargando: boolean
+  vansGuardando: boolean
+  vansError: string | null
+  limpiarErrorVans: () => void
+  saveVan: (van: Van) => Promise<boolean>
+  toggleVan: (id: string) => Promise<boolean>
   saveChofer: (chofer: Chofer) => void
   toggleChofer: (id: string) => void
   patchPasajero: (id: string, patch: Partial<Pasajero>) => void
-  /** Copia en la app las cuentas que devolvió el backend (registro, login y administración, BD-17/18) */
   sincronizarCuentas: (usuarios: UsuarioBd[]) => void
-  /** Copia en la lista de choferes los conductores guardados en la base */
   sincronizarConductores: (conductores: ConductorBd[]) => void
-  /** Aprueba una solicitud y le asigna su rol (se hace una sola vez) */
   aprobarSolicitud: (id: string, rol: Rol) => void
-  /** Elimina la cuenta de un pasajero junto con todas sus reservas (libera los asientos y el espacio guardado) */
   eliminarPasajero: (id: string) => void
-  /** Rechaza una solicitud: se elimina y la persona tendría que registrarse de nuevo */
   rechazarSolicitud: (id: string) => void
   addViajes: (viajes: Viaje[]) => void
   setEstadoViaje: (id: string, estado: EstadoViaje) => void
@@ -48,23 +76,16 @@ type AdminApi = {
   cambiarEstadoViaje: (viajeId: string, estado: 'en-curso' | 'completado') => Promise<ResultadoEdicion>
   marcarLeida: (id: string) => void
   marcarTodasLeidas: () => void
-  /** notificaciones sin leer (viajes iniciados) */
   sinLeer: number
   asignarVanViaje: (id: string, vanId: string) => void
   updateAdmin: (patch: Partial<Admin>) => void
   choferDeVan: (van: Van) => Chofer | undefined
   vanDeChofer: (chofer: Chofer) => Van | undefined
-  /** Reservas del pasajero separadas en próximas e historial */
   reservasDe: (pasajeroId: string) => { proximas: GrupoReserva[]; historial: GrupoReserva[] }
-  /** Reserva 1 o 2 asientos (ida / vuelta) de forma atómica: o se guardan todos o ninguno */
   crearReservas: (pasajeroId: string, solicitud: SolicitudReserva[]) => ResultadoReserva
-  /** Cancela una reserva completa del pasajero (todos sus trayectos pendientes) y libera los asientos */
   cancelarReserva: (pasajeroId: string, grupoId: string) => ResultadoCancelacion
-  /** Cambia el asiento de los trayectos pendientes de una reserva */
   cambiarAsientos: (pasajeroId: string, grupoId: string, cambios: CambioAsiento[]) => ResultadoEdicion
-  /** Capacidad del viaje (`undefined` si todavía no tiene van asignada) */
   capacidadDe: (viaje: Viaje) => number | undefined
-  /** Números de asiento ya tomados en el viaje */
   asientosOcupadosDe: (viajeId: string) => number[]
 }
 
@@ -75,31 +96,182 @@ const conServidor = () => Boolean(leerSesion()?.token)
 
 export function AdminProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, cargarEstado)
-  // Última versión del estado, para validar y guardar una reserva sin depender del ciclo de render.
+  const [vansCargando, setVansCargando] = useState(true)
+  const [vansGuardando, setVansGuardando] = useState(false)
+  const [vansError, setVansError] = useState<string | null>(null)
+
   const estadoActual = useRef(state)
   estadoActual.current = state
 
-  useEffect(() => { guardarEstado(state) }, [state])
+  useEffect(() => {
+    guardarEstado(state)
+  }, [state])
 
-  // Vans, viajes y reservas viven en localStorage: si otra pestaña los cambia (ej. el admin abre un viaje),
-  // esta adopta el cambio sin recargar. El navegador avisa solo a las demás pestañas, no a la que guardó.
+  // La API es la fuente principal de las vans. localStorage queda como respaldo.
+  useEffect(() => {
+    let vigente = true
+
+    const cargarVans = async () => {
+      const respuesta = await clienteApi.listarVans()
+
+      if (!vigente) return
+
+      if (respuesta.ok) {
+        dispatch({ type: 'van/desdeBd', vans: respuesta.datos.vans })
+        setVansError(null)
+      } else {
+        setVansError(respuesta.error)
+      }
+
+      setVansCargando(false)
+    }
+
+    void cargarVans()
+
+    return () => {
+      vigente = false
+    }
+  }, [])
+
   useEffect(() => {
     const alCambiar = (e: StorageEvent) => {
       if (e.key !== KEY || e.newValue === null || e.newValue === JSON.stringify(estadoActual.current)) return
       const otro = leerEstadoGuardado()
       if (otro) dispatch({ type: 'estado/otraPestana', state: otro })
     }
+
     window.addEventListener('storage', alCambiar)
     return () => window.removeEventListener('storage', alCambiar)
   }, [])
 
-  const api = useMemo<AdminApi>(
+  const guardarVanEnApi = async (van: Van): Promise<boolean> => {
+    setVansGuardando(true)
+    setVansError(null)
+
+    try {
+      const chofer = van.choferId
+        ? state.choferes.find((c) => c.id === van.choferId)
+        : undefined
+
+      if (van.choferId && (!chofer || chofer.idBd === undefined)) {
+        setVansError('El conductor seleccionado todavía no está registrado en la base de datos.')
+        return false
+      }
+
+      const conductorId = chofer?.idBd ?? null
+      const esEdicionBd = /^\d+$/.test(van.id)
+
+      const respuesta = esEdicionBd
+        ? await clienteApi.actualizarVan(van.id, {
+            patente: van.patente,
+            conductorId,
+            activa: van.activa,
+          })
+        : await clienteApi.crearVan({
+            patente: van.patente,
+            conductorId,
+          })
+
+      if (!respuesta.ok) {
+        setVansError(respuesta.error)
+        return false
+      }
+
+      const vanBd = respuesta.datos.van
+
+      // El servidor devuelve el ID definitivo. Se conserva el conductor local asociado.
+      const vanActualizada: Van = {
+        id: vanBd.id,
+        patente: vanBd.patente,
+        asientos: vanBd.asientos,
+        choferId: van.choferId,
+        activa: vanBd.activa,
+      }
+
+      dispatch({ type: 'van/save', van: vanActualizada })
+
+      // Sincroniza el listado completo con PostgreSQL después de guardar.
+      const listado = await clienteApi.listarVans()
+
+      if (listado.ok) {
+        dispatch({ type: 'van/desdeBd', vans: listado.datos.vans })
+      } else {
+        setVansError(`La van se guardó, pero no se pudo actualizar el listado: ${listado.error}`)
+      }
+
+      return true
+    } finally {
+      setVansGuardando(false)
+    }
+  }
+
+  const cambiarEstadoVan = async (id: string): Promise<boolean> => {
+    const van = state.vans.find((v) => v.id === id)
+
+    if (!van) {
+      setVansError('No se encontró la van seleccionada.')
+      return false
+    }
+
+    if (!/^\d+$/.test(id)) {
+      setVansError('Esta van no tiene un identificador de PostgreSQL. Recarga el listado e inténtalo de nuevo.')
+      return false
+    }
+
+    setVansGuardando(true)
+    setVansError(null)
+
+    try {
+      const respuesta = await clienteApi.actualizarVan(id, {
+        activa: !van.activa,
+      })
+
+      if (!respuesta.ok) {
+        setVansError(respuesta.error)
+        return false
+      }
+
+      const vanBd = respuesta.datos.van
+      const chofer = vanBd.conductorId === null
+        ? undefined
+        : state.choferes.find((c) => c.idBd === vanBd.conductorId)
+
+      dispatch({
+        type: 'van/save',
+        van: {
+          id: vanBd.id,
+          patente: vanBd.patente,
+          asientos: vanBd.asientos,
+          activa: vanBd.activa,
+          choferId: chofer?.id ?? null,
+        },
+      })
+
+      const listado = await clienteApi.listarVans()
+
+      if (listado.ok) {
+        dispatch({ type: 'van/desdeBd', vans: listado.datos.vans })
+      } else {
+        setVansError(`El estado se actualizó, pero no se pudo actualizar el listado: ${listado.error}`)
+      }
+
+      return true
+    } finally {
+      setVansGuardando(false)
+    }
+  }
+
+  const contexto = useMemo<AdminApi>(
     () => ({
       state,
       pendientes: state.pasajeros.filter((p) => !p.aprobado).length,
       sinLeer: state.notificaciones.filter((n) => !n.leida).length,
-      saveVan: (van) => dispatch({ type: 'van/save', van }),
-      toggleVan: (id) => dispatch({ type: 'van/toggle', id }),
+      vansCargando,
+      vansGuardando,
+      vansError,
+      limpiarErrorVans: () => setVansError(null),
+      saveVan: guardarVanEnApi,
+      toggleVan: cambiarEstadoVan,
       saveChofer: (chofer) => dispatch({ type: 'chofer/save', chofer }),
       toggleChofer: (id) => dispatch({ type: 'chofer/toggle', id }),
       patchPasajero: (id, patch) => dispatch({ type: 'pasajero/patch', id, patch }),
@@ -109,7 +281,6 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       rechazarSolicitud: (id) => dispatch({ type: 'pasajero/rechazar', id }),
       eliminarPasajero: (id) => dispatch({ type: 'pasajero/eliminar', id }),
       addViajes: (viajes) => dispatch({ type: 'viaje/add', viajes }),
-      // Lo llama la app del conductor (aquí solo se simula en desarrollo). Al iniciar, avisa al administrador.
       setEstadoViaje: (id, estado) =>
         dispatch({
           type: 'viaje/estado',
@@ -127,7 +298,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
           })) })
           return { ok: true }
         }
-        const r = await servidor.abrirViajes(fecha, trayectos)
+        const r = await clienteApi.abrirViajes(fecha, trayectos)
         if (!r.ok) return { ok: false, error: r.error }
         dispatch({ type: 'viaje/desdeBd', viajes: r.datos.viajes, alcance: { tipo: 'parcial' } })
         return { ok: true }
@@ -142,7 +313,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         }
         const van = actual.vans.find((v) => v.id === vanId)
         const chofer = actual.choferes.find((c) => c.id === van?.choferId)
-        const r = await servidor.actualizarViaje(viaje.idBd, { vanId: numeroDeVan(vanId), conductorId: chofer?.idBd ?? null })
+        const r = await clienteApi.actualizarViaje(viaje.idBd, { vanId: numeroDeVan(vanId), conductorId: chofer?.idBd ?? null })
         if (!r.ok) return { ok: false, error: r.error }
         dispatch({ type: 'viaje/desdeBd', viajes: [r.datos.viaje], alcance: { tipo: 'parcial' } })
         return { ok: true }
@@ -154,7 +325,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
           dispatch({ type: 'viaje/estado', id: viajeId, estado: 'cancelado' })
           return { ok: true }
         }
-        const r = await servidor.actualizarViaje(viaje.idBd, { estado: 'cancelado' })
+        const r = await clienteApi.actualizarViaje(viaje.idBd, { estado: 'cancelado' })
         if (!r.ok) return { ok: false, error: r.error }
         dispatch({ type: 'viaje/desdeBd', viajes: [r.datos.viaje], alcance: { tipo: 'parcial' } })
         return { ok: true }
@@ -172,7 +343,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
           })
           return { ok: true }
         }
-        const r = estado === 'en-curso' ? await servidor.iniciarViaje(viaje.idBd) : await servidor.finalizarViaje(viaje.idBd)
+        const r = estado === 'en-curso' ? await clienteApi.iniciarViaje(viaje.idBd) : await clienteApi.finalizarViaje(viaje.idBd)
         if (!r.ok) return { ok: false, error: r.error }
         dispatch({ type: 'viaje/desdeBd', viajes: [r.datos.viaje], alcance: { tipo: 'parcial' } })
         return { ok: true }
@@ -189,52 +360,74 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       cancelarReserva: (pasajeroId, grupoId) => {
         const actual = estadoActual.current
         const ids = cancelables(actual, pasajeroId, grupoId).map((r) => r.id)
+
         if (ids.length === 0) {
-          return { ok: false, error: 'Esta reserva ya no se puede cancelar: el viaje ya salió o la reserva ya no está pendiente.' }
+          return {
+            ok: false,
+            error: 'Esta reserva ya no se puede cancelar: el viaje ya salió o la reserva ya no está pendiente.',
+          }
         }
+
         const accion: Action = { type: 'reserva/cancelar', ids }
         estadoActual.current = reducer(actual, accion)
         dispatch(accion)
+
         return { ok: true, cantidad: ids.length }
       },
       cambiarAsientos: (pasajeroId, grupoId, cambios) => {
         const actual = estadoActual.current
         const conflictos = validarCambioAsientos(actual, pasajeroId, grupoId, cambios)
+
         if (conflictos.length > 0) return { ok: false, error: conflictos[0].mensaje }
+
         const accion: Action = { type: 'reserva/asientos', pasajeroId, grupoId, cambios }
         estadoActual.current = reducer(actual, accion)
         dispatch(accion)
+
         return { ok: true }
       },
       crearReservas: (pasajeroId, solicitud) => {
         const actual = estadoActual.current
         const conflictos = validarSolicitud(actual, pasajeroId, solicitud)
+
         if (conflictos.length > 0) {
           return { ok: false, tipo: 'conflicto', error: conflictos[0].mensaje, conflictos }
         }
+
         const grupoId = nuevoId('g')
         const creadaEn = ahoraISO()
         const reservas: Reserva[] = solicitud.map((it) => ({
-          id: nuevoId('r'), grupoId, pasajeroId, viajeId: it.viajeId, trayecto: it.trayecto, asiento: it.asiento,
-          estado: 'pendiente', creadaEn,
+          id: nuevoId('r'),
+          grupoId,
+          pasajeroId,
+          viajeId: it.viajeId,
+          trayecto: it.trayecto,
+          asiento: it.asiento,
+          estado: 'pendiente',
+          creadaEn,
         }))
+
         const accion: Action = { type: 'reserva/crear', reservas }
         const siguiente = reducer(actual, accion)
+
         if (!guardarEstado(siguiente)) {
           return {
-            ok: false, tipo: 'almacenamiento',
+            ok: false,
+            tipo: 'almacenamiento',
             error: 'No se pudo guardar la reserva en este dispositivo. Revisa el almacenamiento del navegador e inténtalo de nuevo.',
           }
         }
+
         estadoActual.current = siguiente
         dispatch(accion)
+
         return { ok: true, grupoId, reservas }
       },
     }),
-    [state],
+    [state, vansCargando, vansGuardando, vansError],
   )
 
-  return <AdminContext.Provider value={api}>{children}</AdminContext.Provider>
+  return <AdminContext.Provider value={contexto}>{children}</AdminContext.Provider>
 }
 
 export function useAdmin() {

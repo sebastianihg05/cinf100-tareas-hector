@@ -1,9 +1,11 @@
+﻿
 import { Router, type Response } from 'express';
 import { requiereRol, requiereSesion } from '../auth/middleware';
 import { pool } from '../db';
 import { aPerfil, COLUMNAS_PERFIL, type Rol } from '../usuarios/perfil';
 import { rutasConductores } from './conductores';
 import { rutasViajes } from './viajes';
+import { rutasVans } from './vans';
 
 // Rutas solo para administradores (BD-14).
 export const rutasAdmin = Router();
@@ -11,12 +13,13 @@ export const rutasAdmin = Router();
 rutasAdmin.use(requiereSesion, requiereRol('administrador'));
 rutasAdmin.use('/conductores', rutasConductores);
 rutasAdmin.use('/viajes', rutasViajes);
+rutasAdmin.use('/vans', rutasVans);
 
 // Roles que un administrador puede asignar al aprobar. 'administrador' no se
-// entrega desde la API: así nadie puede crear administradores por error.
+// entrega desde la API: asÃ­ nadie puede crear administradores por error.
 const ROLES_ASIGNABLES: Rol[] = ['funcionario', 'conductor'];
 
-// BD-15: solicitudes de registro pendientes, de la más antigua a la más nueva.
+// BD-15: solicitudes de registro pendientes, de la mÃ¡s antigua a la mÃ¡s nueva.
 rutasAdmin.get('/solicitudes', async (_req, res) => {
   const { rows } = await pool.query(
     `SELECT ${COLUMNAS_PERFIL} FROM usuarios
@@ -26,7 +29,7 @@ rutasAdmin.get('/solicitudes', async (_req, res) => {
   res.json({ solicitudes: rows.map(aPerfil) });
 });
 
-// Todos los usuarios, para los listados del panel de administración.
+// Todos los usuarios, para los listados del panel de administraciÃ³n.
 rutasAdmin.get('/usuarios', async (_req, res) => {
   const { rows } = await pool.query(`SELECT ${COLUMNAS_PERFIL} FROM usuarios ORDER BY id`);
   res.json({ usuarios: rows.map(aPerfil) });
@@ -35,13 +38,13 @@ rutasAdmin.get('/usuarios', async (_req, res) => {
 function idDeRuta(valor: string, res: Response): number | null {
   const id = Number(valor);
   if (!Number.isInteger(id) || id <= 0) {
-    res.status(400).json({ error: 'El id de la solicitud no es válido.' });
+    res.status(400).json({ error: 'El id de la solicitud no es vÃ¡lido.' });
     return null;
   }
   return id;
 }
 
-// Responde 404 si la solicitud no existe, o 409 si ya no está pendiente.
+// Responde 404 si la solicitud no existe, o 409 si ya no estÃ¡ pendiente.
 async function solicitudNoDisponible(id: number, res: Response) {
   const { rowCount } = await pool.query('SELECT 1 FROM usuarios WHERE id = $1', [id]);
   if (rowCount === 0) {

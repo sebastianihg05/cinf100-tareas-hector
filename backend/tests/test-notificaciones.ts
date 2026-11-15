@@ -1,4 +1,5 @@
 
+
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -13,7 +14,7 @@ import {
 } from '../src/notificaciones/plantillas-correo';
 
 describe('Servicio de correo', () => {
-  it('debe enviar un correo correctamente', async () => {
+  it('debe enviar un correo correctamente y verificar sus datos', async () => {
     let correoEnviado: any;
 
     const transporte: TransporteCorreo = {
@@ -32,11 +33,14 @@ describe('Servicio de correo', () => {
       para: 'destinatario@unab.cl',
       asunto: 'Prueba',
       texto: 'Correo de prueba',
+      html: '<p>Correo de prueba</p>',
     });
 
     assert.equal(correoEnviado.to, 'destinatario@unab.cl');
     assert.equal(correoEnviado.subject, 'Prueba');
     assert.equal(correoEnviado.from, 'pruebas@unab.cl');
+    assert.equal(correoEnviado.text, 'Correo de prueba');
+    assert.equal(correoEnviado.html, '<p>Correo de prueba</p>');
   });
 
   it('debe aceptar varios destinatarios', async () => {
@@ -64,6 +68,87 @@ describe('Servicio de correo', () => {
       'persona1@unab.cl',
       'persona2@unab.cl',
     ]);
+  });
+
+  it('debe rechazar un correo sin destinatario', async () => {
+    let intentosEnvio = 0;
+
+    const transporte: TransporteCorreo = {
+      async sendMail() {
+        intentosEnvio++;
+        return {};
+      },
+    };
+
+    const servicio = crearServicioCorreo({
+      transporte,
+      remitente: 'pruebas@unab.cl',
+    });
+
+    await assert.rejects(
+      servicio.enviarCorreo({
+        para: '',
+        asunto: 'Prueba',
+        texto: 'Contenido',
+      }),
+      /obligatorios/
+    );
+
+    assert.equal(intentosEnvio, 0);
+  });
+
+  it('debe rechazar un correo sin asunto', async () => {
+    let intentosEnvio = 0;
+
+    const transporte: TransporteCorreo = {
+      async sendMail() {
+        intentosEnvio++;
+        return {};
+      },
+    };
+
+    const servicio = crearServicioCorreo({
+      transporte,
+      remitente: 'pruebas@unab.cl',
+    });
+
+    await assert.rejects(
+      servicio.enviarCorreo({
+        para: 'destinatario@unab.cl',
+        asunto: '',
+        texto: 'Contenido',
+      }),
+      /obligatorios/
+    );
+
+    assert.equal(intentosEnvio, 0);
+  });
+
+  it('debe rechazar un correo sin texto', async () => {
+    let intentosEnvio = 0;
+
+    const transporte: TransporteCorreo = {
+      async sendMail() {
+        intentosEnvio++;
+        return {};
+      },
+    };
+
+    const servicio = crearServicioCorreo({
+      transporte,
+      remitente: 'pruebas@unab.cl',
+    });
+
+    await assert.rejects(
+      servicio.enviarCorreo({
+        para: 'destinatario@unab.cl',
+        asunto: 'Prueba',
+        texto: '',
+      }),
+      /obligatorios/
+    );
+
+    assert.equal(intentosEnvio, 0);
   });
 
   it('debe propagar los errores del transporte', async () => {
@@ -100,6 +185,8 @@ describe('Plantillas de correo', () => {
     });
 
     assert.match(html, /Reserva confirmada/);
+    assert.match(html, /La reserva fue registrada/);
+    assert.match(html, /Viaje/);
     assert.match(html, /VAN-01/);
   });
 
@@ -123,6 +210,7 @@ describe('Plantillas de correo', () => {
     });
 
     assert.match(texto, /Reserva confirmada/);
+    assert.match(texto, /La reserva fue registrada/);
     assert.match(texto, /Viaje: VAN-01/);
   });
 });

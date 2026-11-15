@@ -6,6 +6,8 @@ import { config } from './config';
 import { pool } from './db';
 import { rutasAuth } from './usuarios/rutas';
 import { rutasPerfil } from './usuarios/rutas-perfil';
+import { rutasReservas } from './reservas/rutas';
+import { rutasViajesDisponibles } from './reservas/disponibles';
 
 export const app = express();
 
@@ -17,6 +19,8 @@ app.use('/api/auth', rutasAuth);
 app.use('/api/usuarios', rutasPerfil);
 app.use('/api/admin', rutasAdmin);
 app.use('/api/conductor', rutasConductor);
+app.use('/api/reservas', rutasReservas);
+app.use('/api/viajes', rutasViajesDisponibles);
 
 // Estado de la API y de la conexión con PostgreSQL
 app.get('/api/health', async (_req, res) => {

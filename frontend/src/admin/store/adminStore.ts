@@ -1,4 +1,4 @@
-import type { ConductorBd, UsuarioBd, ViajeBd } from '../../api'
+import type { ConductorBd, UsuarioBd, VanBd, ViajeBd } from '../../api'
 import { adminInicial, choferesIniciales, pasajerosIniciales, reservasIniciales, vansIniciales, viajesIniciales } from '../data/mock'
 import { CAPACIDAD_VAN, type Admin, type Chofer, type EstadoViaje, type Notificacion, type Pasajero, type Reserva, type Rol, type Van, type Viaje } from '../types'
 import { isoLocal, normalizarTelefono, todayISO } from '../utils/format'
@@ -19,6 +19,7 @@ export type State = {
 export type Action =
   | { type: 'van/save'; van: Van }
   | { type: 'van/toggle'; id: string }
+  | { type: 'van/desdeBd'; vans: VanBd[] }
   | { type: 'chofer/save'; chofer: Chofer }
   | { type: 'chofer/toggle'; id: string }
   | { type: 'chofer/desdeBd'; conductores: ConductorBd[] }
@@ -78,6 +79,20 @@ export function reducer(s: State, a: Action): State {
         ...s,
         vans: s.vans.map((v) => (v.id === a.id ? { ...v, activa: !v.activa, choferId: v.activa ? null : v.choferId } : v)),
       }
+    case 'van/desdeBd':
+      return {
+        ...s,
+        vans: a.vans.map((v) => ({
+          id: String(v.id),
+          patente: v.patente,
+          asientos: v.asientos,
+          choferId:
+            v.conductorId === null
+              ? null
+              : s.choferes.find((c) => c.idBd === v.conductorId)?.id ?? `cbd${v.conductorId}`,
+          activa: v.activa,
+        })),
+      }
     case 'chofer/save': {
       const existe = s.choferes.some((c) => c.id === a.chofer.id)
       return {
@@ -95,7 +110,6 @@ export function reducer(s: State, a: Action): State {
       }
     }
     case 'chofer/desdeBd': {
-      // Los conductores aprobados en PostgreSQL pasan a la lista de choferes (se reconocen por id o por correo).
       let choferes = s.choferes
       let vans = s.vans
       for (const c of a.conductores) {
@@ -115,20 +129,16 @@ export function reducer(s: State, a: Action): State {
         choferes = actual ? choferes.map((ch) => (ch === actual ? datos : ch)) : [...choferes, datos]
         if (!activo) vans = liberarChofer(vans, datos.id)
       }
-      // el celular es de la cuenta: también se actualiza en su perfil
       const celulares = new Map(a.conductores.map((c) => [c.id, normalizarTelefono(c.telefono) ?? c.telefono]))
       const pasajeros = s.pasajeros.map((p) =>
         p.idBd !== undefined && celulares.has(p.idBd) ? { ...p, celular: celulares.get(p.idBd)! } : p)
       return { ...s, choferes, vans, pasajeros }
     }
     case 'pasajero/desdeBd': {
-      // Las cuentas viven en PostgreSQL (BD-17/18). Se copian aquí para que el resto de la app
-      // (reservas, viajes, panel) las use igual que a los pasajeros de ejemplo.
       let pasajeros = s.pasajeros
       for (const u of a.usuarios) {
         if (u.rol === 'administrador') continue
         const actual = pasajeroDeCuenta(pasajeros, u)
-        // Una solicitud rechazada deja de aparecer.
         if (u.estado === 'rechazada') {
           pasajeros = pasajeros.filter((p) => p !== actual)
           continue
@@ -148,7 +158,6 @@ export function reducer(s: State, a: Action): State {
           ? pasajeros.map((p) => (p === actual ? { ...p, ...datos } : p))
           : [...pasajeros, { id: idLocalDe(pasajeros, u), puedeAbrirViajes: false, ...datos }]
       }
-      // si la cuenta es de un chofer, su celular también cambia en Choferes
       const choferes = s.choferes.map((ch) => {
         const u = a.usuarios.find((x) => x.id === ch.idBd || x.correo.toLowerCase() === ch.correo.toLowerCase())
         return u && u.rol === 'conductor' ? { ...ch, telefono: normalizarTelefono(u.telefono) ?? u.telefono } : ch
@@ -156,16 +165,13 @@ export function reducer(s: State, a: Action): State {
       return { ...s, pasajeros, choferes }
     }
     case 'pasajero/aprobar':
-      // La aprobación se hace una sola vez: solo afecta a solicitudes que siguen por aprobar.
       return {
         ...s,
         pasajeros: s.pasajeros.map((p) => (p.id === a.id && !p.aprobado ? { ...p, aprobado: true, rol: a.rol } : p)),
       }
     case 'pasajero/rechazar':
-      // Rechazar elimina la solicitud (no existe cuenta aún). Una cuenta ya aprobada no se puede rechazar.
       return { ...s, pasajeros: s.pasajeros.filter((p) => p.id !== a.id || p.aprobado) }
     case 'pasajero/eliminar':
-      // Borra la cuenta y todas sus reservas (libera los asientos) y recalcula los cupos de los viajes.
       return sincronizar({
         ...s,
         pasajeros: s.pasajeros.filter((p) => p.id !== a.id),
@@ -177,22 +183,20 @@ export function reducer(s: State, a: Action): State {
       return { ...s, viajes: [...s.viajes, ...a.viajes] }
     case 'viaje/desdeBd':
       return aplicarViajesBd(s, a.viajes, a.alcance)
-      case 'viaje/estado': {
-          const viaje = s.viajes.find((v) => v.id === a.id)
-          if (!viaje) return s
-          if (a.estado === 'en-curso' && viaje.estado !== 'pendiente') return s
-          // una van hace un viaje a la vez: no se inicia otro mientras haya uno en curso
-          if (a.estado === 'en-curso' && viaje.vanId && s.viajes.some((v) => v.id !== viaje.id && v.vanId === viaje.vanId && v.estado === 'en-curso')) return s
+    case 'viaje/estado': {
+      const viaje = s.viajes.find((v) => v.id === a.id)
+      if (!viaje) return s
+      if (a.estado === 'en-curso' && viaje.estado !== 'pendiente') return s
+      if (a.estado === 'en-curso' && viaje.vanId && s.viajes.some((v) => v.id !== viaje.id && v.vanId === viaje.vanId && v.estado === 'en-curso')) return s
 
-          return sincronizar({
-              ...s,
-              viajes: s.viajes.map((v) => (v.id === a.id ? { ...v, estado: a.estado } : v)),
-              reservas: cerrarReservas(s.reservas, a.id, a.estado),
-              notificaciones: a.notificacion ? [a.notificacion, ...s.notificaciones] : s.notificaciones,
-          })
-      }
+      return sincronizar({
+        ...s,
+        viajes: s.viajes.map((v) => (v.id === a.id ? { ...v, estado: a.estado } : v)),
+        reservas: cerrarReservas(s.reservas, a.id, a.estado),
+        notificaciones: a.notificacion ? [a.notificacion, ...s.notificaciones] : s.notificaciones,
+      })
+    }
     case 'reserva/crear': {
-      // Defensa: el contexto ya validó, pero el reducer nunca aplica una reserva que choque con otra.
       const primera = a.reservas[0]
       if (!primera) return s
       const items = a.reservas.map((r) => ({ viajeId: r.viajeId, trayecto: r.trayecto, asiento: r.asiento }))
@@ -200,7 +204,6 @@ export function reducer(s: State, a: Action): State {
       return sincronizar({ ...s, reservas: [...s.reservas, ...a.reservas] })
     }
     case 'reserva/cancelar': {
-      // Una reserva cancelada libera su asiento (ver estaActiva) y sincroniza los cupos del viaje.
       const ids = new Set(a.ids)
       return sincronizar({
         ...s,
@@ -232,12 +235,10 @@ export const pasajeroDeCuenta = (pasajeros: Pasajero[], u: UsuarioBd) =>
 /** id local de una cuenta de la base: el del pasajero que ya le corresponde o uno nuevo, `bd<id>`. */
 export const idLocalDe = (pasajeros: Pasajero[], u: UsuarioBd) => pasajeroDeCuenta(pasajeros, u)?.id ?? `bd${u.id}`
 
-/* ---------- Persistencia local (vans, viajes y reservas siguen siendo de ejemplo) ---------- */
+/* ---------- Persistencia local (viajes y reservas siguen siendo de ejemplo) ---------- */
 
-/** Clave del estado en localStorage; AdminProvider la escucha para sincronizar pestañas. */
 export const KEY = 'unab-admin-v3'
 
-/** Estado guardado (por esta u otra pestaña), o null si no hay uno válido. */
 export const leerEstadoGuardado = (): State | null => leerGuardado()
 
 export function cargarEstado(): State {
@@ -250,7 +251,6 @@ function leerGuardado(): State | null {
     if (raw) {
       const p = JSON.parse(raw) as Partial<State>
       if (Array.isArray(p.vans) && Array.isArray(p.choferes) && Array.isArray(p.pasajeros) && Array.isArray(p.viajes) && Array.isArray(p.reservas) && p.admin) {
-        // la capacidad es fija (Hyundai Staria, 9 asientos): corrige lo guardado con la capacidad antigua
         const vans = p.vans.map((v) => ({ ...v, asientos: CAPACIDAD_VAN }))
         return sincronizar({ ...p, vans, notificaciones: p.notificaciones ?? [] } as State)
       }
@@ -273,8 +273,6 @@ export function sinViajesPasados(s: State, hoy: string): State {
   })
 }
 
-// La primera vez que la app abre en un navegador se borran los viajes de ejemplo de fechas pasadas.
-// Las pruebas no la usan: necesitan esos viajes.
 const LIMPIEZA = 'unab-limpieza-viajes-v1'
 
 function limpiezaUnica(s: State): State {
