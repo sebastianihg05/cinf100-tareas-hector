@@ -118,7 +118,7 @@ describe('flujo del pasajero', () => {
 
   const abrirReservar = async () => {
     render(<MemoryRouter initialEntries={['/pasajero/reservar']}><App /></MemoryRouter>)
-    const boton = screen.getByRole('button', { name: 'Seleccionar asientos' })
+    const boton = await screen.findByRole('button', { name: 'Seleccionar asientos' })
     await waitFor(() => expect(boton).toBeEnabled())
     return boton
   }
@@ -202,18 +202,18 @@ describe('flujo del pasajero', () => {
     expect(screen.getByText('Cancelado')).toBeInTheDocument()
   })
 
-  it('la sede de origen es fija: solo Quillota 980 (Campus Viña del Mar)', () => {
+  it('la sede de origen es fija: solo Quillota 980 (Campus Viña del Mar)', async () => {
     render(<MemoryRouter initialEntries={['/pasajero/reservar']}><App /></MemoryRouter>)
-    const origen = screen.getByLabelText('Sede de Origen') as HTMLInputElement
+    const origen = await screen.findByLabelText('Sede de Origen') as HTMLInputElement
     expect(origen.value).toBe('Quillota 980 (Campus Viña del Mar)')
     expect(origen.readOnly).toBe(true)
     expect(screen.queryByRole('option', { name: 'Quintay' })).not.toBeInTheDocument()
     expect(screen.queryByRole('option', { name: 'Rokamar' })).not.toBeInTheDocument()
   })
 
-  it('la fecha se elige entre 1 y 30 días desde hoy', () => {
+  it('la fecha se elige entre 1 y 30 días desde hoy', async () => {
     render(<MemoryRouter initialEntries={['/pasajero/reservar']}><App /></MemoryRouter>)
-    const fecha = screen.getByLabelText(/Fecha del Viaje/) as HTMLInputElement
+    const fecha = await screen.findByLabelText(/Fecha del Viaje/) as HTMLInputElement
     expect(fecha.type).toBe('date')
     expect(fecha.min).toBe(sumarDias(todayISO(), 1))
     expect(fecha.max).toBe(sumarDias(todayISO(), 30))

@@ -260,6 +260,9 @@ function atender(url: string, metodo: string, cuerpo: Record<string, string>, to
   const sesion = cuentas.find((c) => token === `token-${c.id}`)
   if (!sesion) return responder(401, { error: 'Debes iniciar sesión.' })
 
+  // Perfil propio: cualquier rol lo ve.
+  if (metodo === 'GET' && url === '/api/usuarios/me') return responder(200, { usuario: publica(sesion) })
+
   // Perfil propio: cualquier rol cambia su celular.
   if (metodo === 'PATCH' && url === '/api/usuarios/me') {
     const telefono = celularBd(String(cuerpo.telefono ?? ''))

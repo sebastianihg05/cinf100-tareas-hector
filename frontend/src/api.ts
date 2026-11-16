@@ -185,6 +185,9 @@ export const api = {
   iniciarSesion: (correo: string, contrasena: string) =>
     pedir<{ token: string; usuario: UsuarioBd }>('/auth/login', 'POST', { correo, contrasena }),
 
+  /** Cuenta de quien inició sesión. */
+  miPerfil: () => pedir<{ usuario: UsuarioBd }>('/usuarios/me'),
+
   actualizarMiCelular: (telefono: string) =>
     pedir<{ usuario: UsuarioBd }>('/usuarios/me', 'PATCH', { telefono }),
 

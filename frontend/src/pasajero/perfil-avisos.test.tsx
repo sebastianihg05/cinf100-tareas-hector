@@ -6,7 +6,7 @@ import App from '../App'
 import type { MiTrayectoBd } from '../api'
 import { sumarDias, todayISO } from '../admin/utils/format'
 import { guardarSesion, leerSesion } from '../login/sesion'
-import { agregarReservaBd, agregarViajeBd, avisosLeidosGuardados } from '../test/apiFalsa'
+import { agregarReservaBd, agregarViajeBd, avisosLeidosGuardados, cuentaGuardada } from '../test/apiFalsa'
 import { avisosDe } from './avisos'
 
 const abrir = (ruta: string) =>
@@ -16,8 +16,9 @@ const abrir = (ruta: string) =>
     </MemoryRouter>,
   )
 
+// Constanza Silva es la cuenta 2 del backend falso (src/test/apiFalsa.ts): el panel lee su cuenta de la API.
 beforeEach(() =>
-  guardarSesion({ correo: 'S.constanza@uandresbello.edu', nombre: 'Constanza Silva', rol: 'funcionario', pasajeroId: 'p5' }))
+  guardarSesion({ correo: 'S.constanza@uandresbello.edu', nombre: 'Constanza Silva', rol: 'funcionario', pasajeroId: 'p5', token: 'token-2' }))
 
 /** Trayecto de GET /api/reservas para las pruebas: una ida pendiente en 3 días. */
 const trayecto = (cambios: Partial<MiTrayectoBd> = {}): MiTrayectoBd => ({
@@ -51,7 +52,6 @@ describe('avisos del funcionario', () => {
 describe('campana de notificaciones del funcionario', () => {
   // S3-RES-04 (#2608): los avisos salen de las reservas en la base; Constanza es la cuenta 2 del backend falso.
   beforeEach(() => {
-    guardarSesion({ ...leerSesion()!, token: 'token-2' })
     const viaje = agregarViajeBd({ fecha: sumarDias(todayISO(), 3), vanId: 1 })
     agregarReservaBd(viaje.id, { usuarioId: 2, asiento: 4 })
   })
@@ -96,24 +96,26 @@ describe('perfil del funcionario', () => {
     expect(screen.getByRole('link', { name: 'Perfil' })).toBeInTheDocument()
     await userEvent.click(screen.getByRole('link', { name: 'Ir a mi perfil' }))
     expect(screen.getByRole('heading', { name: 'Mi perfil' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Constanza Silva' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Constanza Silva' })).toBeInTheDocument()
     expect(screen.getByText('Quillota 980 (Campus Viña del Mar)')).toBeInTheDocument()
     expect(screen.queryByText('Apariencia')).not.toBeInTheDocument() // solo tema claro
   })
 
   it('puede editar su celular', async () => {
     abrir('/pasajero/perfil')
-    await userEvent.click(screen.getByRole('button', { name: /Editar/ }))
+    await userEvent.click(await screen.findByRole('button', { name: /Editar/ }))
     const campo = screen.getByLabelText('Celular')
     await userEvent.clear(campo)
     await userEvent.type(campo, '987654321')
     await userEvent.click(screen.getByRole('button', { name: 'Guardar' }))
-    expect(screen.getByText('+56 9 8765 4321')).toBeInTheDocument()
+    expect(await screen.findByText('+56 9 8765 4321')).toBeInTheDocument()
+    // quedó guardado en la base, no en el navegador
+    expect(cuentaGuardada('S.constanza@uandresbello.edu')!.telefono).toBe('+56987654321')
   })
 
   it('cerrar sesión borra la sesión y vuelve al login', async () => {
     abrir('/pasajero/perfil')
-    await userEvent.click(screen.getByRole('button', { name: /Cerrar sesión/ }))
+    await userEvent.click(await screen.findByRole('button', { name: /Cerrar sesión/ }))
     expect(screen.getByRole('heading', { name: 'Iniciar sesión' })).toBeInTheDocument()
     expect(leerSesion()).toBeNull()
   })
@@ -122,7 +124,6 @@ describe('perfil del funcionario', () => {
 describe('Mis Reservas: botón de editar', () => {
   it('cada reserva que se puede cancelar muestra también el botón "Editar reserva"', async () => {
     // S3-RES-04 (#2608): las reservas vienen de la base; Constanza es la cuenta 2 del backend falso.
-    guardarSesion({ ...leerSesion()!, token: 'token-2' })
     for (const dias of [3, 4]) {
       const viaje = agregarViajeBd({ fecha: sumarDias(todayISO(), dias), vanId: 1 })
       agregarReservaBd(viaje.id, { usuarioId: 2, asiento: 1 })
@@ -130,7 +131,6 @@ describe('Mis Reservas: botón de editar', () => {
     abrir('/pasajero/reservas')
     const editar = await screen.findAllByRole('button', { name: 'Editar reserva' })
     expect(editar).toHaveLength(2)
-    expect(editar.length).toBeGreaterThan(0)
     expect(editar).toHaveLength(screen.getAllByRole('button', { name: 'Cancelar reserva' }).length)
   })
 })

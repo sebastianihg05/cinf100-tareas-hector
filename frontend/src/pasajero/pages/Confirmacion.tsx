@@ -1,18 +1,18 @@
 import { Link, Navigate, useLocation } from 'react-router-dom'
 import type { ReservaCreadaBd } from '../../api'
 import { leerSesion } from '../../login/sesion'
-import { usePasajeroActual } from '../../login/usePasajeroActual'
+import { useMiCuenta } from '../useMiCuenta'
 import { DESTINO, destinoLabel } from '../viajes'
 import ShinyText from '../../reactbits/ShinyText'
 import { UNAB } from '../../reactbits/unab'
 
 export default function Confirmacion() {
-  const { pasajero } = usePasajeroActual()
+  const { cuenta } = useMiCuenta()
   // S3-RES-04 (#2608): la reserva que respondió POST /api/reservas, enviada por la selección de asiento.
   const reserva = (useLocation().state as { reserva?: { grupoId: string; reservas: ReservaCreadaBd[] } } | null)?.reserva
   if (!reserva || !Array.isArray(reserva.reservas) || reserva.reservas.length === 0) return <Navigate to="/pasajero/reservas" replace />
 
-  const nombre = pasajero?.nombre ?? leerSesion()?.nombre ?? 'Funcionario'
+  const nombre = cuenta?.nombre ?? leerSesion()?.nombre ?? 'Funcionario'
   const ida = reserva.reservas.find((r) => r.trayecto === 'Ida')
   const vuelta = reserva.reservas.find((r) => r.trayecto === 'Vuelta')
   const sedeOrigen = ida?.origen ?? vuelta?.destino ?? '—'
