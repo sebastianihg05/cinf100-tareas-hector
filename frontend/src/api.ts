@@ -234,4 +234,8 @@ export const api = {
   cancelarReserva: (grupoId: string) => pedir<{ grupoId: string }>(`/reservas/${grupoId}/cancelar`, 'POST'),
   cambiarAsientos: (grupoId: string, cambios: { reservaId: number; asiento: number }[]) =>
     pedir<{ grupoId: string }>(`/reservas/${grupoId}/asientos`, 'PATCH', { cambios }),
+
+  /** Avisos de la campana que la persona ya leyó (tabla avisos_leidos). */
+  avisosLeidos: () => pedir<{ leidos: string[] }>('/avisos/leidos'),
+  marcarAvisosLeidos: (ids: string[]) => pedir<{ leidos: string[] }>('/avisos/leidos', 'POST', { ids }),
 }

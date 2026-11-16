@@ -100,6 +100,12 @@ const trayectosDe = (usuarioId: number, grupoId?: string) =>
     .filter((r) => r.usuarioId === usuarioId && (grupoId === undefined || r.grupoId === grupoId))
     .map((r) => ({ v, r })))
 
+/** Tabla avisos_leidos: ids de avisos leídos por id de cuenta. */
+let avisosLeidos = new Map<number, string[]>()
+
+/** Avisos que quedaron marcados como leídos en la "base" para esa cuenta. */
+export const avisosLeidosGuardados = (usuarioId: number) => avisosLeidos.get(usuarioId) ?? []
+
 const NO_EDITABLE = 'Esta reserva ya no se puede modificar: el viaje ya salió, se canceló o la reserva no está pendiente.'
 const OCUPADO = 'El asiento ya fue reservado por otra persona. Elige otro.'
 
@@ -300,6 +306,15 @@ function atender(url: string, metodo: string, cuerpo: Record<string, string>, to
     return responder(404, { error: 'Ruta no encontrada.' })
   }
 
+  // Avisos leídos: cualquier rol marca y ve solo los suyos.
+  if (url === '/api/avisos/leidos') {
+    if (metodo === 'POST') {
+      const ids = (cuerpo as unknown as { ids: string[] }).ids
+      avisosLeidos.set(sesion.id, [...new Set([...avisosLeidosGuardados(sesion.id), ...ids])])
+    }
+    return responder(200, { leidos: avisosLeidosGuardados(sesion.id) })
+  }
+
   // Panel del funcionario: viajes para reservar y sus propias reservas.
   if (url.startsWith('/api/viajes/') || url.startsWith('/api/reservas')) {
     if (sesion.rol !== 'funcionario' || sesion.estado !== 'aprobada') {
@@ -380,6 +395,7 @@ export function instalarApiFalsa() {
   viajes = []
   siguienteViaje = 1
   siguienteReserva = 1
+  avisosLeidos = new Map()
   consultasRuta.length = 0
   respuestaRuta = { coordenadas: [[-33.2, -71.4], [-33.435172, -70.634]], distanciaM: 120000, duracionS: 5400 }
   agregarCuenta({ nombreCompleto: 'Administrador Desarrollo', correo: 'dev.admin@unab.cl', sede: null, rol: 'administrador', estado: 'aprobada' })

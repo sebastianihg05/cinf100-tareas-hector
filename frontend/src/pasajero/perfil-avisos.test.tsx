@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it } from 'vitest'
@@ -6,7 +6,7 @@ import App from '../App'
 import type { MiTrayectoBd } from '../api'
 import { sumarDias, todayISO } from '../admin/utils/format'
 import { guardarSesion, leerSesion } from '../login/sesion'
-import { agregarReservaBd, agregarViajeBd } from '../test/apiFalsa'
+import { agregarReservaBd, agregarViajeBd, avisosLeidosGuardados } from '../test/apiFalsa'
 import { avisosDe } from './avisos'
 
 const abrir = (ruta: string) =>
@@ -76,15 +76,17 @@ describe('campana de notificaciones del funcionario', () => {
     expect(screen.getByRole('heading', { name: 'Mis Reservas' })).toBeInTheDocument()
   })
 
-  it('lo leído se recuerda: al volver a entrar no reaparece como nuevo', async () => {
+  it('lo leído se guarda en la base y no en el navegador: al volver a entrar no reaparece como nuevo', async () => {
     const primera = abrir('/pasajero/reservas')
     await userEvent.click(await screen.findByRole('button', { name: /^Notificaciones: 1 sin leer/ }))
     await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Marcar como leídas' }))
+    await waitFor(() => expect(avisosLeidosGuardados(2)).toHaveLength(1))
     primera.unmount()
 
+    expect(Object.keys(localStorage).filter((clave) => clave.includes('aviso'))).toEqual([])
     abrir('/pasajero/reservas')
     await screen.findByText('Pendiente')
-    expect(screen.getByRole('button', { name: 'Notificaciones' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Notificaciones' })).toBeInTheDocument()
   })
 })
 
