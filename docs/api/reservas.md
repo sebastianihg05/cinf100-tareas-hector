@@ -148,7 +148,8 @@ de una misma reserva vienen juntos, la ida antes que la vuelta.
       "reservas": [
         { "id": 41, "viajeId": 12, "trayecto": "Ida", "fecha": "2026-11-20", "hora": "06:45",
           "origen": "Quillota 980", "destino": "Santiago", "asiento": 3, "estado": "pendiente",
-          "estadoViaje": "pendiente", "editable": true, "capacidad": 9, "ocupados": [1, 7] }
+          "estadoViaje": "pendiente", "editable": true, "capacidad": 9, "ocupados": [1, 7],
+          "creadaEn": "2026-11-15T22:10:00.000Z" }
       ]
     }
   ]

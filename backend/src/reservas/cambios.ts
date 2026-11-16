@@ -152,6 +152,8 @@ export interface MiTrayecto extends TrayectoReserva {
   capacidad: number;
   // asientos que tienen otras personas en ese viaje, para elegir uno nuevo al editar
   ocupados: number[];
+  // cuándo se hizo la reserva; ordena los avisos de la campana
+  creadaEn: string;
 }
 
 export async function listarMisReservas(usuarioId: number): Promise<{ grupoId: string; reservas: MiTrayecto[] }[]> {
@@ -162,7 +164,8 @@ export async function listarMisReservas(usuarioId: number): Promise<{ grupoId: s
             (r.estado = 'pendiente' AND v.estado = 'pendiente' AND ${SQL_VIAJE_NO_SALIO}) AS editable,
             COALESCE(va.capacidad, 0) AS capacidad,
             COALESCE((SELECT ARRAY_AGG(o.asiento ORDER BY o.asiento) FROM reservas o
-                       WHERE o.viaje_id = r.viaje_id AND o.estado <> 'cancelada' AND o.id <> r.id), '{}') AS ocupados
+                       WHERE o.viaje_id = r.viaje_id AND o.estado <> 'cancelada' AND o.id <> r.id), '{}') AS ocupados,
+            r.creado_en AS "creadaEn"
        FROM reservas r
        JOIN viajes v ON v.id = r.viaje_id
        LEFT JOIN vans va ON va.id = v.van_id

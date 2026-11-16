@@ -156,6 +156,7 @@ function atenderFuncionario(url: string, metodo: string, cuerpo: Record<string, 
         id: r.id, viajeId: v.id, trayecto: v.trayecto, fecha: v.fecha, hora: v.hora, origen: v.origen, destino: v.destino,
         asiento: r.asiento, estado: r.estado, estadoViaje: v.estado, editable: editable(v, r), capacidad: CAPACIDAD,
         ocupados: activas(v).filter((o) => o.id !== r.id).map((o) => o.asiento).sort((a, b) => a - b),
+        creadaEn: r.creadaEn,
       }])
     }
     return responder(200, { grupos: [...grupos].map(([grupoId, reservas]) => ({ grupoId, reservas })) })

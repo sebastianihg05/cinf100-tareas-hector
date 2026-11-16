@@ -502,7 +502,7 @@ test('el nuevo asiento debe existir en la van y los cambios deben estar bien for
 
 const misReservas = (sesion: string) => request(app).get('/api/reservas').set('Authorization', sesion);
 
-type MiGrupo = { grupoId: string; reservas: { id: number; trayecto: string; asiento: number; editable: boolean; capacidad: number; ocupados: number[] }[] };
+type MiGrupo = { grupoId: string; reservas: { id: number; trayecto: string; asiento: number; editable: boolean; capacidad: number; ocupados: number[]; creadaEn: string }[] };
 
 test('solo un funcionario con sesión ve sus reservas', async () => {
   assert.equal((await request(app).get('/api/reservas')).status, 401);
@@ -522,6 +522,7 @@ test('mis reservas trae la ida y la vuelta juntas, sin las reservas de otras per
   assert.equal(grupo.reservas[0].capacidad, 9);
   // ocupados: los de otras personas, sin el propio
   assert.deepEqual(grupo.reservas[0].ocupados, [7]);
+  assert.ok(!Number.isNaN(Date.parse(grupo.reservas[0].creadaEn)));
 
   const deBeto = (await misReservas(beto)).body.grupos as MiGrupo[];
   assert.equal(deBeto.some((g) => g.grupoId === grupoId), false);

@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
-import { useAdmin } from '../admin/store/AdminContext'
+import { useEffect, useMemo, useState } from 'react'
+import { useLocation } from 'react-router-dom'
+import { api, type MiGrupoBd } from '../api'
 import { usePasajeroActual } from '../login/usePasajeroActual'
 import { avisosDe, type AvisoPasajero } from './avisos'
 
@@ -23,15 +24,34 @@ export function borrarAvisosLeidos(pasajeroId: string): void {
   }
 }
 
-/** Avisos de la campana del funcionario y cuáles ya leyó (se recuerda en el navegador, por persona). */
+/** Cada cuánto se vuelven a pedir las reservas, para ver si el conductor inició o la administración canceló un viaje. */
+const REFRESCO_MS = 60_000
+
+/**
+ * Avisos de la campana del funcionario. Salen de sus reservas en la base (GET /api/reservas, #2608);
+ * en el navegador solo se recuerda cuáles ya leyó, por persona.
+ */
 export function useAvisosPasajero() {
-  const { state } = useAdmin()
   const { pasajeroId } = usePasajeroActual()
+  const { pathname } = useLocation()
+  const [grupos, setGrupos] = useState<MiGrupoBd[]>([])
   const [leidos, setLeidos] = useState<string[]>(() => leer(pasajeroId))
 
+  // Se recargan al cambiar de pantalla (por ejemplo, después de reservar o cancelar) y cada minuto.
+  useEffect(() => {
+    let vigente = true
+    const cargar = () => api.misReservas().then((r) => { if (vigente && r.ok) setGrupos(r.datos.grupos) })
+    void cargar()
+    const temporizador = setInterval(() => void cargar(), REFRESCO_MS)
+    return () => {
+      vigente = false
+      clearInterval(temporizador)
+    }
+  }, [pathname])
+
   const avisos = useMemo(
-    () => avisosDe(state, pasajeroId).map((a): AvisoPasajero & { leido: boolean } => ({ ...a, leido: leidos.includes(a.id) })),
-    [state, pasajeroId, leidos],
+    () => avisosDe(grupos).map((a): AvisoPasajero & { leido: boolean } => ({ ...a, leido: leidos.includes(a.id) })),
+    [grupos, leidos],
   )
 
   const guardar = (ids: string[]) => {

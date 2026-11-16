@@ -119,6 +119,8 @@ export type MiTrayectoBd = Omit<ReservaCreadaBd, 'id'> & {
   capacidad: number
   /** asientos de otras personas en ese viaje */
   ocupados: number[]
+  /** cuándo se hizo la reserva (ISO) */
+  creadaEn: string
 }
 
 /** Una reserva de ida, de vuelta o de ida y vuelta: sus trayectos comparten grupoId. */
