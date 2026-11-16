@@ -1,21 +1,20 @@
 import { Link, Navigate, useLocation } from 'react-router-dom'
-import { useAdmin } from '../../admin/store/AdminContext'
-import { usePasajeroActual } from '../../login/usePasajeroActual'
+import type { ReservaCreadaBd } from '../../api'
+import { leerSesion } from '../../login/sesion'
+import { useMiCuenta } from '../useMiCuenta'
 import { DESTINO, destinoLabel } from '../viajes'
 import ShinyText from '../../reactbits/ShinyText'
 import { UNAB } from '../../reactbits/unab'
 
 export default function Confirmacion() {
-  const { reservasDe } = useAdmin()
-  const { pasajero, pasajeroId } = usePasajeroActual()
-  const grupoId = (useLocation().state as { grupoId?: unknown } | null)?.grupoId
-  const { proximas, historial } = reservasDe(pasajeroId)
-  const grupo = typeof grupoId === 'string' ? [...proximas, ...historial].find((g) => g.grupoId === grupoId) : undefined
-  if (!grupo) return <Navigate to="/pasajero/reservas" replace />
+  const { cuenta } = useMiCuenta()
+  // S3-RES-04 (#2608): la reserva que respondió POST /api/reservas, enviada por la selección de asiento.
+  const reserva = (useLocation().state as { reserva?: { grupoId: string; reservas: ReservaCreadaBd[] } } | null)?.reserva
+  if (!reserva || !Array.isArray(reserva.reservas) || reserva.reservas.length === 0) return <Navigate to="/pasajero/reservas" replace />
 
-  const nombre = pasajero?.nombre ?? 'Funcionario'
-  const ida = grupo.trayectos.find((t) => t.reserva.trayecto === 'Ida')?.viaje
-  const vuelta = grupo.trayectos.find((t) => t.reserva.trayecto === 'Vuelta')?.viaje
+  const nombre = cuenta?.nombre ?? leerSesion()?.nombre ?? 'Funcionario'
+  const ida = reserva.reservas.find((r) => r.trayecto === 'Ida')
+  const vuelta = reserva.reservas.find((r) => r.trayecto === 'Vuelta')
   const sedeOrigen = ida?.origen ?? vuelta?.destino ?? '—'
 
   return (
@@ -41,13 +40,11 @@ export default function Confirmacion() {
 
         <h3 className="psj-card__title psj-card__title--sep">Itinerario y Asientos</h3>
         <ul className="psj-itinerario">
-          {grupo.trayectos.map(({ reserva, viaje }) => (
-            <li key={reserva.id}>
-              <span className={`psj-tramo psj-tramo--${reserva.trayecto.toLowerCase()}`} aria-hidden="true">{reserva.trayecto[0]}</span>
-              <span className="psj-itinerario__text">{reserva.trayecto} — {viaje?.hora ?? '—'} hrs</span>
-              <span className={`psj-pill psj-pill--${reserva.trayecto.toLowerCase()}`}>
-                {reserva.estado === 'cancelada' ? 'Cancelado' : `Asiento #${reserva.asiento}`}
-              </span>
+          {[ida, vuelta].filter((r) => r !== undefined).map((r) => (
+            <li key={r.id}>
+              <span className={`psj-tramo psj-tramo--${r.trayecto.toLowerCase()}`} aria-hidden="true">{r.trayecto[0]}</span>
+              <span className="psj-itinerario__text">{r.trayecto} — {r.hora} hrs</span>
+              <span className={`psj-pill psj-pill--${r.trayecto.toLowerCase()}`}>Asiento #{r.asiento}</span>
             </li>
           ))}
         </ul>

@@ -497,3 +497,41 @@ test('el nuevo asiento debe existir en la van y los cambios deben estar bien for
     assert.equal((await cambiar(ana, grupoId, cambios)).status, 400, JSON.stringify(cambios));
   }
 });
+
+/* ---------- S3-RES-04 (#2608): mis reservas ---------- */
+
+const misReservas = (sesion: string) => request(app).get('/api/reservas').set('Authorization', sesion);
+
+type MiGrupo = { grupoId: string; reservas: { id: number; trayecto: string; asiento: number; editable: boolean; capacidad: number; ocupados: number[]; creadaEn: string }[] };
+
+test('solo un funcionario con sesión ve sus reservas', async () => {
+  assert.equal((await request(app).get('/api/reservas')).status, 401);
+  assert.equal((await misReservas(admin)).status, 403);
+  assert.equal((await misReservas(conductor)).status, 403);
+});
+
+test('mis reservas trae la ida y la vuelta juntas, sin las reservas de otras personas', async () => {
+  const { grupoId, ida } = await idaYVueltaDeAna(2, 3);
+  assert.equal((await reservar(beto, [{ viajeId: ida.id, asiento: 7 }])).status, 201);
+
+  const r = await misReservas(ana);
+  assert.equal(r.status, 200);
+  const grupo = (r.body.grupos as MiGrupo[]).find((g) => g.grupoId === grupoId)!;
+  assert.deepEqual(grupo.reservas.map((t) => [t.trayecto, t.asiento]), [['Ida', 2], ['Vuelta', 3]]);
+  assert.equal(grupo.reservas[0].editable, true);
+  assert.equal(grupo.reservas[0].capacidad, 9);
+  // ocupados: los de otras personas, sin el propio
+  assert.deepEqual(grupo.reservas[0].ocupados, [7]);
+  assert.ok(!Number.isNaN(Date.parse(grupo.reservas[0].creadaEn)));
+
+  const deBeto = (await misReservas(beto)).body.grupos as MiGrupo[];
+  assert.equal(deBeto.some((g) => g.grupoId === grupoId), false);
+});
+
+test('una reserva cancelada sigue en la lista pero ya no se puede editar', async () => {
+  const { grupoId } = await idaYVueltaDeAna();
+  assert.equal((await cancelar(ana, grupoId)).status, 200);
+
+  const grupo = ((await misReservas(ana)).body.grupos as MiGrupo[]).find((g) => g.grupoId === grupoId)!;
+  assert.ok(grupo.reservas.every((t) => !t.editable));
+});

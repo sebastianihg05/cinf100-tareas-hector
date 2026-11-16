@@ -2,8 +2,9 @@ import { Link, useNavigate } from 'react-router-dom'
 import { IconChevron, IconClock } from '../../admin/components/icons'
 import { HORA_TRAYECTO, sedeLabel } from '../../admin/types'
 import { iniciales } from '../../admin/utils/format'
-import { usePasajeroActual } from '../../login/usePasajeroActual'
+import { leerSesion } from '../../login/sesion'
 import { useBorrador } from '../borrador'
+import { useMiCuenta } from '../useMiCuenta'
 import {
   CARGO_PASAJERO, DESTINO, MODALIDADES, SEDES_ORIGEN,
   fechasDisponibles, trayectosDe, useViajesSede, ventanaReserva, type Modalidad,
@@ -14,17 +15,19 @@ import { UNAB } from '../../reactbits/unab'
 export default function Reservar() {
   const { borrador, setBorrador } = useBorrador()
   const navigate = useNavigate()
-  const porFecha = useViajesSede(borrador.sede)
+  const { porFecha, cargando, error } = useViajesSede(borrador.sede)
   const fechas = fechasDisponibles(porFecha, borrador.modalidad)
   const { desde, hasta } = ventanaReserva()
   const fecha = borrador.fecha || (fechas[0] ?? '')
   const fueraDeRango = fecha !== '' && (fecha < desde || fecha > hasta)
-  const sinViajes = fecha !== '' && !fueraDeRango && !fechas.includes(fecha)
+  const sinViajes = !cargando && !error && fecha !== '' && !fueraDeRango && !fechas.includes(fecha)
 
-  const { pasajero } = usePasajeroActual()
-  const puedeReservar = pasajero !== undefined && pasajero.aprobado && pasajero.habilitado
+  // S3-RES-04 (#2608): la cuenta viene de la base; el login solo deja entrar a cuentas aprobadas.
+  const { cuenta, cargando: cargandoCuenta, error: errorCuenta } = useMiCuenta()
+  const puedeReservar = cuenta?.habilitada === true
+  const nombre = cuenta?.nombre ?? leerSesion()?.nombre ?? 'Funcionario'
 
-  const cambiarFecha = (f: string) => setBorrador({ ...borrador, fecha: f, asientos: {} })
+  const cambiarFecha = (f: string) => setBorrador({ ...borrador, fecha: f, asientos: {}, viajes: {} })
   const cambiarModalidad = (modalidad: Modalidad) => {
     // Solo se conservan los asientos de los trayectos que siguen incluidos.
     const asientos = Object.fromEntries(trayectosDe(modalidad)
@@ -34,7 +37,8 @@ export default function Reservar() {
 
   const continuar = () => {
     if (!fechas.includes(fecha) || !puedeReservar) return
-    setBorrador({ ...borrador, fecha, asientos: fecha === borrador.fecha ? borrador.asientos : {} })
+    // Se guardan los viajes del día para que la selección de asiento sepa a qué viaje reservar.
+    setBorrador({ ...borrador, fecha, asientos: fecha === borrador.fecha ? borrador.asientos : {}, viajes: porFecha.get(fecha) ?? {} })
     navigate(borrador.modalidad === 'Vuelta' ? '/pasajero/asiento/vuelta' : '/pasajero/asiento/ida')
   }
 
@@ -42,9 +46,9 @@ export default function Reservar() {
     <div className="psj-page psj-page--nav-accion">
       <Link to="/pasajero/perfil" className="psj-user psj-user--enlace" aria-label="Ir a mi perfil">
         <div className="psj-user__info">
-          <div className="psj-avatar" aria-hidden="true">{iniciales(pasajero?.nombre ?? 'Funcionario')}</div>
+          <div className="psj-avatar" aria-hidden="true">{iniciales(nombre)}</div>
           <div>
-            <p className="psj-user__name">Hola, {(pasajero?.nombre ?? 'Funcionario').split(' ')[0]}</p>
+            <p className="psj-user__name">Hola, {nombre.split(' ')[0]}</p>
             <p className="psj-user__sub">{CARGO_PASAJERO}</p>
           </div>
         </div>
@@ -54,11 +58,13 @@ export default function Reservar() {
         </span>
       </Link>
 
-      {!puedeReservar ? (
+      {cargandoCuenta ? (
+        <p className="psj-help" role="status">Cargando tu cuenta…</p>
+      ) : !puedeReservar ? (
         <p className="psj-alert" role="alert">
-          {pasajero
+          {cuenta
             ? 'Tu cuenta no está habilitada para reservar. Contacta a la administración de transporte.'
-            : 'No encontramos tu cuenta de pasajero. Contacta a la administración de transporte.'}
+            : errorCuenta || 'No encontramos tu cuenta de pasajero. Contacta a la administración de transporte.'}
         </p>
       ) : (
         <form className="psj-form" onSubmit={(e) => { e.preventDefault(); continuar() }}>
@@ -83,7 +89,9 @@ export default function Reservar() {
           {fueraDeRango && (
             <p className="psj-alert psj-alert--suave" role="alert">La fecha debe estar entre 1 y 30 días desde hoy.</p>
           )}
-          {(sinViajes || (fecha === '' && fechas.length === 0)) && (
+          {cargando && <p className="psj-help" role="status">Buscando viajes disponibles…</p>}
+          {error && <p className="psj-alert" role="alert">{error}</p>}
+          {(sinViajes || (!cargando && !error && fecha === '' && fechas.length === 0)) && (
             <p className="psj-alert psj-alert--suave" role="status">
               No hay viajes disponibles desde {borrador.sede} para {MODALIDADES.find((m) => m.valor === borrador.modalidad)!.etiqueta.toLowerCase()}.
             </p>

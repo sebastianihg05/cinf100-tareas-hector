@@ -143,3 +143,41 @@ export async function cambiarAsientos(usuarioId: number, grupoId: string, cambio
     }
   });
 }
+
+// S3-RES-04 (#2608): reservas de la persona para la pantalla "Mis reservas".
+export interface MiTrayecto extends TrayectoReserva {
+  estadoViaje: string;
+  // se puede cancelar o cambiar de asiento (mismas reglas que trayectosPropios)
+  editable: boolean;
+  capacidad: number;
+  // asientos que tienen otras personas en ese viaje, para elegir uno nuevo al editar
+  ocupados: number[];
+  // cuándo se hizo la reserva; ordena los avisos de la campana
+  creadaEn: string;
+}
+
+export async function listarMisReservas(usuarioId: number): Promise<{ grupoId: string; reservas: MiTrayecto[] }[]> {
+  const { rows } = await pool.query<MiTrayecto & { grupoId: string }>(
+    `SELECT r.id, r.grupo_id AS "grupoId", r.viaje_id AS "viajeId", v.trayecto,
+            to_char(v.fecha, 'YYYY-MM-DD') AS fecha, to_char(v.hora, 'HH24:MI') AS hora,
+            v.origen, v.destino, r.asiento, r.estado, v.estado AS "estadoViaje",
+            (r.estado = 'pendiente' AND v.estado = 'pendiente' AND ${SQL_VIAJE_NO_SALIO}) AS editable,
+            COALESCE(va.capacidad, 0) AS capacidad,
+            COALESCE((SELECT ARRAY_AGG(o.asiento ORDER BY o.asiento) FROM reservas o
+                       WHERE o.viaje_id = r.viaje_id AND o.estado <> 'cancelada' AND o.id <> r.id), '{}') AS ocupados,
+            r.creado_en AS "creadaEn"
+       FROM reservas r
+       JOIN viajes v ON v.id = r.viaje_id
+       LEFT JOIN vans va ON va.id = v.van_id
+      WHERE r.usuario_id = $1
+      ORDER BY v.fecha, v.hora, r.id`,
+    [usuarioId]
+  );
+
+  // Se agrupan por grupo_id; la ida queda antes que la vuelta por el ORDER BY.
+  const grupos = new Map<string, MiTrayecto[]>();
+  for (const { grupoId, ...trayecto } of rows) {
+    grupos.set(grupoId, [...(grupos.get(grupoId) ?? []), trayecto]);
+  }
+  return [...grupos].map(([grupoId, reservas]) => ({ grupoId, reservas }));
+}

@@ -7,7 +7,6 @@ import { IconCalendar, IconChevron, IconSearch, IconSeat } from '../components/i
 import Interruptor from '../components/Interruptor'
 import Modal from '../components/Modal'
 import Pills from '../components/Pills'
-import { borrarAvisosLeidos } from '../../pasajero/useAvisosPasajero'
 import { useAdmin } from '../store/AdminContext'
 import { RUTA_TRAYECTO, SEDES, sedeLabel, type Pasajero, type Rol } from '../types'
 import { fechaCorta, fechaDMY, fechaHora, fechaLarga, iniciales, sinTildes } from '../utils/format'
@@ -238,7 +237,6 @@ export default function VistaPasajeros() {
           onCancel={() => setEliminando(null)}
           onConfirm={() => {
             eliminarPasajero(eliminando.id)
-            borrarAvisosLeidos(eliminando.id)
             setEliminando(null)
             cerrarDetalle()
           }}

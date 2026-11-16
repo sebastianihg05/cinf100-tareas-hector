@@ -133,10 +133,52 @@ Uno o dos cambios. El asiento anterior queda libre.
 | 404 | La reserva no existe o es de otra persona (no se revela cuál de las dos), o el trayecto no es de esa reserva. |
 | 409 | El trayecto ya no se puede modificar (viaje que salió o se canceló, o reserva ya cancelada), o el asiento nuevo ya está ocupado. |
 
+## Mis reservas (S3-RES-04, #2608)
+
+### GET /api/reservas
+
+Reservas de la persona que inició sesión (**funcionario**), con las de otras personas excluidas. Los trayectos
+de una misma reserva vienen juntos, la ida antes que la vuelta.
+
+```json
+{
+  "grupos": [
+    {
+      "grupoId": "2f0c4c4e-8a1d-4a53-9d3e-6a3f0f6e2b10",
+      "reservas": [
+        { "id": 41, "viajeId": 12, "trayecto": "Ida", "fecha": "2026-11-20", "hora": "06:45",
+          "origen": "Quillota 980", "destino": "Santiago", "asiento": 3, "estado": "pendiente",
+          "estadoViaje": "pendiente", "editable": true, "capacidad": 9, "ocupados": [1, 7],
+          "creadaEn": "2026-11-15T22:10:00.000Z" }
+      ]
+    }
+  ]
+}
+```
+
+- `editable`: el trayecto se puede cancelar o cambiar de asiento (mismas reglas que las rutas de #2607).
+- `ocupados`: asientos de **otras** personas en ese viaje, para elegir uno nuevo al editar.
+- El frontend separa "Próximas" (pendientes que aún no pasan) e "Historial" (completadas y canceladas).
+
+### Panel del funcionario
+
+Las pantallas de `frontend/src/pasajero/` usan estas rutas y no guardan reservas en el navegador:
+
+| Pantalla | Ruta |
+|---|---|
+| Reservar: fechas con viajes libres | `GET /api/viajes/disponibles` |
+| Selección de asiento | `GET /api/viajes/:id/asientos` |
+| Confirmar | `POST /api/reservas` (un 409 vuelve a leer los asientos ocupados) |
+| Mis reservas | `GET /api/reservas` |
+| Cancelar / Editar reserva | `POST /api/reservas/:grupoId/cancelar` / `PATCH /api/reservas/:grupoId/asientos` |
+
 ## Pruebas
 
-`backend/tests/reservas.test.ts` (35 pruebas contra PostgreSQL: 14 de #2606, 9 de #2605 y 12 de #2607): acceso por rol, reserva de ida y de ida y
+`backend/tests/reservas.test.ts` (38 pruebas contra PostgreSQL: 14 de #2606, 9 de #2605, 12 de #2607 y 3 de #2608): acceso por rol, reserva de ida y de ida y
 vuelta, asiento ocupado, reserva duplicada, reserva simultánea del mismo asiento, rollback de ida y vuelta,
 datos inválidos, capacidad de la van, viajes no disponibles y ventana de 1 a 30 días.
 
 `backend/tests/reservar-correo.test.ts` comprueba el correo de confirmación con una base simulada.
+
+`frontend/src/pasajero/pasajero.test.tsx` recorre el panel con el backend falso de `frontend/src/test/apiFalsa.ts`:
+reservar ida y vuelta, asiento ocupado, asiento tomado por otra persona antes de confirmar, Mis reservas, editar y cancelar.

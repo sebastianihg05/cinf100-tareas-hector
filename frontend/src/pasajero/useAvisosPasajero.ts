@@ -1,52 +1,56 @@
-import { useMemo, useState } from 'react'
-import { useAdmin } from '../admin/store/AdminContext'
-import { usePasajeroActual } from '../login/usePasajeroActual'
+import { useEffect, useMemo, useState } from 'react'
+import { useLocation } from 'react-router-dom'
+import { api, type MiGrupoBd } from '../api'
 import { avisosDe, type AvisoPasajero } from './avisos'
 
-const clave = (pasajeroId: string) => `unab-avisos-leidos-${pasajeroId}`
+/** Cada cuánto se vuelven a pedir los avisos, para ver si el conductor inició o la administración canceló un viaje. */
+const REFRESCO_MS = 60_000
 
-function leer(pasajeroId: string): string[] {
-  try {
-    const guardado = JSON.parse(localStorage.getItem(clave(pasajeroId)) ?? '[]')
-    return Array.isArray(guardado) ? guardado.filter((x): x is string => typeof x === 'string') : []
-  } catch {
-    return []
-  }
-}
-
-/** Borra lo que se recordaba de los avisos leídos de una cuenta eliminada. */
-export function borrarAvisosLeidos(pasajeroId: string): void {
-  try {
-    localStorage.removeItem(clave(pasajeroId))
-  } catch {
-    /* ignorar */
-  }
-}
-
-/** Avisos de la campana del funcionario y cuáles ya leyó (se recuerda en el navegador, por persona). */
+/**
+ * Avisos de la campana del funcionario (S3-RES-04, #2608). Todo sale de la base, nada queda en el navegador:
+ * - los avisos, de sus reservas (GET /api/reservas);
+ * - cuáles ya leyó, de la tabla avisos_leidos (GET y POST /api/avisos/leidos).
+ */
 export function useAvisosPasajero() {
-  const { state } = useAdmin()
-  const { pasajeroId } = usePasajeroActual()
-  const [leidos, setLeidos] = useState<string[]>(() => leer(pasajeroId))
+  const { pathname } = useLocation()
+  const [grupos, setGrupos] = useState<MiGrupoBd[]>([])
+  const [leidos, setLeidos] = useState<string[]>([])
+
+  // Se recargan al cambiar de pantalla (por ejemplo, después de reservar o cancelar) y cada minuto.
+  useEffect(() => {
+    let vigente = true
+    const cargar = async () => {
+      const [reservas, vistos] = await Promise.all([api.misReservas(), api.avisosLeidos()])
+      if (!vigente) return
+      if (reservas.ok) setGrupos(reservas.datos.grupos)
+      if (vistos.ok) setLeidos(vistos.datos.leidos)
+    }
+    void cargar()
+    const temporizador = setInterval(() => void cargar(), REFRESCO_MS)
+    return () => {
+      vigente = false
+      clearInterval(temporizador)
+    }
+  }, [pathname])
 
   const avisos = useMemo(
-    () => avisosDe(state, pasajeroId).map((a): AvisoPasajero & { leido: boolean } => ({ ...a, leido: leidos.includes(a.id) })),
-    [state, pasajeroId, leidos],
+    () => avisosDe(grupos).map((a): AvisoPasajero & { leido: boolean } => ({ ...a, leido: leidos.includes(a.id) })),
+    [grupos, leidos],
   )
 
-  const guardar = (ids: string[]) => {
-    setLeidos(ids)
-    try {
-      localStorage.setItem(clave(pasajeroId), JSON.stringify(ids))
-    } catch {
-      /* sin almacenamiento: se recuerda solo mientras la página esté abierta */
-    }
+  // Se marca al tiro en pantalla y se guarda en la base; la respuesta trae la lista completa de leídos.
+  const marcar = async (ids: string[]) => {
+    const nuevos = ids.filter((id) => !leidos.includes(id))
+    if (nuevos.length === 0) return
+    setLeidos([...leidos, ...nuevos])
+    const r = await api.marcarAvisosLeidos(nuevos)
+    if (r.ok) setLeidos(r.datos.leidos)
   }
 
   return {
     avisos,
     sinLeer: avisos.filter((a) => !a.leido).length,
-    marcarLeido: (id: string) => { if (!leidos.includes(id)) guardar([...leidos, id]) },
-    marcarTodos: () => guardar([...new Set([...leidos, ...avisos.map((a) => a.id)])]),
+    marcarLeido: (id: string) => void marcar([id]),
+    marcarTodos: () => void marcar(avisos.map((a) => a.id)),
   }
 }

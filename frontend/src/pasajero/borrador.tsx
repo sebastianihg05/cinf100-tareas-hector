@@ -1,6 +1,6 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
 import type { Trayecto } from '../admin/types'
-import { SEDES_ORIGEN, type Modalidad } from './viajes'
+import { SEDES_ORIGEN, type DiaViajes, type Modalidad } from './viajes'
 
 /** Reserva en curso: lo que el pasajero va eligiendo antes de confirmar. Vive solo en memoria. */
 export type Borrador = {
@@ -9,6 +9,8 @@ export type Borrador = {
   fecha: string
   modalidad: Modalidad
   asientos: Partial<Record<Trayecto, number>>
+  /** viajes de la fecha elegida, tal como llegaron de la API al pulsar "Seleccionar asientos" */
+  viajes: DiaViajes
 }
 
 export const borradorInicial = (sede: string = SEDES_ORIGEN[0]): Borrador => ({
@@ -16,6 +18,7 @@ export const borradorInicial = (sede: string = SEDES_ORIGEN[0]): Borrador => ({
   fecha: '',
   modalidad: 'IdaVuelta',
   asientos: {},
+  viajes: {},
 })
 
 type Api = { borrador: Borrador; setBorrador: (b: Borrador) => void }

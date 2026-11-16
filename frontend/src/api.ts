@@ -1,4 +1,4 @@
-import type { EstadoViaje, Rol, Trayecto } from './admin/types'
+import type { EstadoReserva, EstadoViaje, Rol, Trayecto } from './admin/types'
 import { leerSesion } from './login/sesion'
 
 export type UsuarioBd = {
@@ -80,6 +80,52 @@ export type CambiosViaje = { vanId: number | null; conductorId: number | null } 
 /** Ruta por carretera hacia la sede de destino: puntos [latitud, longitud], metros y segundos. */
 export type RutaBd = { coordenadas: [number, number][]; distanciaM: number; duracionS: number }
 
+/** S3-RES-01 (#2605): viaje que el funcionario puede reservar (ver docs/api/reservas.md). */
+export type ViajeDisponibleBd = {
+  id: number
+  fecha: string
+  hora: string
+  trayecto: Trayecto
+  origen: string
+  destino: string
+  capacidad: number
+  ocupados: number
+  libres: number
+  tengoReserva: boolean
+}
+
+/** Asientos de un viaje reservable; `miAsiento` es el propio si ya reservó ahí. */
+export type AsientosBd = { viajeId: number; capacidad: number; ocupados: number[]; miAsiento: number | null }
+
+/** Una reserva recién creada con POST /api/reservas. */
+export type ReservaCreadaBd = {
+  id: number
+  viajeId: number
+  asiento: number
+  fecha: string
+  hora: string
+  trayecto: Trayecto
+  origen: string
+  destino: string
+}
+
+/** Un trayecto de "Mis reservas" (GET /api/reservas). */
+export type MiTrayectoBd = Omit<ReservaCreadaBd, 'id'> & {
+  id: number
+  estado: EstadoReserva
+  estadoViaje: EstadoViaje
+  /** se puede cancelar o cambiar de asiento */
+  editable: boolean
+  capacidad: number
+  /** asientos de otras personas en ese viaje */
+  ocupados: number[]
+  /** cuándo se hizo la reserva (ISO) */
+  creadaEn: string
+}
+
+/** Una reserva de ida, de vuelta o de ida y vuelta: sus trayectos comparten grupoId. */
+export type MiGrupoBd = { grupoId: string; reservas: MiTrayectoBd[] }
+
 export type DatosRegistro = {
   nombreCompleto: string
   correo: string
@@ -139,6 +185,9 @@ export const api = {
   iniciarSesion: (correo: string, contrasena: string) =>
     pedir<{ token: string; usuario: UsuarioBd }>('/auth/login', 'POST', { correo, contrasena }),
 
+  /** Cuenta de quien inició sesión. */
+  miPerfil: () => pedir<{ usuario: UsuarioBd }>('/usuarios/me'),
+
   actualizarMiCelular: (telefono: string) =>
     pedir<{ usuario: UsuarioBd }>('/usuarios/me', 'PATCH', { telefono }),
 
@@ -177,6 +226,19 @@ export const api = {
   actualizarVan: (id: string, cambios: CambiosVan) =>
     pedir<{ van: VanBd }>(`/admin/vans/${id}`, 'PATCH', cambios),
 
+  /** S3-RES-04 (#2608), funcionario: viajes y asientos para reservar, y sus reservas. */
+  viajesDisponibles: () => pedir<{ viajes: ViajeDisponibleBd[] }>('/viajes/disponibles'),
+  asientosDeViaje: (id: number) => pedir<AsientosBd>(`/viajes/${id}/asientos`),
+
   crearReservas: (solicitudes: { viajeId: number; asiento: number }[]) =>
-    pedir<{ grupoId: string; reservas: unknown[] }>('/reservas', 'POST', { solicitudes }),
+    pedir<{ grupoId: string; reservas: ReservaCreadaBd[] }>('/reservas', 'POST', { solicitudes }),
+
+  misReservas: () => pedir<{ grupos: MiGrupoBd[] }>('/reservas'),
+  cancelarReserva: (grupoId: string) => pedir<{ grupoId: string }>(`/reservas/${grupoId}/cancelar`, 'POST'),
+  cambiarAsientos: (grupoId: string, cambios: { reservaId: number; asiento: number }[]) =>
+    pedir<{ grupoId: string }>(`/reservas/${grupoId}/asientos`, 'PATCH', { cambios }),
+
+  /** Avisos de la campana que la persona ya leyó (tabla avisos_leidos). */
+  avisosLeidos: () => pedir<{ leidos: string[] }>('/avisos/leidos'),
+  marcarAvisosLeidos: (ids: string[]) => pedir<{ leidos: string[] }>('/avisos/leidos', 'POST', { ids }),
 }

@@ -1,28 +1,33 @@
 import PerfilUsuario from '../../admin/components/PerfilUsuario'
-import { useAdmin } from '../../admin/store/AdminContext'
 import { sedeLabel } from '../../admin/types'
-import { useGuardarCelular } from '../../login/useGuardarCelular'
-import { usePasajeroActual } from '../../login/usePasajeroActual'
+import { api } from '../../api'
+import { useMiCuenta } from '../useMiCuenta'
 import { CARGO_PASAJERO } from '../viajes'
 
-/** Perfil del funcionario que inició sesión. */
+/** Perfil del funcionario que inició sesión. Lee y guarda en la base (GET y PATCH /api/usuarios/me). */
 export default function PerfilPasajero() {
-  const { patchPasajero } = useAdmin()
-  const guardarCelular = useGuardarCelular()
-  const { pasajero, pasajeroId } = usePasajeroActual()
+  const { cuenta, cargando, error, actualizar } = useMiCuenta()
 
-  if (!pasajero) return <p className="psj-alert" role="alert">No encontramos tu cuenta de funcionario.</p>
+  if (cargando) return <p className="psj-vacio" role="status">Cargando tu perfil…</p>
+  if (!cuenta) return <p className="psj-alert" role="alert">{error || 'No encontramos tu cuenta de funcionario.'}</p>
+
+  // Si el backend rechaza el celular, se devuelve su mensaje y la ventana sigue abierta.
+  const guardarCelular = async (celular: string) => {
+    const r = await api.actualizarMiCelular(celular)
+    if (!r.ok) return r.error
+    actualizar(r.datos.usuario)
+  }
 
   return (
     <div className="psj-page psj-page--nav">
       <PerfilUsuario
-        nombre={pasajero.nombre}
-        email={pasajero.email}
+        nombre={cuenta.nombre}
+        email={cuenta.email}
         etiquetas={[CARGO_PASAJERO, 'Cuenta UNAB']}
-        filas={[{ etiqueta: 'Sede', valor: pasajero.sede ? sedeLabel(pasajero.sede) : 'Sin sede' }]}
-        celular={pasajero.celular}
-        ultimoIngreso={pasajero.ultimoIngreso}
-        onGuardarCelular={(celular) => guardarCelular(celular, () => patchPasajero(pasajeroId, { celular }))}
+        filas={[{ etiqueta: 'Sede', valor: cuenta.sede ? sedeLabel(cuenta.sede) : 'Sin sede' }]}
+        celular={cuenta.celular}
+        ultimoIngreso={cuenta.ultimoIngreso}
+        onGuardarCelular={guardarCelular}
       />
     </div>
   )

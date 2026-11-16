@@ -1,6 +1,7 @@
 import cors from 'cors';
 import express, { type ErrorRequestHandler } from 'express';
 import { rutasAdmin } from './admin/rutas';
+import { rutasAvisos } from './avisos/rutas';
 import { rutasConductor } from './conductor/rutas';
 import { config } from './config';
 import { pool } from './db';
@@ -21,6 +22,7 @@ app.use('/api/admin', rutasAdmin);
 app.use('/api/conductor', rutasConductor);
 app.use('/api/reservas', rutasReservas);
 app.use('/api/viajes', rutasViajesDisponibles);
+app.use('/api/avisos', rutasAvisos);
 
 // Estado de la API y de la conexión con PostgreSQL
 app.get('/api/health', async (_req, res) => {

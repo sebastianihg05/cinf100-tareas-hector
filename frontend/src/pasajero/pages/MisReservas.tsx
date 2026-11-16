@@ -2,11 +2,10 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import ConfirmDialog from '../../admin/components/ConfirmDialog'
 import { IconClock, IconSeat } from '../../admin/components/icons'
-import { useAdmin } from '../../admin/store/AdminContext'
-import { cancelables, type GrupoReserva } from '../../admin/store/reservas'
+import { api } from '../../api'
 import type { EstadoReserva } from '../../admin/types'
-import { usePasajeroActual } from '../../login/usePasajeroActual'
 import EditarReserva from '../EditarReserva'
+import { editables, useMisReservas, type GrupoMio } from '../misReservas'
 import { fechaTexto } from '../viajes'
 import AnimatedContent from '../../reactbits/AnimatedContent'
 import { ENTRADA_TARJETAS } from '../../reactbits/unab'
@@ -17,36 +16,36 @@ const ESTADO: Record<EstadoReserva, { texto: string; clase: string }> = {
   cancelada: { texto: 'Cancelado', clase: 'psj-badge--cancelado' },
 }
 
-function TarjetaReserva({ grupo, onEditar, onCancelar }: { grupo: GrupoReserva; onEditar?: () => void; onCancelar?: () => void }) {
-  const conViaje = grupo.trayectos.find((t) => t.viaje)?.viaje
-  const cancelados = grupo.trayectos.filter((t) => t.reserva.estado === 'cancelada')
+function TarjetaReserva({ grupo, onEditar, onCancelar }: { grupo: GrupoMio; onEditar?: () => void; onCancelar?: () => void }) {
+  const primero = grupo.trayectos[0]
+  const cancelados = grupo.trayectos.filter((t) => t.estado === 'cancelada')
   const parcial = cancelados.length > 0 && cancelados.length < grupo.trayectos.length
   const estado = ESTADO[grupo.estado]
   return (
     <li className="psj-card psj-reserva">
       <div className="psj-reserva__head">
-        <p className="psj-reserva__fecha">{grupo.fecha ? fechaTexto(grupo.fecha) : 'Fecha no disponible'}</p>
+        <p className="psj-reserva__fecha">{fechaTexto(grupo.fecha)}</p>
         <span className={`psj-badge ${estado.clase}`}>{estado.texto}</span>
       </div>
       <p className="psj-reserva__ruta">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
           <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" />
         </svg>
-        {conViaje ? `${conViaje.origen} → ${conViaje.destino}` : 'Ruta no disponible'}
+        {primero.origen} → {primero.destino}
       </p>
       <p className="psj-reserva__linea">
         <IconClock size={14} />
-        {grupo.trayectos.map((t) => `${t.viaje?.hora ?? '—'} hrs`).join(' / ')}
+        {grupo.trayectos.map((t) => `${t.hora} hrs`).join(' / ')}
       </p>
       <p className="psj-reserva__linea">
         <IconSeat size={14} />
         {grupo.estado === 'cancelada'
           ? 'Asientos: Cancelado'
-          : `Asientos: ${grupo.trayectos.map((t) => `#${t.reserva.asiento} (${t.reserva.trayecto}${t.reserva.estado === 'cancelada' ? ', cancelado' : ''})`).join(' / ')}`}
+          : `Asientos: ${grupo.trayectos.map((t) => `#${t.asiento} (${t.trayecto}${t.estado === 'cancelada' ? ', cancelado' : ''})`).join(' / ')}`}
       </p>
       {parcial && (
         <p className="psj-reserva__parcial">
-          {cancelados.map((t) => t.reserva.trayecto).join(' y ')} cancelada; el resto de la reserva se mantiene.
+          {cancelados.map((t) => t.trayecto).join(' y ')} cancelada; el resto de la reserva se mantiene.
         </p>
       )}
       {onCancelar && (
@@ -62,12 +61,19 @@ function TarjetaReserva({ grupo, onEditar, onCancelar }: { grupo: GrupoReserva; 
 }
 
 export default function MisReservas() {
-  const { state, reservasDe, cancelarReserva } = useAdmin()
-  const [cancelando, setCancelando] = useState<GrupoReserva | null>(null)
-  const [editando, setEditando] = useState<GrupoReserva | null>(null)
+  // S3-RES-04 (#2608): las reservas vienen de la base (GET /api/reservas).
+  const { proximas, historial, cargando, error, recargar } = useMisReservas()
+  const [cancelando, setCancelando] = useState<GrupoMio | null>(null)
+  const [editando, setEditando] = useState<GrupoMio | null>(null)
   const [aviso, setAviso] = useState('')
-  const { pasajeroId } = usePasajeroActual()
-  const { proximas, historial } = reservasDe(pasajeroId)
+
+  // POST /api/reservas/:grupoId/cancelar sin cuerpo: cancela todos los trayectos que todavía se pueden cancelar.
+  const cancelar = async (grupoId: string) => {
+    setCancelando(null)
+    const r = await api.cancelarReserva(grupoId)
+    setAviso(r.ok ? 'Tu reserva fue cancelada y los asientos quedaron libres.' : r.error)
+    await recargar()
+  }
   const [pestana, setPestana] = useState<'proximas' | 'historial'>('proximas')
   const lista = pestana === 'proximas' ? proximas : historial
 
@@ -81,7 +87,11 @@ export default function MisReservas() {
       </div>
 
       <div id="psj-panel-reservas" role="tabpanel" aria-labelledby={`psj-tab-${pestana}`}>
-        {lista.length === 0 ? (
+        {cargando ? (
+          <p className="psj-vacio" role="status">Cargando tus reservas…</p>
+        ) : error ? (
+          <p className="psj-alert" role="alert">{error}</p>
+        ) : lista.length === 0 ? (
           <div className="psj-vacio">
             <p>{pestana === 'proximas' ? 'No tienes reservas próximas.' : 'Aún no tienes viajes en tu historial.'}</p>
             {pestana === 'proximas' && <Link to="/pasajero/reservar" className="psj-link">Reservar un asiento</Link>}
@@ -91,7 +101,7 @@ export default function MisReservas() {
             {lista.map((g) => (
               <TarjetaReserva key={g.grupoId} grupo={g}
                 onEditar={() => { setAviso(''); setEditando(g) }}
-                onCancelar={cancelables(state, pasajeroId, g.grupoId).length > 0 ? () => { setAviso(''); setCancelando(g) } : undefined} />
+                onCancelar={editables(g).length > 0 ? () => { setAviso(''); setCancelando(g) } : undefined} />
             ))}
           </AnimatedContent>
         )}
@@ -100,8 +110,8 @@ export default function MisReservas() {
       {aviso && <p className="psj-alert psj-alert--suave" role="status">{aviso}</p>}
 
       {editando && (
-        <EditarReserva grupo={editando} pasajeroId={pasajeroId} onClose={() => setEditando(null)}
-          onGuardado={(m) => { setEditando(null); setAviso(m) }} />
+        <EditarReserva grupo={editando} onClose={() => setEditando(null)}
+          onGuardado={(m) => { setEditando(null); setAviso(m); void recargar() }} />
       )}
 
       {cancelando && (
@@ -111,11 +121,7 @@ export default function MisReservas() {
           confirmLabel="Cancelar reserva"
           cancelLabel="Volver"
           onCancel={() => setCancelando(null)}
-          onConfirm={() => {
-            const r = cancelarReserva(pasajeroId, cancelando.grupoId)
-            setCancelando(null)
-            setAviso(r.ok ? 'Tu reserva fue cancelada y los asientos quedaron libres.' : r.error)
-          }}
+          onConfirm={() => void cancelar(cancelando.grupoId)}
         />
       )}
 
