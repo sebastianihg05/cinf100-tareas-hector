@@ -5,7 +5,9 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import App from '../App'
 import { estadoInicial, reducer } from '../admin/store/adminStore'
 import { agruparReservas } from '../admin/store/reservas'
+import { sumarDias, todayISO } from '../admin/utils/format'
 import { guardarSesion, leerSesion } from '../login/sesion'
+import { agregarReservaBd, agregarViajeBd } from '../test/apiFalsa'
 import { avisosDe } from './avisos'
 
 const abrir = (ruta: string) =>
@@ -104,9 +106,16 @@ describe('perfil del funcionario', () => {
 })
 
 describe('Mis Reservas: botón de editar', () => {
-  it('cada reserva que se puede cancelar muestra también el botón "Editar reserva"', () => {
+  it('cada reserva que se puede cancelar muestra también el botón "Editar reserva"', async () => {
+    // S3-RES-04 (#2608): las reservas vienen de la base; Constanza es la cuenta 2 del backend falso.
+    guardarSesion({ ...leerSesion()!, token: 'token-2' })
+    for (const dias of [3, 4]) {
+      const viaje = agregarViajeBd({ fecha: sumarDias(todayISO(), dias), vanId: 1 })
+      agregarReservaBd(viaje.id, { usuarioId: 2, asiento: 1 })
+    }
     abrir('/pasajero/reservas')
-    const editar = screen.getAllByRole('button', { name: 'Editar reserva' })
+    const editar = await screen.findAllByRole('button', { name: 'Editar reserva' })
+    expect(editar).toHaveLength(2)
     expect(editar.length).toBeGreaterThan(0)
     expect(editar).toHaveLength(screen.getAllByRole('button', { name: 'Cancelar reserva' }).length)
   })

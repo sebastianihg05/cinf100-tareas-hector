@@ -1,10 +1,15 @@
 
 import { Router, type RequestHandler } from 'express';
 import { requiereSesion, requiereRol } from '../auth/middleware';
-import { cambiarAsientos, cancelarReserva } from './cambios';
+import { cambiarAsientos, cancelarReserva, listarMisReservas } from './cambios';
 import { crearReservas, ErrorReserva } from './servicio';
 
 export const rutasReservas = Router();
+
+// S3-RES-04 (#2608): reservas propias, agrupadas como se crearon (ida y vuelta juntas).
+rutasReservas.get('/', requiereSesion, requiereRol('funcionario'), async (req, res) => {
+  res.json({ grupos: await listarMisReservas(req.usuario!.id) });
+});
 
 rutasReservas.post(
   '/',

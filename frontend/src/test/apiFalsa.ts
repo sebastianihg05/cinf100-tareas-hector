@@ -1,6 +1,7 @@
 
 import { vi } from 'vitest'
-import type { ConductorBd, RutaBd, UsuarioBd, ViajeBd } from '../api'
+import type { ConductorBd, ReservaViajeBd, RutaBd, UsuarioBd, ViajeBd } from '../api'
+import { sumarDias, todayISO } from '../admin/utils/format'
 
 /**
  * Backend falso para las pruebas: responde como la API real (docs/api/) pero guarda las cuentas en memoria.
@@ -64,6 +65,128 @@ export function agregarViajeBd(datos: Partial<ViajeBd> = {}): ViajeBd {
   }
   viajes.push(viaje)
   return viaje
+}
+
+/* ---------- Reservas del funcionario (S3-RES-01 a S3-RES-04) ---------- */
+
+/** Las vans de prueba son la Hyundai Staria: 9 asientos reservables. */
+const CAPACIDAD = 9
+let siguienteReserva = 1
+
+const grupoFalso = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
+
+/** Guarda una reserva en un viaje de la "base" (por ejemplo, la de otra persona que ocupa un asiento). */
+export function agregarReservaBd(viajeId: number, datos: Partial<ReservaViajeBd> & Pick<ReservaViajeBd, 'usuarioId' | 'asiento'>): ReservaViajeBd {
+  const n = siguienteReserva++
+  const reserva: ReservaViajeBd = {
+    id: n, grupoId: grupoFalso(n), nombre: 'Pasajero de prueba', telefono: '+56912345678', estado: 'pendiente',
+    creadaEn: new Date().toISOString(), ...datos,
+  }
+  viajes.find((v) => v.id === viajeId)!.reservas.push(reserva)
+  return reserva
+}
+
+const activas = (v: ViajeBd) => v.reservas.filter((r) => r.estado !== 'cancelada')
+
+// Mismas condiciones que el backend: pendiente, con van y de 1 a 30 días desde hoy.
+const reservable = (v: ViajeBd) =>
+  v.estado === 'pendiente' && v.vanId !== null && v.fecha >= sumarDias(todayISO(), 1) && v.fecha <= sumarDias(todayISO(), 30)
+
+const editable = (v: ViajeBd, r: ReservaViajeBd) => r.estado === 'pendiente' && v.estado === 'pendiente' && v.fecha >= todayISO()
+
+/** Trayectos de una persona con su viaje: los de un grupo, o todos. */
+const trayectosDe = (usuarioId: number, grupoId?: string) =>
+  viajes.flatMap((v) => v.reservas
+    .filter((r) => r.usuarioId === usuarioId && (grupoId === undefined || r.grupoId === grupoId))
+    .map((r) => ({ v, r })))
+
+const NO_EDITABLE = 'Esta reserva ya no se puede modificar: el viaje ya salió, se canceló o la reserva no está pendiente.'
+const OCUPADO = 'El asiento ya fue reservado por otra persona. Elige otro.'
+
+function atenderFuncionario(url: string, metodo: string, cuerpo: Record<string, unknown>, sesion: Cuenta): Response {
+  if (metodo === 'GET' && url === '/api/viajes/disponibles') {
+    const lista = viajes.filter(reservable).sort((a, b) => `${a.fecha}${a.hora}`.localeCompare(`${b.fecha}${b.hora}`))
+    return responder(200, {
+      viajes: lista.map((v) => ({
+        id: v.id, fecha: v.fecha, hora: v.hora, trayecto: v.trayecto, origen: v.origen, destino: v.destino,
+        capacidad: CAPACIDAD, ocupados: activas(v).length, libres: CAPACIDAD - activas(v).length,
+        tengoReserva: activas(v).some((r) => r.usuarioId === sesion.id),
+      })),
+    })
+  }
+
+  const asientos = url.match(/^\/api\/viajes\/(\d+)\/asientos$/)
+  if (metodo === 'GET' && asientos) {
+    const viaje = viajes.find((v) => v.id === Number(asientos[1]))
+    if (!viaje) return responder(404, { error: 'El viaje no existe.' })
+    if (!reservable(viaje)) return responder(409, { error: 'El viaje no está disponible para reservas.' })
+    return responder(200, {
+      viajeId: viaje.id, capacidad: CAPACIDAD,
+      ocupados: activas(viaje).map((r) => r.asiento).sort((a, b) => a - b),
+      miAsiento: activas(viaje).find((r) => r.usuarioId === sesion.id)?.asiento ?? null,
+    })
+  }
+
+  if (metodo === 'POST' && url === '/api/reservas') {
+    const solicitudes = cuerpo.solicitudes as { viajeId: number; asiento: number }[]
+    for (const s of solicitudes) {
+      const viaje = viajes.find((v) => v.id === s.viajeId)
+      if (!viaje) return responder(404, { error: 'El viaje seleccionado no existe.' })
+      if (!reservable(viaje)) return responder(409, { error: 'El viaje no está disponible para reservas.' })
+      if (s.asiento < 1 || s.asiento > CAPACIDAD) return responder(400, { error: 'El asiento supera la capacidad de la van.' })
+      if (activas(viaje).some((r) => r.usuarioId === sesion.id)) return responder(409, { error: 'Ya tienes una reserva en este viaje.' })
+      if (activas(viaje).some((r) => r.asiento === s.asiento)) return responder(409, { error: OCUPADO })
+    }
+    const grupoId = grupoFalso(siguienteReserva)
+    const reservas = solicitudes.map((s) => {
+      const viaje = viajes.find((v) => v.id === s.viajeId)!
+      const r = agregarReservaBd(viaje.id, { usuarioId: sesion.id, nombre: sesion.nombreCompleto, asiento: s.asiento, grupoId })
+      return {
+        id: r.id, viajeId: viaje.id, asiento: r.asiento, fecha: viaje.fecha, hora: viaje.hora,
+        trayecto: viaje.trayecto, origen: viaje.origen, destino: viaje.destino,
+      }
+    })
+    return responder(201, { grupoId, reservas })
+  }
+
+  if (metodo === 'GET' && url === '/api/reservas') {
+    const grupos = new Map<string, unknown[]>()
+    for (const { v, r } of trayectosDe(sesion.id)) {
+      grupos.set(r.grupoId, [...(grupos.get(r.grupoId) ?? []), {
+        id: r.id, viajeId: v.id, trayecto: v.trayecto, fecha: v.fecha, hora: v.hora, origen: v.origen, destino: v.destino,
+        asiento: r.asiento, estado: r.estado, estadoViaje: v.estado, editable: editable(v, r), capacidad: CAPACIDAD,
+        ocupados: activas(v).filter((o) => o.id !== r.id).map((o) => o.asiento).sort((a, b) => a - b),
+      }])
+    }
+    return responder(200, { grupos: [...grupos].map(([grupoId, reservas]) => ({ grupoId, reservas })) })
+  }
+
+  const cambio = url.match(/^\/api\/reservas\/([\w-]+)\/(cancelar|asientos)$/)
+  if (cambio) {
+    const propios = trayectosDe(sesion.id, cambio[1])
+    if (propios.length === 0) return responder(404, { error: 'La reserva no existe.' })
+
+    if (metodo === 'POST' && cambio[2] === 'cancelar') {
+      const elegidos = propios.filter(({ v, r }) => editable(v, r))
+      if (elegidos.length === 0) return responder(409, { error: NO_EDITABLE })
+      for (const { r } of elegidos) r.estado = 'cancelada'
+      return responder(200, { grupoId: cambio[1] })
+    }
+
+    if (metodo === 'PATCH' && cambio[2] === 'asientos') {
+      const cambios = cuerpo.cambios as { reservaId: number; asiento: number }[]
+      for (const c of cambios) {
+        const propio = propios.find(({ r }) => r.id === c.reservaId)
+        if (!propio) return responder(404, { error: 'La reserva no existe.' })
+        if (!editable(propio.v, propio.r)) return responder(409, { error: NO_EDITABLE })
+        if (activas(propio.v).some((o) => o.id !== c.reservaId && o.asiento === c.asiento)) return responder(409, { error: OCUPADO })
+      }
+      for (const c of cambios) propios.find(({ r }) => r.id === c.reservaId)!.r.asiento = c.asiento
+      return responder(200, { grupoId: cambio[1] })
+    }
+  }
+
+  return responder(404, { error: 'Ruta no encontrada.' })
 }
 
 /** El viaje tal como quedó guardado en la "base". */
@@ -176,6 +299,14 @@ function atender(url: string, metodo: string, cuerpo: Record<string, string>, to
     return responder(404, { error: 'Ruta no encontrada.' })
   }
 
+  // Panel del funcionario: viajes para reservar y sus propias reservas.
+  if (url.startsWith('/api/viajes/') || url.startsWith('/api/reservas')) {
+    if (sesion.rol !== 'funcionario' || sesion.estado !== 'aprobada') {
+      return responder(403, { error: 'No tienes permiso para realizar esta acción.' })
+    }
+    return atenderFuncionario(url, metodo, cuerpo, sesion)
+  }
+
   // Administración: exige el token de una cuenta de administrador aprobada.
   if (sesion.rol !== 'administrador' || sesion.estado !== 'aprobada') {
     return responder(403, { error: 'No tienes permiso para realizar esta acción.' })
@@ -247,6 +378,7 @@ export function instalarApiFalsa() {
   conductores = new Map()
   viajes = []
   siguienteViaje = 1
+  siguienteReserva = 1
   consultasRuta.length = 0
   respuestaRuta = { coordenadas: [[-33.2, -71.4], [-33.435172, -70.634]], distanciaM: 120000, duracionS: 5400 }
   agregarCuenta({ nombreCompleto: 'Administrador Desarrollo', correo: 'dev.admin@unab.cl', sede: null, rol: 'administrador', estado: 'aprobada' })

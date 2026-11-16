@@ -1,90 +1,102 @@
 // Pantalla de selección de asiento, compartida por Ida y Vuelta (cambia solo el trayecto).
-import { useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
-import { useAdmin } from '../admin/store/AdminContext'
+import { api, type AsientosBd } from '../api'
 import type { Trayecto } from '../admin/types'
-import { usePasajeroActual } from '../login/usePasajeroActual'
 import { borradorInicial, useBorrador } from './borrador'
 import MapaAsientos from './MapaAsientos'
 import ClickSpark from '../reactbits/ClickSpark'
 import { UNAB } from '../reactbits/unab'
-import { fechaTexto, trayectosDe, useViajesSede } from './viajes'
+import { fechaTexto, trayectosDe } from './viajes'
 
 export default function SeleccionAsiento({ trayecto }: { trayecto: Trayecto }) {
-  const { crearReservas, capacidadDe, asientosOcupadosDe } = useAdmin()
-  const { pasajeroId } = usePasajeroActual()
   const { borrador, setBorrador } = useBorrador()
   const navigate = useNavigate()
-  const dia = useViajesSede(borrador.sede).get(borrador.fecha)
+  const viaje = borrador.viajes[trayecto]
+  const [asientos, setAsientos] = useState<AsientosBd | null>(null)
+  const [errorCarga, setErrorCarga] = useState('')
   const [seleccion, setSeleccion] = useState<number | undefined>(borrador.asientos[trayecto])
   const [errores, setErrores] = useState<string[]>([])
   const [enviando, setEnviando] = useState(false)
   const enviandoRef = useRef(false)
   const [hecho, setHecho] = useState(false)
 
+  // S3-RES-04 (#2608): los asientos ocupados se leen de la base (GET /api/viajes/:id/asientos).
+  const viajeId = viaje?.id
+  const cargarAsientos = useCallback(async () => {
+    if (viajeId === undefined) return
+    const r = await api.asientosDeViaje(viajeId)
+    if (r.ok) {
+      setAsientos(r.datos)
+      setErrorCarga('')
+    } else {
+      setErrorCarga(r.error)
+    }
+  }, [viajeId])
+
+  useEffect(() => {
+    void cargarAsientos()
+  }, [cargarAsientos])
+
   // Tras reservar, el borrador se limpia: no redirigir a Reservar mientras se navega a la confirmación.
   if (hecho) return null
   const trayectos = trayectosDe(borrador.modalidad)
   if (!borrador.fecha || !trayectos.includes(trayecto)) return <Navigate to="/pasajero/reservar" replace />
 
-  const viaje = dia?.[trayecto]
-  if (!viaje) {
+  if (!viaje || errorCarga) {
     return (
       <div className="psj-page">
-        <p className="psj-alert" role="alert">El viaje de {trayecto} del {fechaTexto(borrador.fecha)} ya no está disponible.</p>
+        <p className="psj-alert" role="alert">
+          {errorCarga || `El viaje de ${trayecto} del ${fechaTexto(borrador.fecha)} ya no está disponible.`}
+        </p>
         <Link to="/pasajero/reservar" className="psj-btn psj-btn--secondary">Volver a Reservar</Link>
       </div>
     )
   }
 
-  const capacidad = capacidadDe(viaje) ?? 0
-  const ocupados = asientosOcupadosDe(viaje.id)
+  const capacidad = asientos?.capacidad ?? 0
+  const ocupados = asientos?.ocupados ?? []
   const elegido = seleccion !== undefined && seleccion <= capacidad && !ocupados.includes(seleccion) ? seleccion : undefined
   const esIdaDeIdaVuelta = borrador.modalidad === 'IdaVuelta' && trayecto === 'Ida'
   const faltaIda = borrador.modalidad === 'IdaVuelta' && trayecto === 'Vuelta' && borrador.asientos.Ida === undefined
 
-  const confirmar = () => {
-    if (enviandoRef.current || elegido === undefined || !dia) return
-    const asientos = { ...borrador.asientos, [trayecto]: elegido }
+  const confirmar = async () => {
+    if (enviandoRef.current || elegido === undefined) return
+    const elegidos = { ...borrador.asientos, [trayecto]: elegido }
     if (esIdaDeIdaVuelta) {
-      setBorrador({ ...borrador, asientos })
+      setBorrador({ ...borrador, asientos: elegidos })
       navigate('/pasajero/asiento/vuelta')
       return
     }
     if (faltaIda) return
-    const solicitud = trayectos.flatMap((t) => {
-      const v = dia[t]
-      const asiento = asientos[t]
-      return v && asiento !== undefined ? [{ viajeId: v.id, trayecto: t, asiento }] : []
+    const solicitudes = trayectos.flatMap((t) => {
+      const v = borrador.viajes[t]
+      const asiento = elegidos[t]
+      return v && asiento !== undefined ? [{ viajeId: v.id, asiento }] : []
     })
-    if (solicitud.length !== trayectos.length) {
+    if (solicitudes.length !== trayectos.length) {
       setErrores(['Uno de los viajes ya no está disponible. Vuelve a Reservar para elegir otra fecha.'])
       return
     }
 
+    // POST /api/reservas: con ida y vuelta se guardan las dos o ninguna.
     enviandoRef.current = true
     setEnviando(true)
-    const resultado = crearReservas(pasajeroId, solicitud)
-    if (resultado.ok) {
+    const r = await api.crearReservas(solicitudes)
+    if (r.ok) {
       setHecho(true)
       setBorrador(borradorInicial(borrador.sede))
-      navigate('/pasajero/confirmacion', { replace: true, state: { grupoId: resultado.grupoId } })
+      navigate('/pasajero/confirmacion', { replace: true, state: { reserva: r.datos } })
       return
     }
     enviandoRef.current = false
     setEnviando(false)
-    if (resultado.tipo === 'almacenamiento') {
-      setErrores([resultado.error])
-      return
+    setErrores([r.error])
+    // 409: alguien tomó el asiento o el viaje cambió; se vuelven a leer los ocupados.
+    if (r.status === 409) {
+      setBorrador({ ...borrador, asientos: elegidos })
+      await cargarAsientos()
     }
-    setErrores([...new Set(resultado.conflictos.map((c) => c.mensaje))].concat(resultado.conflictos.length ? [] : [resultado.error]))
-    // Se descartan solo los asientos que dejaron de ser válidos; el resto de la selección se conserva.
-    const invalidos = new Set(resultado.conflictos
-      .filter((c) => c.codigo === 'asiento-ocupado' || c.codigo === 'asiento-invalido').map((c) => c.trayecto))
-    const restantes = { ...asientos }
-    for (const t of invalidos) if (t) delete restantes[t]
-    setBorrador({ ...borrador, asientos: restantes })
-    if (invalidos.has(trayecto)) setSeleccion(undefined)
   }
 
   return (
@@ -100,7 +112,9 @@ export default function SeleccionAsiento({ trayecto }: { trayecto: Trayecto }) {
       {errores.length > 0 && (
         <div className="psj-alert" role="alert">
           {errores.map((e) => <p key={e}>{e}</p>)}
-          {faltaIda && <Link to="/pasajero/asiento/ida" className="psj-link">Elegir otro asiento de Ida</Link>}
+          {borrador.modalidad === 'IdaVuelta' && trayecto === 'Vuelta' && (
+            <Link to="/pasajero/asiento/ida" className="psj-link">Elegir otro asiento de Ida</Link>
+          )}
         </div>
       )}
       {faltaIda && errores.length === 0 && (
@@ -110,8 +124,12 @@ export default function SeleccionAsiento({ trayecto }: { trayecto: Trayecto }) {
         </div>
       )}
 
-      <MapaAsientos capacidad={capacidad} ocupados={ocupados} seleccionado={elegido}
-        onSeleccionar={(n) => { setSeleccion(n); setErrores([]) }} />
+      {asientos === null ? (
+        <p className="psj-seleccion" role="status">Cargando asientos…</p>
+      ) : (
+        <MapaAsientos capacidad={capacidad} ocupados={ocupados} seleccionado={elegido}
+          onSeleccionar={(n) => { setSeleccion(n); setErrores([]) }} />
+      )}
 
       <p className="psj-seleccion" aria-live="polite">
         {elegido !== undefined ? `Asiento seleccionado: ${elegido}` : 'Selecciona un asiento disponible'}
@@ -120,7 +138,7 @@ export default function SeleccionAsiento({ trayecto }: { trayecto: Trayecto }) {
       <div className="psj-footer">
         {/* RB-05: chispas al confirmar el asiento (React Bits ClickSpark) */}
         <ClickSpark sparkColor={[UNAB.rojo, UNAB.navy]} sparkCount={12} sparkRadius={34} shape="star" style={{ height: 'auto' }}>
-          <button type="button" className="psj-btn psj-btn--primary" onClick={confirmar}
+          <button type="button" className="psj-btn psj-btn--primary" onClick={() => void confirmar()}
             disabled={elegido === undefined || enviando || faltaIda}>
             {enviando ? 'Reservando…' : `Confirmar Asiento ${trayecto}`}
           </button>

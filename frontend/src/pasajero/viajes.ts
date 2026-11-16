@@ -1,8 +1,6 @@
-import { useMemo } from 'react'
-import { asientosOcupados, capacidadDeViaje, estaActiva, yaSalio } from '../admin/store/reservas'
-import { useAdmin } from '../admin/store/AdminContext'
-import { usePasajeroActual } from '../login/usePasajeroActual'
-import { DIAS_MAX_ANTICIPACION, DIAS_MIN_ANTICIPACION, SEDES_ORIGEN, type Trayecto, type Viaje } from '../admin/types'
+import { useEffect, useState } from 'react'
+import { api, type ViajeDisponibleBd } from '../api'
+import { DIAS_MAX_ANTICIPACION, DIAS_MIN_ANTICIPACION, SEDES_ORIGEN, type Trayecto } from '../admin/types'
 import { sumarDias, todayISO } from '../admin/utils/format'
 
 export const CARGO_PASAJERO = 'Funcionario Docente'
@@ -40,30 +38,43 @@ export const fechaTexto = (iso: string) => {
 }
 
 /** Viajes de un mismo día: como máximo uno por trayecto. */
-export type DiaViajes = Partial<Record<Trayecto, Viaje>>
+export type DiaViajes = Partial<Record<Trayecto, ViajeDisponibleBd>>
 
 /**
- * Viajes que el pasajero puede reservar desde su sede, agrupados por fecha. Solo cuentan los pendientes que
- * aún no salen, con van asignada, con asientos libres y en los que el pasajero todavía no tiene reserva.
- * La ida sale de la sede; la vuelta regresa a ella.
+ * Agrupa por fecha los viajes que el pasajero puede reservar desde su sede: los que tienen asientos libres
+ * y en los que todavía no tiene reserva. La ida sale de la sede; la vuelta regresa a ella.
  */
-export function useViajesSede(sede: string): Map<string, DiaViajes> {
-  const { state } = useAdmin()
-  const { pasajeroId } = usePasajeroActual()
-  return useMemo(() => {
-    const porFecha = new Map<string, DiaViajes>()
-    for (const v of state.viajes) {
-      if (v.estado !== 'pendiente' || yaSalio(v)) continue
-      if ((v.trayecto === 'Ida' ? v.origen : v.destino) !== sede) continue
-      const capacidad = capacidadDeViaje(state, v)
-      if (capacidad === undefined || asientosOcupados(state.reservas, v.id).length >= capacidad) continue
-      if (state.reservas.some((r) => r.viajeId === v.id && r.pasajeroId === pasajeroId && estaActiva(r))) continue
-      const dia = porFecha.get(v.fecha) ?? {}
-      if (!dia[v.trayecto]) dia[v.trayecto] = v
-      porFecha.set(v.fecha, dia)
-    }
-    return porFecha
-  }, [state, sede, pasajeroId])
+export function agruparPorFecha(viajes: ViajeDisponibleBd[], sede: string): Map<string, DiaViajes> {
+  const porFecha = new Map<string, DiaViajes>()
+  for (const v of viajes) {
+    if (v.libres <= 0 || v.tengoReserva) continue
+    if ((v.trayecto === 'Ida' ? v.origen : v.destino) !== sede) continue
+    const dia = porFecha.get(v.fecha) ?? {}
+    if (!dia[v.trayecto]) dia[v.trayecto] = v
+    porFecha.set(v.fecha, dia)
+  }
+  return porFecha
+}
+
+/** S3-RES-04 (#2608): viajes reservables desde la base (GET /api/viajes/disponibles), agrupados por fecha. */
+export function useViajesSede(sede: string) {
+  const [viajes, setViajes] = useState<ViajeDisponibleBd[]>([])
+  const [cargando, setCargando] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    let vigente = true
+    api.viajesDisponibles().then((r) => {
+      if (!vigente) return
+      setCargando(false)
+      if (r.ok) setViajes(r.datos.viajes)
+      else setError(r.error)
+    })
+    // si se sale de la pantalla antes de la respuesta, no se actualiza nada
+    return () => { vigente = false }
+  }, [])
+
+  return { porFecha: agruparPorFecha(viajes, sede), cargando, error }
 }
 
 /** Fechas (ordenadas) en las que existen todos los trayectos que exige la modalidad. */

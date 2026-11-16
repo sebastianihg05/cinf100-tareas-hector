@@ -14,17 +14,17 @@ import { UNAB } from '../../reactbits/unab'
 export default function Reservar() {
   const { borrador, setBorrador } = useBorrador()
   const navigate = useNavigate()
-  const porFecha = useViajesSede(borrador.sede)
+  const { porFecha, cargando, error } = useViajesSede(borrador.sede)
   const fechas = fechasDisponibles(porFecha, borrador.modalidad)
   const { desde, hasta } = ventanaReserva()
   const fecha = borrador.fecha || (fechas[0] ?? '')
   const fueraDeRango = fecha !== '' && (fecha < desde || fecha > hasta)
-  const sinViajes = fecha !== '' && !fueraDeRango && !fechas.includes(fecha)
+  const sinViajes = !cargando && !error && fecha !== '' && !fueraDeRango && !fechas.includes(fecha)
 
   const { pasajero } = usePasajeroActual()
   const puedeReservar = pasajero !== undefined && pasajero.aprobado && pasajero.habilitado
 
-  const cambiarFecha = (f: string) => setBorrador({ ...borrador, fecha: f, asientos: {} })
+  const cambiarFecha = (f: string) => setBorrador({ ...borrador, fecha: f, asientos: {}, viajes: {} })
   const cambiarModalidad = (modalidad: Modalidad) => {
     // Solo se conservan los asientos de los trayectos que siguen incluidos.
     const asientos = Object.fromEntries(trayectosDe(modalidad)
@@ -34,7 +34,8 @@ export default function Reservar() {
 
   const continuar = () => {
     if (!fechas.includes(fecha) || !puedeReservar) return
-    setBorrador({ ...borrador, fecha, asientos: fecha === borrador.fecha ? borrador.asientos : {} })
+    // Se guardan los viajes del día para que la selección de asiento sepa a qué viaje reservar.
+    setBorrador({ ...borrador, fecha, asientos: fecha === borrador.fecha ? borrador.asientos : {}, viajes: porFecha.get(fecha) ?? {} })
     navigate(borrador.modalidad === 'Vuelta' ? '/pasajero/asiento/vuelta' : '/pasajero/asiento/ida')
   }
 
@@ -83,7 +84,9 @@ export default function Reservar() {
           {fueraDeRango && (
             <p className="psj-alert psj-alert--suave" role="alert">La fecha debe estar entre 1 y 30 días desde hoy.</p>
           )}
-          {(sinViajes || (fecha === '' && fechas.length === 0)) && (
+          {cargando && <p className="psj-help" role="status">Buscando viajes disponibles…</p>}
+          {error && <p className="psj-alert" role="alert">{error}</p>}
+          {(sinViajes || (!cargando && !error && fecha === '' && fechas.length === 0)) && (
             <p className="psj-alert psj-alert--suave" role="status">
               No hay viajes disponibles desde {borrador.sede} para {MODALIDADES.find((m) => m.valor === borrador.modalidad)!.etiqueta.toLowerCase()}.
             </p>

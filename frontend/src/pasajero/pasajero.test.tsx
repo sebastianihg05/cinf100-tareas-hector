@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it } from 'vitest'
@@ -7,6 +7,7 @@ import { reservasIniciales, pasajerosIniciales, vansIniciales, viajesIniciales }
 import { agruparReservas, asientosOcupados, cancelables, sincronizar, validarCambioAsientos, validarSolicitud, type Datos } from '../admin/store/reservas'
 import { sumarDias, todayISO } from '../admin/utils/format'
 import { guardarSesion } from '../login/sesion'
+import { agregarReservaBd, agregarViajeBd, viajeBdGuardado } from '../test/apiFalsa'
 import MapaAsientos, { disponerAsientos } from './MapaAsientos'
 
 const datos = (): Datos =>
@@ -100,39 +101,102 @@ describe('validarCambioAsientos', () => {
 })
 
 describe('flujo del pasajero', () => {
-  // la app del pasajero exige haber iniciado sesión: se entra como la funcionaria de ejemplo
-  beforeEach(() => guardarSesion({ correo: 'S.constanza@uandresbello.edu', nombre: 'Constanza Silva', rol: 'funcionario', pasajeroId: PASAJERO_ID }))
+  // S3-RES-04 (#2608): el panel lee y guarda en la base (aquí, el backend falso de src/test/apiFalsa.ts).
+  // Constanza Silva es la cuenta 2 del backend falso y "p5" en los datos locales.
+  beforeEach(() => guardarSesion({
+    correo: 'S.constanza@uandresbello.edu', nombre: 'Constanza Silva', rol: 'funcionario', pasajeroId: PASAJERO_ID, token: 'token-2',
+  }))
 
-  it('reserva ida y vuelta y la ve en Mis Reservas, compartida con el administrador', async () => {
+  const ID_CONSTANZA = 2
+  const OTRA_PERSONA = 99
+
+  // Ida y vuelta abiertas en 3 días, con la van asignada.
+  const idaYVuelta = () => {
+    const fecha = sumarDias(todayISO(), 3)
+    return { ida: agregarViajeBd({ fecha, trayecto: 'Ida', vanId: 1 }), vuelta: agregarViajeBd({ fecha, trayecto: 'Vuelta', vanId: 1 }) }
+  }
+
+  const abrirReservar = async () => {
     render(<MemoryRouter initialEntries={['/pasajero/reservar']}><App /></MemoryRouter>)
+    const boton = screen.getByRole('button', { name: 'Seleccionar asientos' })
+    await waitFor(() => expect(boton).toBeEnabled())
+    return boton
+  }
 
-    await userEvent.click(screen.getByRole('button', { name: 'Seleccionar asientos' }))
+  it('reserva ida y vuelta y queda guardada en la base, no en el navegador', async () => {
+    const { ida, vuelta } = idaYVuelta()
+    await userEvent.click(await abrirReservar())
 
     expect(await screen.findByText('Selección Asiento — Ida')).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('radio', { name: 'Asiento 2' }))
+    await userEvent.click(await screen.findByRole('radio', { name: 'Asiento 2' }))
     expect(screen.getByText('Asiento seleccionado: 2')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Confirmar Asiento Ida' }))
 
     expect(await screen.findByText('Selección Asiento - Vuelta')).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('radio', { name: 'Asiento 4' }))
+    await userEvent.click(await screen.findByRole('radio', { name: 'Asiento 4' }))
     await userEvent.click(screen.getByRole('button', { name: 'Confirmar Asiento Vuelta' }))
 
     expect(await screen.findByText('¡Reserva Confirmada!')).toBeInTheDocument()
-    const guardado = JSON.parse(localStorage.getItem('unab-admin-v3')!)
-    const mias = guardado.reservas.filter((r: { pasajeroId: string; estado: string }) => r.pasajeroId === PASAJERO_ID && r.estado === 'pendiente')
-    expect(mias.length).toBe(4)
+    expect(screen.getByText('Asiento #2')).toBeInTheDocument()
+    expect(screen.getByText('Asiento #4')).toBeInTheDocument()
+
+    const enIda = viajeBdGuardado(ida.id)!.reservas
+    const enVuelta = viajeBdGuardado(vuelta.id)!.reservas
+    expect(enIda.map((r) => [r.usuarioId, r.asiento])).toEqual([[ID_CONSTANZA, 2]])
+    expect(enVuelta.map((r) => [r.usuarioId, r.asiento])).toEqual([[ID_CONSTANZA, 4]])
+    expect(enIda[0].grupoId).toBe(enVuelta[0].grupoId)
   })
 
-  it('un asiento ocupado no se puede elegir', async () => {
-    render(<MemoryRouter initialEntries={['/pasajero/reservar']}><App /></MemoryRouter>)
-    await userEvent.click(screen.getByRole('button', { name: 'Seleccionar asientos' }))
+  it('un asiento ocupado en la base no se puede elegir', async () => {
+    const { ida } = idaYVuelta()
+    agregarReservaBd(ida.id, { usuarioId: OTRA_PERSONA, asiento: 3 })
+    await userEvent.click(await abrirReservar())
     await screen.findByText('Selección Asiento — Ida')
-    expect(screen.getAllByRole('radio', { name: /ocupado/ }).every((b) => (b as HTMLButtonElement).disabled)).toBe(true)
+    expect(await screen.findByRole('radio', { name: 'Asiento 3, ocupado' })).toBeDisabled()
+    expect(screen.getAllByRole('radio', { name: /ocupado/ })).toHaveLength(1)
   })
 
-  it('Mis Reservas muestra Próximas e Historial', async () => {
+  it('si otra persona toma el asiento antes de confirmar, avisa y lo muestra ocupado', async () => {
+    const { ida } = idaYVuelta()
+    await abrirReservar()
+    await userEvent.click(screen.getByRole('button', { name: 'Ida' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Seleccionar asientos' }))
+    await userEvent.click(await screen.findByRole('radio', { name: 'Asiento 5' }))
+
+    agregarReservaBd(ida.id, { usuarioId: OTRA_PERSONA, asiento: 5 })
+    await userEvent.click(screen.getByRole('button', { name: 'Confirmar Asiento Ida' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('reservado por otra persona')
+    expect(await screen.findByRole('radio', { name: 'Asiento 5, ocupado' })).toBeDisabled()
+    expect(viajeBdGuardado(ida.id)!.reservas.filter((r) => r.usuarioId === ID_CONSTANZA)).toEqual([])
+  })
+
+  it('no ofrece viajes en los que ya tiene reserva', async () => {
+    const { ida, vuelta } = idaYVuelta()
+    agregarReservaBd(ida.id, { usuarioId: ID_CONSTANZA, asiento: 1 })
+    agregarReservaBd(vuelta.id, { usuarioId: ID_CONSTANZA, asiento: 1 })
+    render(<MemoryRouter initialEntries={['/pasajero/reservar']}><App /></MemoryRouter>)
+    expect(await screen.findByText(/No hay viajes disponibles desde Quillota 980/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Seleccionar asientos' })).toBeDisabled()
+  })
+
+  // Una reserva por viajar, una completada y una cancelada, como las devuelve GET /api/reservas.
+  const reservasDeConstanza = () => {
+    const { ida, vuelta } = idaYVuelta()
+    const proxima = agregarReservaBd(ida.id, { usuarioId: ID_CONSTANZA, asiento: 2 })
+    agregarReservaBd(vuelta.id, { usuarioId: ID_CONSTANZA, asiento: 3, grupoId: proxima.grupoId })
+    const pasado = agregarViajeBd({ fecha: sumarDias(todayISO(), -5), estado: 'completado', vanId: 1 })
+    agregarReservaBd(pasado.id, { usuarioId: ID_CONSTANZA, asiento: 6, estado: 'completada' })
+    const anulado = agregarViajeBd({ fecha: sumarDias(todayISO(), -3), estado: 'cancelado', vanId: 1 })
+    agregarReservaBd(anulado.id, { usuarioId: ID_CONSTANZA, asiento: 7, estado: 'cancelada' })
+    return { ida, proxima }
+  }
+
+  it('Mis Reservas muestra Próximas e Historial desde la base', async () => {
+    reservasDeConstanza()
     render(<MemoryRouter initialEntries={['/pasajero/reservas']}><App /></MemoryRouter>)
-    expect(screen.getAllByText('Pendiente').length).toBeGreaterThan(0)
+    expect(await screen.findByText('Pendiente')).toBeInTheDocument()
+    expect(screen.getByText('Asientos: #2 (Ida) / #3 (Vuelta)')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('tab', { name: 'Historial' }))
     expect(screen.getByText('Completado')).toBeInTheDocument()
     expect(screen.getByText('Cancelado')).toBeInTheDocument()
@@ -155,59 +219,55 @@ describe('flujo del pasajero', () => {
     expect(fecha.max).toBe(sumarDias(todayISO(), 30))
   })
 
-  it('una fecha fuera del rango o sin viajes no deja continuar', () => {
-    render(<MemoryRouter initialEntries={['/pasajero/reservar']}><App /></MemoryRouter>)
+  it('una fecha fuera del rango o sin viajes no deja continuar', async () => {
+    idaYVuelta()
+    await abrirReservar()
     const fecha = screen.getByLabelText(/Fecha del Viaje/)
     fireEvent.change(fecha, { target: { value: sumarDias(todayISO(), 45) } })
     expect(screen.getByRole('alert')).toHaveTextContent('entre 1 y 30 días')
     expect(screen.getByRole('button', { name: 'Seleccionar asientos' })).toBeDisabled()
 
-    // un lunes cualquiera dentro del rango no tiene viaje fijo
-    let lunes = sumarDias(todayISO(), 1)
-    while (new Date(`${lunes}T12:00`).getDay() !== 1) lunes = sumarDias(lunes, 1)
-    fireEvent.change(fecha, { target: { value: lunes } })
+    // otro día dentro del rango, sin viaje abierto
+    fireEvent.change(fecha, { target: { value: sumarDias(todayISO(), 10) } })
     expect(screen.getByRole('status')).toHaveTextContent('No hay viajes disponibles desde Quillota 980')
     expect(screen.getByRole('button', { name: 'Seleccionar asientos' })).toBeDisabled()
   })
 
-  it('editar una reserva cambia el asiento y lo deja guardado', async () => {
+  it('editar una reserva cambia el asiento en la base', async () => {
+    const { ida, proxima } = reservasDeConstanza()
     render(<MemoryRouter initialEntries={['/pasajero/reservas']}><App /></MemoryRouter>)
-    await userEvent.click(screen.getAllByRole('button', { name: 'Editar reserva' })[0])
+    await userEvent.click(await screen.findByRole('button', { name: 'Editar reserva' }))
     const dialogo = screen.getByRole('dialog')
     await userEvent.click(within(dialogo).getAllByRole('radio', { name: 'Asiento 1' })[0])
     await userEvent.click(within(dialogo).getByRole('button', { name: 'Guardar cambios' }))
 
-    expect(screen.getByRole('status')).toHaveTextContent('Tu reserva fue actualizada')
-    const guardado = JSON.parse(localStorage.getItem('unab-admin-v3')!)
-    const ida = guardado.reservas.find((r: { grupoId: string; trayecto: string }) => r.grupoId === 'g-prox' && r.trayecto === 'Ida')
-    expect(ida.asiento).toBe(1)
+    expect(await screen.findByText(/Tu reserva fue actualizada/)).toBeInTheDocument()
+    expect(viajeBdGuardado(ida.id)!.reservas.find((r) => r.id === proxima.id)!.asiento).toBe(1)
+    expect(await screen.findByText('Asientos: #1 (Ida) / #3 (Vuelta)')).toBeInTheDocument()
   })
 
   it('el cliente puede cancelar su reserva: pide confirmación, libera el asiento y pasa al historial', async () => {
+    const { ida, proxima } = reservasDeConstanza()
     render(<MemoryRouter initialEntries={['/pasajero/reservas']}><App /></MemoryRouter>)
-    const antes = screen.getAllByRole('button', { name: 'Cancelar reserva' }).length
 
-    await userEvent.click(screen.getAllByRole('button', { name: 'Cancelar reserva' })[0])
-    const dialogo = screen.getByRole('dialog')
+    await userEvent.click(await screen.findByRole('button', { name: 'Cancelar reserva' }))
     // "Volver" no cancela nada
-    await userEvent.click(within(dialogo).getByRole('button', { name: 'Volver' }))
-    expect(screen.getAllByRole('button', { name: 'Cancelar reserva' })).toHaveLength(antes)
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Volver' }))
+    expect(screen.getAllByRole('button', { name: 'Cancelar reserva' })).toHaveLength(1)
 
-    await userEvent.click(screen.getAllByRole('button', { name: 'Cancelar reserva' })[0])
+    await userEvent.click(screen.getByRole('button', { name: 'Cancelar reserva' }))
     await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancelar reserva' }))
 
-    expect(screen.getByRole('status')).toHaveTextContent('Tu reserva fue cancelada')
-    expect(screen.queryAllByRole('button', { name: 'Cancelar reserva' })).toHaveLength(antes - 1)
-
-    // el asiento quedó libre en lo guardado y la reserva figura como cancelada
-    const guardado = JSON.parse(localStorage.getItem('unab-admin-v3')!)
-    const canceladas = guardado.reservas.filter((r: { pasajeroId: string; estado: string }) => r.pasajeroId === PASAJERO_ID && r.estado === 'cancelada')
-    expect(canceladas.length).toBeGreaterThan(0)
+    expect(await screen.findByText(/Tu reserva fue cancelada/)).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryAllByRole('button', { name: 'Cancelar reserva' })).toHaveLength(0))
+    expect(viajeBdGuardado(ida.id)!.reservas.find((r) => r.id === proxima.id)!.estado).toBe('cancelada')
   })
 
   it('las reservas del historial no tienen botón para cancelar', async () => {
+    reservasDeConstanza()
     render(<MemoryRouter initialEntries={['/pasajero/reservas']}><App /></MemoryRouter>)
-    await userEvent.click(screen.getByRole('tab', { name: 'Historial' }))
+    await userEvent.click(await screen.findByRole('tab', { name: 'Historial' }))
+    await screen.findByText('Completado')
     expect(screen.queryByRole('button', { name: 'Cancelar reserva' })).not.toBeInTheDocument()
   })
 })
