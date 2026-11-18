@@ -1,3 +1,4 @@
+
 import { Router } from 'express';
 import { requiereRol, requiereSesion } from '../auth/middleware';
 import { pool } from '../db';
@@ -19,8 +20,7 @@ rutasConductor.get('/viajes', async (req, res) => {
   res.json({ viajes: await conReservas(rows) });
 });
 
-// Cambia el estado de un viaje propio dentro de una transacción. `aplicar` revisa las reglas con el viaje
-// bloqueado y devuelve un mensaje de conflicto si no corresponde.
+// Cambia el estado de un viaje propio dentro de una transacción.
 async function cambiarEstado(
   idViaje: number,
   conductorId: number,
@@ -30,26 +30,34 @@ async function cambiarEstado(
   const cliente = await pool.connect();
   try {
     await cliente.query('BEGIN');
+
     const { rows } = await cliente.query<{ estado: string; van_id: number | null }>(
       'SELECT estado, van_id FROM viajes WHERE id = $1 AND conductor_id = $2 FOR UPDATE',
       [idViaje, conductorId]
     );
+
     if (rows.length === 0) {
       await cliente.query('ROLLBACK');
       return { status: 404, error: 'No encontramos este viaje entre los que tienes asignados.' };
     }
+
     if (rows[0].estado !== desde) {
       await cliente.query('ROLLBACK');
       return {
         status: 409,
-        error: desde === 'pendiente' ? 'Solo se puede iniciar un viaje pendiente.' : 'Solo se puede finalizar un viaje en curso.',
+        error: desde === 'pendiente'
+          ? 'Solo se puede iniciar un viaje pendiente.'
+          : 'Solo se puede finalizar un viaje en curso.',
       };
     }
+
     const conflicto = await aplicar(cliente, rows[0]);
+
     if (conflicto) {
       await cliente.query('ROLLBACK');
       return { status: 409, error: conflicto };
     }
+
     await cliente.query('COMMIT');
     return null;
   } catch (error) {
@@ -63,59 +71,105 @@ async function cambiarEstado(
 // Inicia el viaje. Una van (y un conductor) hace un viaje a la vez.
 rutasConductor.post('/viajes/:id/iniciar', async (req, res) => {
   const id = idValido(req.params.id);
+
   if (id === null) {
     res.status(400).json({ error: 'El id del viaje no es válido.' });
     return;
   }
+
   const conductorId = req.usuario!.id;
 
   const fallo = await cambiarEstado(id, conductorId, 'pendiente', async (cliente, viaje) => {
-    if (viaje.van_id === null) return 'El viaje todavía no tiene una van asignada.';
+    if (viaje.van_id === null) {
+      return 'El viaje todavía no tiene una van asignada.';
+    }
+
     const { rowCount } = await cliente.query(
       `SELECT 1 FROM viajes WHERE id <> $1 AND estado = 'en-curso' AND (conductor_id = $2 OR van_id = $3)`,
       [id, conductorId, viaje.van_id]
     );
-    if (rowCount) return 'Ya tienes un viaje en curso. Finalízalo antes de iniciar otro.';
-    await cliente.query(`UPDATE viajes SET estado = 'en-curso', iniciado_en = CURRENT_TIMESTAMP WHERE id = $1`, [id]);
+
+    if (rowCount) {
+      return 'Ya tienes un viaje en curso. Finalízalo antes de iniciar otro.';
+    }
+
+    await cliente.query(
+      `UPDATE viajes SET estado = 'en-curso', iniciado_en = CURRENT_TIMESTAMP WHERE id = $1`,
+      [id]
+    );
+
+    // Registra la transición dentro de la misma transacción.
+    await cliente.query(
+      `INSERT INTO viajes_historial_estados
+        (viaje_id, estado_anterior, estado_nuevo, usuario_id)
+       VALUES ($1, 'pendiente', 'en-curso', $2)`,
+      [id, conductorId]
+    );
+
     return null;
   });
+
   if (fallo) {
     res.status(fallo.status).json({ error: fallo.error });
     return;
   }
+
   res.json({ viaje: await viajePorId(id) });
 });
 
 // Finaliza el viaje: queda en el historial y sus reservas pendientes pasan a completadas.
 rutasConductor.post('/viajes/:id/finalizar', async (req, res) => {
   const id = idValido(req.params.id);
+
   if (id === null) {
     res.status(400).json({ error: 'El id del viaje no es válido.' });
     return;
   }
 
-  const fallo = await cambiarEstado(id, req.usuario!.id, 'en-curso', async (cliente) => {
-    await cliente.query(`UPDATE viajes SET estado = 'completado', finalizado_en = CURRENT_TIMESTAMP WHERE id = $1`, [id]);
-    await cliente.query(`UPDATE reservas SET estado = 'completada' WHERE viaje_id = $1 AND estado = 'pendiente'`, [id]);
+  const conductorId = req.usuario!.id;
+
+  const fallo = await cambiarEstado(id, conductorId, 'en-curso', async (cliente) => {
+    await cliente.query(
+      `UPDATE viajes SET estado = 'completado', finalizado_en = CURRENT_TIMESTAMP WHERE id = $1`,
+      [id]
+    );
+
+    // Registra la transición dentro de la misma transacción.
+    await cliente.query(
+      `INSERT INTO viajes_historial_estados
+        (viaje_id, estado_anterior, estado_nuevo, usuario_id)
+       VALUES ($1, 'en-curso', 'completado', $2)`,
+      [id, conductorId]
+    );
+
+    await cliente.query(
+      `UPDATE reservas SET estado = 'completada' WHERE viaje_id = $1 AND estado = 'pendiente'`,
+      [id]
+    );
+
     return null;
   });
+
   if (fallo) {
     res.status(fallo.status).json({ error: fallo.error });
     return;
   }
+
   res.json({ viaje: await viajePorId(id) });
 });
 
-// GPS-05: ruta desde la posición del conductor hasta la sede de destino del viaje. El destino sale del
-// viaje guardado en la base; el cliente solo envía su posición.
+// GPS-05: ruta desde la posición del conductor hasta la sede de destino del viaje.
 rutasConductor.get('/viajes/:id/ruta', async (req, res) => {
   const id = idValido(req.params.id);
+
   if (id === null) {
     res.status(400).json({ error: 'El id del viaje no es válido.' });
     return;
   }
+
   const latitud = Number(req.query.lat);
   const longitud = Number(req.query.lon);
+
   if (
     req.query.lat === undefined || req.query.lon === undefined ||
     !Number.isFinite(latitud) || !Number.isFinite(longitud) ||
@@ -129,15 +183,19 @@ rutasConductor.get('/viajes/:id/ruta', async (req, res) => {
     'SELECT estado, destino FROM viajes WHERE id = $1 AND conductor_id = $2',
     [id, req.usuario!.id]
   );
+
   if (rows.length === 0) {
     res.status(404).json({ error: 'No encontramos este viaje entre los que tienes asignados.' });
     return;
   }
+
   if (rows[0].estado !== 'en-curso') {
     res.status(409).json({ error: 'La navegación solo está disponible para un viaje en curso.' });
     return;
   }
+
   const destino = coordenadasDeSede(rows[0].destino);
+
   if (!destino) {
     res.status(409).json({ error: 'El destino del viaje no tiene ubicación configurada.' });
     return;
