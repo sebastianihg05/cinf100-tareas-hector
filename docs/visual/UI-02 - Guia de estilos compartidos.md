@@ -89,6 +89,7 @@ Se aplicaron las variables a los estilos que comparten los paneles:
 | `styles/admin.css` | `.adm-btn` (botones de los modales, que usan los tres paneles), `.adm-btn--block`, `.adm-field`, `.adm-search`, `.adm-card`, `.adm-list`, `.adm-pills`, `.adm-toolbar`, `.adm-panel`, `.adm-note`, el perfil compartido (`.prf*`), `.adm-trip-form`, los contadores de aviso y los márgenes de `.adm-content`. |
 | `styles/pasajero.css` (funcionario y conductor) | `--psj-pad`, `.psj-page`, `.psj-btn`, `.psj-control`, `.psj-card`, `.psj-reserva`, `.psj-lista`, `.psj-badge`, `.psj-segmented__item`, la columna de lectura del escritorio y los textos con medio píxel. |
 | `styles/conductor.css` | `.cnd-trayecto`, `.cnd-viaje__hoy`, `.cnd-aviso__titulo`, el botón de centrar el mapa y los textos con medio píxel. |
+| `styles/paneles.css` (nuevo) | El encabezado azul y la barra lateral de escritorio, que estaban escritos dos veces casi iguales (`.adm-nav` en `admin.css` y `.psj-nav` en `pasajero.css`). Ahora es una sola regla para los tres paneles. Se carga después de los otros archivos en `main.tsx` para que las reglas de escritorio ganen a las de celular. |
 
 ### Resultado medido
 
@@ -97,6 +98,9 @@ Se aplicaron las variables a los estilos que comparten los paneles:
 - **Botones:** los botones principales quedaron en 52 px y los de los modales en 44 px.
 - **Medios píxeles:** quedaron en 0. Había 13 tamaños de letra como 10,5, 12,5 o 13,5 px en `admin.css`,
   `pasajero.css` y `conductor.css`.
+- **Menos duplicación:** el fondo de escritorio, el rojo de los contadores (que estaba escrito 4 veces), el encabezado
+  y la barra lateral quedaron definidos en un solo lugar. Se quitaron 25 líneas repetidas de `admin.css` y
+  `pasajero.css`, y la barra lateral se ve igual que antes en los tres paneles.
 - **Sin regresiones:** ninguna pantalla se desborda en 390 px y siguen pasando las 255 pruebas del frontend.
 
 ## Lo que queda para UI-03 y UI-04
