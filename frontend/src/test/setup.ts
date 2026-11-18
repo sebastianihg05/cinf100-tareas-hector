@@ -1,8 +1,33 @@
 
 import '@testing-library/jest-dom/vitest'
 import { cleanup, configure } from '@testing-library/react'
-import { afterEach, beforeEach } from 'vitest'
+import { afterEach, beforeEach, vi } from 'vitest'
 import { instalarApiFalsa } from './apiFalsa'
+
+// En las pruebas se simula ScrollTrigger para evitar temporizadores
+// que continúan ejecutándose después de cerrar jsdom.
+vi.mock('gsap/ScrollTrigger', () => ({
+  ScrollTrigger: {
+    name: 'ScrollTrigger',
+    register() {},
+    create() {
+      return {
+        kill() {},
+        refresh() {},
+        disable() {},
+        enable() {},
+      }
+    },
+    refresh() {},
+    update() {},
+    killAll() {},
+    getAll() {
+      return []
+    },
+    addEventListener() {},
+    removeEventListener() {},
+  },
+}))
 
 // Ninguna prueba llama al backend real: fetch responde con un backend falso en memoria.
 beforeEach(() => {
