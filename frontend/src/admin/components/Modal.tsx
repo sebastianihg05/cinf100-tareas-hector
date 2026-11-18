@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { IconClose } from './icons'
 
 type Props = { title: string; onClose: () => void; children: ReactNode }
@@ -19,7 +20,9 @@ export default function Modal({ title, onClose, children }: Props) {
     }
   }, [])
 
-  return (
+  // Se dibuja directo en <body>: si quedara dentro de un bloque animado (FadeContent usa transform), el fondo oscuro
+  // solo cubriría ese bloque y no toda la pantalla.
+  return createPortal(
     <div className="adm-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div className="adm-modal" role="dialog" aria-modal="true" aria-label={title}>
         <header className="adm-modal__head">
@@ -28,6 +31,7 @@ export default function Modal({ title, onClose, children }: Props) {
         </header>
         <div className="adm-modal__body" ref={bodyRef}>{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
