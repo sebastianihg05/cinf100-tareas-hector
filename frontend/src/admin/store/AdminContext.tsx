@@ -1,14 +1,13 @@
 import {
   createContext,
   useContext,
-  useEffect,
   useMemo,
   useReducer,
   useRef,
   useState,
   type ReactNode,
 } from 'react'
-import { api as clienteApi, type ConductorBd, type UsuarioBd, type ViajeBd } from '../../api'
+import { api as clienteApi, type ConductorBd, type UsuarioBd, type VanBd, type ViajeBd } from '../../api'
 import { leerSesion } from '../../login/sesion'
 import { HORA_TRAYECTO, RUTA_TRAYECTO, type Admin, type Chofer, type EstadoViaje, type Pasajero, type Reserva, type Rol, type Trayecto, type Van, type Viaje } from '../types'
 import { ahoraISO } from '../utils/format'
@@ -16,9 +15,8 @@ import { numeroDeVan } from '../utils/vanBd'
 import { type AlcanceViajes } from './viajesBd'
 import {
   cargarEstado,
-  guardarEstado,
-  KEY,
-  leerEstadoGuardado,
+  estadoInicial,
+  estadoVacio,
   nuevoId,
   reducer,
   type Action,
@@ -52,6 +50,17 @@ type AdminApi = {
   vansGuardando: boolean
   vansError: string | null
   limpiarErrorVans: () => void
+  /** #2905: vuelve a pedir las vans a la API (al entrar al panel del administrador) */
+  recargarVans: () => Promise<void>
+  /** Copia en la app las vans que devolvió la API (el conductor recibe solo la suya) */
+  sincronizarVans: (vans: VanBd[]) => void
+  /** Avisos del administrador que ya leyó, guardados en la base (tabla avisos_leidos) */
+  cargarAvisosLeidos: () => Promise<void>
+  /**
+   * Borra lo que hay en memoria al iniciar o cerrar sesión (#2905): `conServidor` parte vacío y espera a la API;
+   * sin servidor vuelve a los datos de ejemplo.
+   */
+  reiniciarDatos: (conServidor: boolean) => void
   saveVan: (van: Van) => Promise<boolean>
   toggleVan: (id: string) => Promise<boolean>
   saveChofer: (chofer: Chofer) => void
@@ -94,6 +103,12 @@ const AdminContext = createContext<AdminApi | null>(null)
 /** Solo las sesiones iniciadas en el servidor (con token) guardan en PostgreSQL; sin token se trabaja con los datos locales. */
 const conServidor = () => Boolean(leerSesion()?.token)
 
+/**
+ * Clave en avisos_leidos de un aviso del administrador: solo los de viajes de la base (`nbd<id>`),
+ * con el formato `tipo:id` que exige la tabla. Los avisos de ejemplo no se guardan.
+ */
+export const claveAvisoAdmin = (id: string) => (/^nbd\d+$/.test(id) ? `viaje-iniciado:${id.slice(3)}` : null)
+
 export function AdminProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, cargarEstado)
   const [vansCargando, setVansCargando] = useState(true)
@@ -103,46 +118,31 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const estadoActual = useRef(state)
   estadoActual.current = state
 
-  useEffect(() => {
-    guardarEstado(state)
-  }, [state])
-
-  // La API es la fuente principal de las vans. localStorage queda como respaldo.
-  useEffect(() => {
-    let vigente = true
-
-    const cargarVans = async () => {
-      const respuesta = await clienteApi.listarVans()
-
-      if (!vigente) return
-
-      if (respuesta.ok) {
-        dispatch({ type: 'van/desdeBd', vans: respuesta.datos.vans })
-        setVansError(null)
-      } else {
-        setVansError(respuesta.error)
-      }
-
-      setVansCargando(false)
+  // #2905: el estado vive solo en memoria. Las vans se piden a la API al entrar al panel del administrador
+  // (AdminLayout), así también se cargan justo después de iniciar sesión, sin recargar la página.
+  const recargarVans = async () => {
+    const respuesta = await clienteApi.listarVans()
+    if (respuesta.ok) {
+      dispatch({ type: 'van/desdeBd', vans: respuesta.datos.vans })
+      setVansError(null)
+    } else {
+      setVansError(respuesta.error)
     }
+    setVansCargando(false)
+  }
 
-    void cargarVans()
-
-    return () => {
-      vigente = false
-    }
-  }, [])
-
-  useEffect(() => {
-    const alCambiar = (e: StorageEvent) => {
-      if (e.key !== KEY || e.newValue === null || e.newValue === JSON.stringify(estadoActual.current)) return
-      const otro = leerEstadoGuardado()
-      if (otro) dispatch({ type: 'estado/otraPestana', state: otro })
-    }
-
-    window.addEventListener('storage', alCambiar)
-    return () => window.removeEventListener('storage', alCambiar)
-  }, [])
+  // Avisos del administrador que ya leyó: vienen de la tabla avisos_leidos, no del navegador.
+  const [leidosBd, setLeidosBd] = useState<Set<string>>(() => new Set())
+  const cargarAvisosLeidos = async () => {
+    if (!conServidor()) return
+    const r = await clienteApi.avisosLeidos()
+    if (r.ok) setLeidosBd(new Set(r.datos.leidos))
+  }
+  const guardarLeidos = (claves: string[]) => {
+    if (claves.length === 0 || !conServidor()) return
+    setLeidosBd((antes) => new Set([...antes, ...claves]))
+    void clienteApi.marcarAvisosLeidos(claves)
+  }
 
   const guardarVanEnApi = async (van: Van): Promise<boolean> => {
     setVansGuardando(true)
@@ -261,15 +261,37 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const estadoVisible = useMemo<State>(() => {
+    if (leidosBd.size === 0) return state
+    return {
+      ...state,
+      notificaciones: state.notificaciones.map((n) => {
+        const clave = claveAvisoAdmin(n.id)
+        return clave && leidosBd.has(clave) ? { ...n, leida: true } : n
+      }),
+    }
+  }, [state, leidosBd])
+
   const contexto = useMemo<AdminApi>(
     () => ({
-      state,
+      state: estadoVisible,
       pendientes: state.pasajeros.filter((p) => !p.aprobado).length,
-      sinLeer: state.notificaciones.filter((n) => !n.leida).length,
+      sinLeer: estadoVisible.notificaciones.filter((n) => !n.leida).length,
       vansCargando,
       vansGuardando,
       vansError,
       limpiarErrorVans: () => setVansError(null),
+      recargarVans,
+      sincronizarVans: (vans) => dispatch({ type: 'van/desdeBd', vans }),
+      cargarAvisosLeidos,
+      reiniciarDatos: (servidor) => {
+        const nuevo = servidor ? estadoVacio() : estadoInicial()
+        estadoActual.current = nuevo
+        dispatch({ type: 'estado/reiniciar', state: nuevo })
+        setLeidosBd(new Set())
+        setVansCargando(true)
+        setVansError(null)
+      },
       saveVan: guardarVanEnApi,
       toggleVan: cambiarEstadoVan,
       saveChofer: (chofer) => dispatch({ type: 'chofer/save', chofer }),
@@ -348,8 +370,15 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'viaje/desdeBd', viajes: [r.datos.viaje], alcance: { tipo: 'parcial' } })
         return { ok: true }
       },
-      marcarLeida: (id) => dispatch({ type: 'notif/leer', id }),
-      marcarTodasLeidas: () => dispatch({ type: 'notif/leerTodas' }),
+      marcarLeida: (id) => {
+        dispatch({ type: 'notif/leer', id })
+        const clave = claveAvisoAdmin(id)
+        if (clave) guardarLeidos([clave])
+      },
+      marcarTodasLeidas: () => {
+        dispatch({ type: 'notif/leerTodas' })
+        guardarLeidos(estadoVisible.notificaciones.filter((n) => !n.leida).map((n) => claveAvisoAdmin(n.id)).filter((c): c is string => c !== null))
+      },
       asignarVanViaje: (id, vanId) => dispatch({ type: 'viaje/van', id, vanId }),
       updateAdmin: (patch) => dispatch({ type: 'admin/update', patch }),
       choferDeVan: (van) => state.choferes.find((c) => c.id === van.choferId),
@@ -409,22 +438,13 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
         const accion: Action = { type: 'reserva/crear', reservas }
         const siguiente = reducer(actual, accion)
-
-        if (!guardarEstado(siguiente)) {
-          return {
-            ok: false,
-            tipo: 'almacenamiento',
-            error: 'No se pudo guardar la reserva en este dispositivo. Revisa el almacenamiento del navegador e inténtalo de nuevo.',
-          }
-        }
-
         estadoActual.current = siguiente
         dispatch(accion)
 
         return { ok: true, grupoId, reservas }
       },
     }),
-    [state, vansCargando, vansGuardando, vansError],
+    [state, estadoVisible, vansCargando, vansGuardando, vansError],
   )
 
   return <AdminContext.Provider value={contexto}>{children}</AdminContext.Provider>

@@ -11,7 +11,7 @@ import "../styles/auth.css";
 
 function Login() {
   const navigate = useNavigate();
-  const { state, sincronizarCuentas, updateAdmin } = useAdmin();
+  const { sincronizarCuentas, updateAdmin, reiniciarDatos } = useAdmin();
 
   const [correo, setCorreo] = useState("");
   const [password, setPassword] = useState("");
@@ -45,6 +45,9 @@ function Login() {
     const { token, usuario } = respuesta.datos;
     const sesion = { correo: usuario.correo, nombre: usuario.nombreCompleto, token };
 
+    // #2905: no se mezclan datos de una sesión anterior ni de ejemplo; todo llega desde la API.
+    reiniciarDatos(true);
+
     // En la base el rol se llama "administrador"; en el frontend, "admin".
     if (usuario.rol === "administrador") {
       updateAdmin({ nombre: usuario.nombreCompleto, email: usuario.correo, ultimoIngreso: ahoraISO() });
@@ -56,7 +59,7 @@ function Login() {
     // Funcionario o conductor: su cuenta se copia en la app para que vea sus datos y reservas.
     const rol = usuario.rol ?? "funcionario";
     sincronizarCuentas([usuario]);
-    guardarSesion({ ...sesion, rol, pasajeroId: idLocalDe(state.pasajeros, usuario) });
+    guardarSesion({ ...sesion, rol, pasajeroId: idLocalDe([], usuario) });
     navigate(RUTA_INICIO[rol], { replace: true });
   };
 

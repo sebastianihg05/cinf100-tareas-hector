@@ -2,7 +2,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
-import { estadoInicial } from '../store/adminStore'
+import { estadoInicial, usarEstadoDePrueba } from '../store/adminStore'
 import { AdminProvider } from '../store/AdminContext'
 import type { Reserva, Viaje } from '../types'
 import PanelPendiente from './PanelPendiente'
@@ -25,7 +25,7 @@ const varias = (viajeId: string, cantidad: number, estado: Reserva['estado'] = '
   Array.from({ length: cantidad }, () => reserva(viajeId, estado))
 
 const abrirPanel = (viajes: Viaje[], reservas: Reserva[]) => {
-  localStorage.setItem('unab-admin-v3', JSON.stringify({ ...estadoInicial(), viajes, reservas }))
+  usarEstadoDePrueba({ ...estadoInicial(), viajes, reservas })
   render(<MemoryRouter><AdminProvider><PanelPendiente /></AdminProvider></MemoryRouter>)
 }
 

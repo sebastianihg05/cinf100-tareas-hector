@@ -6,11 +6,11 @@ import { normalizarTelefono } from '../usuarios/validacion';
 // Datos de conductor (tabla conductores) junto a su cuenta. Solo administradores: se monta en rutasAdmin.
 export const rutasConductores = Router();
 
-const COLUMNAS = `
+export const COLUMNAS_CONDUCTOR = `
   u.id, u.nombre_completo, u.correo, u.telefono, u.estado_aprobacion,
   c.rut, TO_CHAR(c.licencia_hasta, 'YYYY-MM-DD') AS licencia_hasta, c.activo`;
 
-type FilaConductor = {
+export type FilaConductor = {
   id: number;
   nombre_completo: string;
   correo: string;
@@ -21,7 +21,7 @@ type FilaConductor = {
   activo: boolean;
 };
 
-function aConductor(fila: FilaConductor) {
+export function aConductor(fila: FilaConductor) {
   return {
     id: fila.id,
     nombreCompleto: fila.nombre_completo,
@@ -51,7 +51,7 @@ function esFechaValida(valor: string): boolean {
 // Conductores aprobados o desactivados, con sus datos de conductor.
 rutasConductores.get('/', async (_req, res) => {
   const { rows } = await pool.query<FilaConductor>(
-    `SELECT ${COLUMNAS} FROM conductores c
+    `SELECT ${COLUMNAS_CONDUCTOR} FROM conductores c
        JOIN usuarios u ON u.id = c.usuario_id
       ORDER BY u.id`
   );
@@ -130,7 +130,7 @@ rutasConductores.patch('/:id', async (req, res) => {
   }
 
   const { rows } = await pool.query<FilaConductor>(
-    `SELECT ${COLUMNAS} FROM conductores c
+    `SELECT ${COLUMNAS_CONDUCTOR} FROM conductores c
        JOIN usuarios u ON u.id = c.usuario_id
       WHERE c.usuario_id = $1`,
     [id]

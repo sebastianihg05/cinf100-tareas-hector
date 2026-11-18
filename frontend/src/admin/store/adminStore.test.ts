@@ -1,33 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { cargarEstado, estadoInicial, reducer, sinViajesPasados } from './adminStore'
-
-describe('sinViajesPasados', () => {
-  it('borra los viajes de días anteriores con sus reservas y avisos, y deja los de hoy en adelante', () => {
-    const antes = {
-      ...estadoInicial(),
-      notificaciones: [{ id: 'n1', tipo: 'viaje-iniciado' as const, viajeId: 't5', fecha: '2026-10-07T17:00', leida: false }],
-    }
-    const hoy = '2026-11-01'
-    const despues = sinViajesPasados(antes, hoy)
-
-    expect(despues.viajes.length).toBeGreaterThan(0)
-    expect(despues.viajes.every((v) => v.fecha >= hoy)).toBe(true)
-    expect(despues.viajes).toEqual(expect.arrayContaining(antes.viajes.filter((v) => v.fecha >= hoy).map((v) => expect.objectContaining({ id: v.id }))))
-    const ids = new Set(despues.viajes.map((v) => v.id))
-    expect(despues.reservas.every((r) => ids.has(r.viajeId))).toBe(true)
-    expect(despues.reservas.length).toBeLessThan(antes.reservas.length)
-    expect(despues.notificaciones).toEqual([])
-    // vans, choferes y cuentas no se tocan
-    expect(despues.vans).toEqual(antes.vans)
-    expect(despues.choferes).toEqual(antes.choferes)
-    expect(despues.pasajeros.map((p) => p.id)).toEqual(antes.pasajeros.map((p) => p.id))
-  })
-
-  it('si no hay viajes pasados, no cambia nada', () => {
-    const s = estadoInicial()
-    expect(sinViajesPasados(s, '2000-01-01')).toBe(s)
-  })
-})
+import { guardarSesion } from '../../login/sesion'
+import { cargarEstado, estadoInicial, reducer } from './adminStore'
 
 describe('pasajero/eliminar', () => {
   it('borra la cuenta y todas sus reservas, y libera los cupos de sus viajes', () => {
@@ -68,9 +41,23 @@ describe('capacidad de las vans', () => {
     expect(estadoInicial().vans.every((v) => v.asientos === 9)).toBe(true)
   })
 
-  it('un estado guardado con la capacidad antigua (8) se corrige a 9 al cargarlo', () => {
-    const viejo = { ...estadoInicial(), vans: estadoInicial().vans.map((v) => ({ ...v, asientos: 8 })) }
-    localStorage.setItem('unab-admin-v3', JSON.stringify(viejo))
-    expect(cargarEstado().vans.every((v) => v.asientos === 9)).toBe(true)
+})
+
+// #2905: el estado de la app vive solo en memoria y no se lee ni se guarda en el navegador.
+describe('estado inicial sin localStorage', () => {
+  it('no lee lo que haya quedado guardado en el navegador de versiones anteriores', () => {
+    localStorage.setItem('unab-admin-v3', JSON.stringify({ ...estadoInicial(), pasajeros: [] }))
+    expect(cargarEstado().pasajeros).toEqual(estadoInicial().pasajeros)
+  })
+
+  it('con sesión del servidor parte vacío: todo llega desde la API', () => {
+    guardarSesion({ correo: 'dev.admin@unab.cl', nombre: 'Administrador Desarrollo', rol: 'admin', pasajeroId: null, token: 'token-1' })
+    const s = cargarEstado()
+    expect([s.vans, s.choferes, s.pasajeros, s.viajes, s.reservas, s.notificaciones]).toEqual([[], [], [], [], [], []])
+    expect(s.admin).toMatchObject({ nombre: 'Administrador Desarrollo', email: 'dev.admin@unab.cl' })
+  })
+
+  it('sin sesión del servidor (pruebas y demostración) usa los datos de ejemplo', () => {
+    expect(cargarEstado().pasajeros.length).toBeGreaterThan(0)
   })
 })

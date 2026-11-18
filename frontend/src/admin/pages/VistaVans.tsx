@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import AddButton from '../components/AddButton'
 import CardActions from '../components/CardActions'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -24,7 +24,14 @@ export default function VistaVans() {
     vansGuardando,
     vansError,
     limpiarErrorVans,
+    recargarVans,
   } = useAdmin()
+
+  // #2905: las vans se piden a la API al abrir la pantalla (no hay copia guardada en el navegador).
+  // Solo al entrar: recargarVans cambia en cada render.
+  useEffect(() => {
+    void recargarVans()
+  }, [])
 
   const [filtro, setFiltro] = useState<Filtro>('activas')
   const [dialogo, setDialogo] = useState<Dialogo>(null)

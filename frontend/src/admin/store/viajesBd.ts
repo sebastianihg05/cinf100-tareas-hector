@@ -59,8 +59,9 @@ export function aplicarViajesBd(s: State, viajesBd: ViajeBd[], alcance: AlcanceV
     }
     viajes = anterior ? viajes.map((v) => (v === anterior ? nuevo : v)) : [...viajes, nuevo]
 
-    // el administrador se entera cuando otra persona inicia un viaje que ya conocía
-    if (anterior?.estado === 'pendiente' && b.estado === 'en-curso' && !notificaciones.some((n) => n.viajeId === id)) {
+    // el administrador se entera de los viajes en curso: los que otra persona acaba de iniciar y, al abrir el panel,
+    // los que ya estaban en curso (#2905: los avisos ya no se guardan en el navegador; lo leído está en la base)
+    if (b.estado === 'en-curso' && anterior?.estado !== 'en-curso' && !notificaciones.some((n) => n.viajeId === id)) {
       notificaciones = [{ id: `nbd${b.id}`, tipo: 'viaje-iniciado', viajeId: id, fecha: isoLocal(b.iniciadoEn ?? new Date().toISOString()), leida: false }, ...notificaciones]
     }
 

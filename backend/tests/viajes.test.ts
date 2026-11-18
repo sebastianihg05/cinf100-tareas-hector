@@ -295,6 +295,37 @@ test('el conductor consulta el detalle de sus viajes y no puede consultar viajes
   assert.equal(sinSesion.status, 401);
 });
 
+// #2905: el panel del conductor arma su van desde aquí, sin datos guardados en el navegador.
+test('el conductor ve su ficha y la van que tiene asignada', async () => {
+  const vanId = await van(81);
+  await pool.query('UPDATE vans SET conductor_id = $1 WHERE id = $2', [idOtro, vanId]);
+
+  const r = await request(app).get('/api/conductor/perfil').set('Authorization', otroConductor);
+  assert.equal(r.status, 200);
+  assert.equal(r.body.conductor.id, idOtro);
+  assert.equal(r.body.conductor.activo, true);
+  assert.equal(r.body.van.id, String(vanId));
+  assert.equal(r.body.van.patente, 'ZP-9081');
+  assert.equal(r.body.van.conductorId, idOtro);
+
+  // sin van asignada responde la ficha y van: null
+  await pool.query('UPDATE vans SET conductor_id = NULL WHERE id = $1', [vanId]);
+  const sinVan = await request(app).get('/api/conductor/perfil').set('Authorization', otroConductor);
+  assert.equal(sinVan.status, 200);
+  assert.equal(sinVan.body.van, null);
+});
+
+test('la ficha del conductor exige el rol y los datos de conductor', async () => {
+  assert.equal((await request(app).get('/api/conductor/perfil')).status, 401);
+  assert.equal((await request(app).get('/api/conductor/perfil').set('Authorization', funcionario)).status, 403);
+
+  // una cuenta con rol conductor que la administración aún no registró en la tabla conductores
+  const sinFicha = await crearUsuario(`${PREFIJO}sinficha@unab.cl`, 'aprobada', 'conductor');
+  const r = await request(app).get('/api/conductor/perfil').set('Authorization', autorizacion(sinFicha));
+  assert.equal(r.status, 404);
+  assert.match(r.body.error, /administración/);
+});
+
 test('iniciar un viaje cambia su estado y la administración lo ve', async () => {
   const id = await viajeAsignado();
 

@@ -70,7 +70,8 @@ describe('Inicio de sesión', () => {
     abrir('/login')
     await iniciarSesion('S.constanza@uandresbello.edu')
     expect(await screen.findByText(/Hola, Constanza/)).toBeInTheDocument()
-    expect(leerSesion()).toMatchObject({ rol: 'funcionario', pasajeroId: 'p5' })
+    // #2905: el id sale de su cuenta en la base (Constanza es la cuenta 2), no de un dato de ejemplo
+    expect(leerSesion()).toMatchObject({ rol: 'funcionario', pasajeroId: 'bd2' })
   })
 
   it('una cuenta por aprobar no puede entrar', async () => {
@@ -132,7 +133,8 @@ describe('Registro y aprobación de solicitudes', () => {
     // el administrador la ve en "Por aprobar"
     const tarjeta = await abrirSolicitud('Camila Torres')
     expect(tarjeta.getByText('Por aprobar')).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Por aprobar 2' })).toBeInTheDocument()
+    // #2905: con sesión del servidor solo se ven las cuentas de la base (sin la solicitud de ejemplo)
+    expect(screen.getByRole('tab', { name: 'Por aprobar 1' })).toBeInTheDocument()
   })
 
   it('la contraseña no queda guardada en claro', async () => {
@@ -157,8 +159,8 @@ describe('Registro y aprobación de solicitudes', () => {
 
     const tarjeta = await abrirSolicitud('Camila Torres')
     await userEvent.click(tarjeta.getByRole('button', { name: 'Aprobar' }))
-    // queda solo la solicitud de ejemplo "Nuevo ingreso"
-    expect(screen.getByRole('tab', { name: 'Por aprobar 1' })).toBeInTheDocument()
+    // ya no quedan solicitudes por aprobar
+    expect(await screen.findByRole('tab', { name: 'Por aprobar' })).toBeInTheDocument()
 
     await cerrarSesionDesdeAdmin()
     await iniciarSesion('camila.torres@uandresbello.edu', 'clave12345')
@@ -217,9 +219,15 @@ describe('Registro y aprobación de solicitudes', () => {
 })
 
 describe('Eliminar una cuenta', () => {
+  // "Eliminar cuenta" es solo para las cuentas de ejemplo, que existen sin el servidor (sin token)
+  const abrirPasajerosDeEjemplo = async () => {
+    guardarSesion({ correo: 'dev.admin@unab.cl', nombre: 'Administrador', rol: 'admin', pasajeroId: null })
+    abrir('/admin/pasajeros')
+    await screen.findByText('Nuevo ingreso')
+  }
+
   it('en el detalle ya no hay "Cuenta habilitada": se ofrece "Eliminar cuenta"', async () => {
-    abrir('/login')
-    await abrirSolicitud('Nuevo ingreso') // entra como administrador y abre Pasajeros
+    await abrirPasajerosDeEjemplo()
     await userEvent.click(screen.getByRole('button', { name: 'Ver detalle de Bruno Urrutia' }))
     const detalle = screen.getByRole('dialog')
     expect(within(detalle).queryByText('Cuenta habilitada')).not.toBeInTheDocument()
@@ -227,8 +235,7 @@ describe('Eliminar una cuenta', () => {
   })
 
   it('pide confirmación y, al confirmar, borra la cuenta de ejemplo y sus reservas', async () => {
-    abrir('/login')
-    await abrirSolicitud('Nuevo ingreso') // entra como administrador y abre Pasajeros
+    await abrirPasajerosDeEjemplo()
     await userEvent.click(screen.getByRole('button', { name: 'Ver detalle de Bruno Urrutia' }))
     await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Eliminar' }))
 
@@ -241,9 +248,8 @@ describe('Eliminar una cuenta', () => {
     await userEvent.click(within(screen.getByRole('dialog', { name: 'Eliminar cuenta' })).getByRole('button', { name: 'Eliminar cuenta' }))
 
     expect(screen.queryByText('Bruno Urrutia')).not.toBeInTheDocument()
-    const guardado = JSON.parse(localStorage.getItem('unab-admin-v3')!)
-    expect(guardado.pasajeros.some((p: { id: string }) => p.id === 'p2')).toBe(false)
-    expect(guardado.reservas.some((r: { pasajeroId: string }) => r.pasajeroId === 'p2')).toBe(false)
+    // #2905: se borra de la memoria de la app; en el navegador no queda nada guardado
+    expect(localStorage.length).toBe(0)
   })
 
   it('una cuenta de la base no se elimina desde aquí', async () => {

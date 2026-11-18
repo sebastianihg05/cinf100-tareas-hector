@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { cerrarSesion } from '../../login/sesion'
+import { useAdmin } from '../store/AdminContext'
 import { fechaHora, iniciales } from '../utils/format'
 import { IconEdit, IconLogout } from './icons'
 import Modal from './Modal'
@@ -26,6 +27,7 @@ type Props = {
  */
 export default function PerfilUsuario({ nombre, email, etiquetas, filas = [], celular, ultimoIngreso, onGuardarCelular }: Props) {
   const navigate = useNavigate()
+  const { reiniciarDatos } = useAdmin()
   const [editando, setEditando] = useState(false)
 
   return (
@@ -51,7 +53,7 @@ export default function PerfilUsuario({ nombre, email, etiquetas, filas = [], ce
         <div className="prf__row"><span>Último ingreso</span><strong>{fechaHora(ultimoIngreso)}</strong></div>
       </section>
 
-      <button className="prf__logout" onClick={() => { cerrarSesion(); navigate('/login', { replace: true }) }}>
+      <button className="prf__logout" onClick={() => { cerrarSesion(); reiniciarDatos(false); navigate('/login', { replace: true }) }}>
         <IconLogout /> Cerrar sesión
       </button>
 

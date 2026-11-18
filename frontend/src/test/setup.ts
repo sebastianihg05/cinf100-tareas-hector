@@ -2,6 +2,7 @@
 import '@testing-library/jest-dom/vitest'
 import { cleanup, configure } from '@testing-library/react'
 import { afterEach, beforeEach, vi } from 'vitest'
+import { usarEstadoDePrueba } from '../admin/store/adminStore'
 import { instalarApiFalsa } from './apiFalsa'
 
 // En las pruebas se simula ScrollTrigger para evitar temporizadores
@@ -36,6 +37,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
+  usarEstadoDePrueba(null)
   localStorage.clear()
   sessionStorage.clear()
 })
