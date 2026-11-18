@@ -1,3 +1,4 @@
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import request from 'supertest';
@@ -250,6 +251,47 @@ test('el conductor ve solo sus viajes, con los pasajeros de cada uno', async () 
   assert.equal(viaje.reservas[0].asiento, 4);
   assert.equal(viaje.reservas[0].nombre, 'Usuario de prueba');
   assert.equal(viaje.reservas[0].telefono, '+56911112222');
+});
+
+// Comprueba el detalle individual, sus pasajeros y la protección frente a viajes ajenos.
+test('el conductor consulta el detalle de sus viajes y no puede consultar viajes ajenos', async () => {
+  const propio = await viajeAsignado(idConductor, 71);
+  const ajeno = await viajeAsignado(idOtro, 72);
+  await reservar(propio, 5);
+
+  const detalle = await request(app)
+    .get(`/api/conductor/viajes/${propio}`)
+    .set('Authorization', conductor);
+
+  assert.equal(detalle.status, 200);
+  assert.equal(detalle.body.viaje.id, propio);
+  assert.equal(detalle.body.viaje.origen, 'Quillota 980');
+  assert.equal(detalle.body.viaje.destino, 'Santiago');
+  assert.equal(detalle.body.viaje.reservas.length, 1);
+  assert.equal(detalle.body.viaje.reservas[0].asiento, 5);
+
+  const prohibido = await request(app)
+    .get(`/api/conductor/viajes/${ajeno}`)
+    .set('Authorization', conductor);
+
+  assert.equal(prohibido.status, 404);
+
+  const inexistente = await request(app)
+    .get('/api/conductor/viajes/999999')
+    .set('Authorization', conductor);
+
+  assert.equal(inexistente.status, 404);
+
+  const invalido = await request(app)
+    .get('/api/conductor/viajes/abc')
+    .set('Authorization', conductor);
+
+  assert.equal(invalido.status, 400);
+
+  const sinSesion = await request(app)
+    .get(`/api/conductor/viajes/${propio}`);
+
+  assert.equal(sinSesion.status, 401);
 });
 
 test('iniciar un viaje cambia su estado y la administración lo ve', async () => {
