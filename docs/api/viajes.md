@@ -65,12 +65,21 @@ Solo ve y modifica los viajes con `conductorId` igual a su cuenta.
 ### GET /api/conductor/viajes
 Todos sus viajes (próximos e historial) con los pasajeros de cada uno.
 
+### GET /api/conductor/viajes/:id
+Detalle de un viaje propio con sus pasajeros y asientos: `{ "viaje": {...} }`, con la misma forma que en el listado.
+400 si el id no es válido; 404 si el viaje no existe o es de otro conductor (no se revela cuál de las dos).
+
 ### POST /api/conductor/viajes/:id/iniciar
 `pendiente` → `en-curso`, guarda `iniciadoEn`. 409 si el viaje no está pendiente, no tiene van, o el conductor
 (o la misma van) ya tiene un viaje en curso. 404 si el viaje no es suyo.
 
 ### POST /api/conductor/viajes/:id/finalizar
 `en-curso` → `completado`, guarda `finalizadoEn` y pasa las reservas pendientes a `completada`. El viaje queda en su historial.
+
+### Historial de estados
+Iniciar, finalizar y cancelar (desde la administración) guardan una fila en `viajes_historial_estados`, dentro de la
+misma transacción que el cambio: estado anterior, estado nuevo, quién lo hizo y cuándo. Un cambio rechazado no deja
+registro. Ver `docs/database/modelo-viajes.md`.
 
 ### GET /api/conductor/viajes/:id/ruta?lat=…&lon=…
 Ruta por carretera desde la posición del conductor hasta la **sede de destino del viaje** (el destino sale de la base,

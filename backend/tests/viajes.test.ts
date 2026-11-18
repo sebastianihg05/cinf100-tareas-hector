@@ -1,4 +1,3 @@
-
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import request from 'supertest';
@@ -10,6 +9,7 @@ import { autorizacion, borrarUsuarios, crearUsuario } from './ayudantes';
 
 const PREFIJO = 'prueba.viajes.';
 let admin: string;
+let idAdmin: number;
 let conductor: string;
 let otroConductor: string;
 let funcionario: string;
@@ -62,7 +62,8 @@ async function limpiar() {
 
 test.before(async () => {
   await limpiar();
-  admin = autorizacion(await crearUsuario(`${PREFIJO}admin@unab.cl`, 'aprobada', 'administrador'));
+  idAdmin = await crearUsuario(`${PREFIJO}admin@unab.cl`, 'aprobada', 'administrador');
+  admin = autorizacion(idAdmin);
   idConductor = await crearUsuario(`${PREFIJO}conductor@unab.cl`, 'aprobada', 'conductor');
   idOtro = await crearUsuario(`${PREFIJO}otro@unab.cl`, 'aprobada', 'conductor');
   idFuncionario = await crearUsuario(`${PREFIJO}funcionario@unab.cl`, 'aprobada', 'funcionario');
@@ -375,6 +376,49 @@ test('no se finaliza un viaje que no está en curso', async () => {
   const id = await viajeAsignado(idConductor, 51);
   const r = await request(app).post(`/api/conductor/viajes/${id}/finalizar`).set('Authorization', conductor);
   assert.equal(r.status, 409);
+});
+
+/* ---------- Historial de estados (008 y 009) ---------- */
+
+const historial = async (viajeId: number) =>
+  (await pool.query(
+    `SELECT estado_anterior, estado_nuevo, usuario_id FROM viajes_historial_estados WHERE viaje_id = $1 ORDER BY id`,
+    [viajeId]
+  )).rows;
+
+test('cada cambio de estado queda en el historial con quién lo hizo', async () => {
+  const id = await viajeAsignado(idConductor, 61);
+  await request(app).post(`/api/conductor/viajes/${id}/iniciar`).set('Authorization', conductor);
+  await request(app).post(`/api/conductor/viajes/${id}/finalizar`).set('Authorization', conductor);
+  assert.deepEqual(await historial(id), [
+    { estado_anterior: 'pendiente', estado_nuevo: 'en-curso', usuario_id: idConductor },
+    { estado_anterior: 'en-curso', estado_nuevo: 'completado', usuario_id: idConductor },
+  ]);
+
+  // un cambio rechazado (409) no deja registro
+  assert.equal((await request(app).post(`/api/conductor/viajes/${id}/iniciar`).set('Authorization', conductor)).status, 409);
+  assert.equal((await historial(id)).length, 2);
+
+  const { respuesta } = await abrir(['Ida']);
+  const cancelado = respuesta.body.viajes[0].id as number;
+  await request(app).patch(`/api/admin/viajes/${cancelado}`).set('Authorization', admin).send({ estado: 'cancelado' });
+  assert.deepEqual(await historial(cancelado), [
+    { estado_anterior: 'pendiente', estado_nuevo: 'cancelado', usuario_id: idAdmin },
+  ]);
+});
+
+test('al borrar una cuenta, su historial se conserva sin el usuario', async () => {
+  const idTemporal = await crearUsuario(`${PREFIJO}temporal@unab.cl`, 'aprobada', 'administrador');
+  const { respuesta } = await abrir(['Ida']);
+  const id = respuesta.body.viajes[0].id as number;
+  const r = await request(app).patch(`/api/admin/viajes/${id}`).set('Authorization', autorizacion(idTemporal)).send({ estado: 'cancelado' });
+  assert.equal(r.status, 200);
+
+  // antes de 009_historial_usuario_set_null.sql este DELETE fallaba por la llave foránea
+  await pool.query('DELETE FROM usuarios WHERE id = $1', [idTemporal]);
+  assert.deepEqual(await historial(id), [
+    { estado_anterior: 'pendiente', estado_nuevo: 'cancelado', usuario_id: null },
+  ]);
 });
 
 /* ---------- Ruta GPS ---------- */
