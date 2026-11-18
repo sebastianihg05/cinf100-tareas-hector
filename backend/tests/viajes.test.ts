@@ -25,16 +25,20 @@ function fechaEn(dias: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-// Cada prueba usa un día sin viajes activos (el seed de desarrollo ya ocupa algunos): el índice único de
-// (fecha, trayecto) no deja repetir un viaje activo.
-let proximoDia = 2;
-async function diaNuevo(): Promise<string> {
-  for (;;) {
-    const fecha = fechaEn(proximoDia++);
-    assert.ok(proximoDia <= DIAS_MAX + 2, 'no quedan días libres para la prueba');
-    const { rowCount } = await pool.query(`SELECT 1 FROM viajes WHERE fecha = $1 AND estado <> 'cancelado'`, [fecha]);
+// Primer día de la ventana de 1 a 30 días en que los trayectos pedidos están libres. El índice único de
+// (fecha, trayecto) no deja repetir un viaje activo y el seed de desarrollo ya ocupa algunos días.
+// Se revisa por trayecto: antes cada prueba gastaba un día completo y, con el seed, los días se acababan
+// y la prueba pedía el día 31, que la API rechaza con 400.
+async function diaNuevo(trayectos: string[] = ['Ida', 'Vuelta']): Promise<string> {
+  for (let dia = 2; dia <= DIAS_MAX; dia++) {
+    const fecha = fechaEn(dia);
+    const { rowCount } = await pool.query(
+      `SELECT 1 FROM viajes WHERE fecha = $1 AND estado <> 'cancelado' AND trayecto = ANY($2::text[])`,
+      [fecha, trayectos]
+    );
     if (!rowCount) return fecha;
   }
+  assert.fail('no quedan días libres para la prueba');
 }
 const DIAS_MAX = 30;
 
@@ -79,7 +83,7 @@ test.after(async () => {
 });
 
 async function abrir(trayectos: string[], fecha?: string) {
-  fecha ??= await diaNuevo();
+  fecha ??= await diaNuevo(trayectos);
   const respuesta = await request(app).post('/api/admin/viajes').set('Authorization', admin).send({ fecha, trayectos });
   return { respuesta, fecha };
 }

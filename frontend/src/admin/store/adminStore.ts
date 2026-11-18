@@ -123,11 +123,14 @@ export function reducer(s: State, a: Action): State {
           nombre: c.nombreCompleto,
           correo: c.correo.toLowerCase(),
           telefono: normalizarTelefono(c.telefono) ?? c.telefono,
-          rut: c.rut ?? actual?.rut ?? '',
-          licenciaHasta: c.licenciaHasta ?? actual?.licenciaHasta ?? '',
+          // la base manda: sin RUT o licencia en PostgreSQL se muestra "sin registrar", nunca un valor anterior o de ejemplo
+          rut: c.rut ?? '',
+          licenciaHasta: c.licenciaHasta ?? '',
           activo,
         }
         choferes = actual ? choferes.map((ch) => (ch === actual ? datos : ch)) : [...choferes, datos]
+        // una van que llegó antes que la lista de conductores apunta a `cbd<id>`: se enlaza con este conductor
+        if (datos.id !== `cbd${c.id}`) vans = vans.map((v) => (v.choferId === `cbd${c.id}` ? { ...v, choferId: datos.id } : v))
         if (!activo) vans = liberarChofer(vans, datos.id)
       }
       const celulares = new Map(a.conductores.map((c) => [c.id, normalizarTelefono(c.telefono) ?? c.telefono]))

@@ -17,7 +17,11 @@ export default function PerfilConductor() {
     { etiqueta: 'Sede', valor: cuenta.sede ? sedeLabel(cuenta.sede) : 'Sin sede' },
     { etiqueta: 'Van asignada', valor: van ? van.patente : 'Sin van asignada' },
     ...(chofer
-      ? [{ etiqueta: 'Licencia vigente hasta', valor: chofer.licenciaHasta ? fechaLarga(chofer.licenciaHasta) : 'Sin registrar' }]
+      ? [
+          // RUT y licencia vienen de PostgreSQL (/api/conductor/perfil) y se actualizan cada vez que se sincroniza
+          { etiqueta: 'RUT', valor: chofer.rut || 'Sin registrar' },
+          { etiqueta: 'Licencia vigente hasta', valor: chofer.licenciaHasta ? fechaLarga(chofer.licenciaHasta) : 'Sin registrar' },
+        ]
       : []),
   ]
 

@@ -46,6 +46,16 @@ test('al aprobar una cuenta como conductor queda registrada en conductores, sin 
   assert.equal(conductor.activo, true);
 });
 
+test('el conductor ve en su perfil el RUT y la licencia que guardó el administrador', async () => {
+  const id = await aprobar('perfil', 'conductor');
+  await request(app).patch(`/api/admin/conductores/${id}`).set('Authorization', admin)
+    .send({ rut: '45.444.444-4', licenciaHasta: '2031-03-01' });
+  const perfil = await request(app).get('/api/conductor/perfil').set('Authorization', autorizacion(id));
+  assert.equal(perfil.status, 200);
+  assert.equal(perfil.body.conductor.rut, '45.444.444-4');
+  assert.equal(perfil.body.conductor.licenciaHasta, '2031-03-01');
+});
+
 test('al aprobar como funcionario no se crea un conductor', async () => {
   const id = await aprobar('funcionario', 'funcionario');
   assert.equal((await listar()).some((c) => c.id === id), false);
