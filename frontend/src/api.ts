@@ -209,6 +209,8 @@ export const api = {
   listarViajes: () => pedir<{ viajes: ViajeBd[] }>('/admin/viajes'),
   abrirViajes: (fecha: string, trayectos: Trayecto[]) => pedir<{ viajes: ViajeBd[] }>('/admin/viajes', 'POST', { fecha, trayectos }),
   actualizarViaje: (id: number, cambios: CambiosViaje) => pedir<{ viaje: ViajeBd }>(`/admin/viajes/${id}`, 'PATCH', cambios),
+  /** #2905, conductor: su ficha de conductor y la van que tiene asignada. */
+  miPerfilConductor: () => pedir<{ conductor: ConductorBd; van: VanBd | null }>('/conductor/perfil'),
   /** S3-CON-02, conductor: sus viajes (con pasajeros), iniciar y finalizar. */
   listarMisViajes: () => pedir<{ viajes: ViajeBd[] }>('/conductor/viajes'),
   iniciarViaje: (id: number) => pedir<{ viaje: ViajeBd }>(`/conductor/viajes/${id}/iniciar`, 'POST'),

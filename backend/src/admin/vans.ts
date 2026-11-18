@@ -4,7 +4,7 @@ import { pool } from '../db';
 
 export const rutasVans = Router();
 
-type FilaVan = {
+export type FilaVan = {
   id: number;
   patente: string;
   capacidad: number;
@@ -12,7 +12,7 @@ type FilaVan = {
   conductor_id: number | null;
 };
 
-function aVan(fila: FilaVan) {
+export function aVan(fila: FilaVan) {
   return {
     id: String(fila.id),
     patente: fila.patente,
@@ -22,11 +22,11 @@ function aVan(fila: FilaVan) {
   };
 }
 
-const COLUMNAS = 'id, patente, capacidad, activa, conductor_id';
+export const COLUMNAS_VAN = 'id, patente, capacidad, activa, conductor_id';
 
 rutasVans.get('/', async (_req, res) => {
   const { rows } = await pool.query<FilaVan>(
-    `SELECT ${COLUMNAS} FROM vans ORDER BY id`
+    `SELECT ${COLUMNAS_VAN} FROM vans ORDER BY id`
   );
   res.json({ vans: rows.map(aVan) });
 });
@@ -53,7 +53,7 @@ rutasVans.post('/', async (req, res) => {
     const { rows } = await pool.query<FilaVan>(
       `INSERT INTO vans (patente, capacidad, conductor_id)
        VALUES ($1, 9, $2)
-       RETURNING ${COLUMNAS}`,
+       RETURNING ${COLUMNAS_VAN}`,
       [patente, conductorId]
     );
     res.status(201).json({ van: aVan(rows[0]) });
@@ -109,7 +109,7 @@ rutasVans.patch('/:id', async (req, res) => {
     await cliente.query('BEGIN');
 
     const actual = await cliente.query<FilaVan>(
-      `SELECT ${COLUMNAS} FROM vans WHERE id = $1 FOR UPDATE`,
+      `SELECT ${COLUMNAS_VAN} FROM vans WHERE id = $1 FOR UPDATE`,
       [id]
     );
 
@@ -130,7 +130,7 @@ rutasVans.patch('/:id', async (req, res) => {
       `UPDATE vans
           SET patente = $2, activa = $3, conductor_id = $4
         WHERE id = $1
-        RETURNING ${COLUMNAS}`,
+        RETURNING ${COLUMNAS_VAN}`,
       [id, nuevaPatente, nuevoEstado, nuevoConductor]
     );
 

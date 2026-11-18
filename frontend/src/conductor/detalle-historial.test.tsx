@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it } from 'vitest'
 import App from '../App'
 import { choferesIniciales, pasajerosIniciales, reservasIniciales, vansIniciales, viajesIniciales } from '../admin/data/mock'
-import { estadoInicial } from '../admin/store/adminStore'
+import { estadoInicial, usarEstadoDePrueba } from '../admin/store/adminStore'
 import type { Reserva, Viaje } from '../admin/types'
 import { guardarSesion } from '../login/sesion'
 import { asignacionDe, pasajerosDelViaje, trayectosDelDia, viajeAsignado, viajesFinalizados } from './viajes'
@@ -75,7 +75,7 @@ describe('detalle del viaje', () => {
 
   /** Estado guardado con reservas adicionales, para probar viajes con varios pasajeros. */
   const conReservas = (extra: Reserva[]) =>
-    localStorage.setItem('unab-admin-v3', JSON.stringify({ ...estadoInicial(), reservas: [...reservasIniciales, ...extra] }))
+    usarEstadoDePrueba({ ...estadoInicial(), reservas: [...reservasIniciales, ...extra] })
 
   it('muestra el resumen del viaje: ruta, estado, hora, van y asientos reservados', async () => {
     abrir('/conductor/viajes/f1i')
@@ -187,7 +187,7 @@ describe('historial de viajes finalizados', () => {
   })
 
   it('sin viajes finalizados muestra un estado vacío', async () => {
-    localStorage.setItem('unab-admin-v3', JSON.stringify({ ...estadoInicial(), viajes: viajesIniciales.filter((v) => v.estado !== 'completado') }))
+    usarEstadoDePrueba({ ...estadoInicial(), viajes: viajesIniciales.filter((v) => v.estado !== 'completado') })
     abrir()
     expect(await screen.findByText('Aún no tienes viajes finalizados.')).toBeInTheDocument()
   })
@@ -216,7 +216,7 @@ describe('historial de viajes finalizados', () => {
     const viajes = viajesIniciales.map((v) =>
       v.id === 'f1i' || v.id === 'f1v' ? { ...v, estado: 'completado' as const } : v,
     )
-    localStorage.setItem('unab-admin-v3', JSON.stringify({ ...estadoInicial(), viajes }))
+    usarEstadoDePrueba({ ...estadoInicial(), viajes })
     abrir()
 
     const enlaceIda = screen.getAllByRole('link', { name: /Ver el detalle del viaje/ })

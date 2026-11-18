@@ -62,6 +62,12 @@ Iniciar y finalizar son del conductor, no de la administración.
 
 Solo ve y modifica los viajes con `conductorId` igual a su cuenta.
 
+### GET /api/conductor/perfil
+Su ficha de conductor y la van activa que tiene asignada (#2905): `{ "conductor": {...}, "van": {...} | null }`,
+con la misma forma que `GET /api/admin/conductores` y `GET /api/admin/vans`. El panel del conductor arma "mi van y mis
+viajes" con esto, sin depender de datos guardados en el navegador. 404 si la cuenta todavía no está registrada como
+conductor (tabla `conductores`).
+
 ### GET /api/conductor/viajes
 Todos sus viajes (próximos e historial) con los pasajeros de cada uno.
 

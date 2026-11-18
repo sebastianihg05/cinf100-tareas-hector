@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it } from 'vitest'
 import App from '../App'
-import { estadoInicial } from '../admin/store/adminStore'
+import { estadoInicial, usarEstadoDePrueba } from '../admin/store/adminStore'
 import type { Reserva, Viaje } from '../admin/types'
 import { guardarSesion } from '../login/sesion'
 import { avisosConductor } from './avisos'
@@ -75,8 +75,7 @@ describe('avisosConductor', () => {
 
 describe('notificaciones en el panel del conductor', () => {
   beforeEach(() => {
-    localStorage.clear()
-    localStorage.setItem('unab-admin-v3', JSON.stringify(estadoConAvisos()))
+    usarEstadoDePrueba(estadoConAvisos())
     guardarSesion({ correo: CORREO_CONDUCTOR, nombre: 'Juan Carrasco', rol: 'conductor', pasajeroId: 'p-conductor' })
   })
 
@@ -117,7 +116,7 @@ describe('notificaciones en el panel del conductor', () => {
   })
 
   it('sin notificaciones muestra un mensaje', async () => {
-    localStorage.setItem('unab-admin-v3', JSON.stringify({ ...estadoConAvisos(), viajes: [], reservas: [] }))
+    usarEstadoDePrueba({ ...estadoConAvisos(), viajes: [], reservas: [] })
     abrir('/conductor/avisos')
     expect(await screen.findByText('No tienes notificaciones.')).toBeInTheDocument()
   })

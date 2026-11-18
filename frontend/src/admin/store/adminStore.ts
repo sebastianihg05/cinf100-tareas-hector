@@ -1,7 +1,8 @@
 import type { ConductorBd, UsuarioBd, VanBd, ViajeBd } from '../../api'
 import { adminInicial, choferesIniciales, pasajerosIniciales, reservasIniciales, vansIniciales, viajesIniciales } from '../data/mock'
-import { CAPACIDAD_VAN, type Admin, type Chofer, type EstadoViaje, type Notificacion, type Pasajero, type Reserva, type Rol, type Van, type Viaje } from '../types'
-import { isoLocal, normalizarTelefono, todayISO } from '../utils/format'
+import { type Admin, type Chofer, type EstadoViaje, type Notificacion, type Pasajero, type Reserva, type Rol, type Van, type Viaje } from '../types'
+import { leerSesion } from '../../login/sesion'
+import { ahoraISO, isoLocal, normalizarTelefono } from '../utils/format'
 import { sincronizar, validarCambioAsientos, validarSolicitud, type CambioAsiento } from './reservas'
 import { aplicarViajesBd, type AlcanceViajes } from './viajesBd'
 
@@ -39,8 +40,8 @@ export type Action =
   | { type: 'notif/leer'; id: string }
   | { type: 'notif/leerTodas' }
   | { type: 'admin/update'; patch: Partial<Admin> }
-  /** Otra pestaña del mismo navegador guardó cambios: se adopta su estado. */
-  | { type: 'estado/otraPestana'; state: State }
+  /** Al iniciar o cerrar sesión se parte de cero (#2905): no quedan datos de la cuenta anterior en memoria. */
+  | { type: 'estado/reiniciar'; state: State }
 
 export const estadoInicial = (): State =>
   sincronizar({
@@ -223,7 +224,7 @@ export function reducer(s: State, a: Action): State {
       return { ...s, viajes: s.viajes.map((v) => (v.id === a.id ? { ...v, vanId: a.vanId } : v)) }
     case 'admin/update':
       return { ...s, admin: { ...s.admin, ...a.patch } }
-    case 'estado/otraPestana':
+    case 'estado/reiniciar':
       return a.state
   }
 }
@@ -235,65 +236,40 @@ export const pasajeroDeCuenta = (pasajeros: Pasajero[], u: UsuarioBd) =>
 /** id local de una cuenta de la base: el del pasajero que ya le corresponde o uno nuevo, `bd<id>`. */
 export const idLocalDe = (pasajeros: Pasajero[], u: UsuarioBd) => pasajeroDeCuenta(pasajeros, u)?.id ?? `bd${u.id}`
 
-/* ---------- Persistencia local (viajes y reservas siguen siendo de ejemplo) ---------- */
+/* ---------- Estado inicial (#2905: nada se guarda en el navegador) ----------
+   El estado vive solo en memoria y se llena con la API al abrir cada panel. Al recargar se vuelve a pedir todo,
+   así cada computador y cada sesión ven lo mismo que hay en PostgreSQL. */
 
-export const KEY = 'unab-admin-v3'
+/** Estado sin datos para una sesión del servidor: todo llega desde la API. */
+export function estadoVacio(): State {
+  const sesion = leerSesion()
+  return {
+    vans: [],
+    choferes: [],
+    pasajeros: [],
+    viajes: [],
+    reservas: [],
+    notificaciones: [],
+    admin: {
+      nombre: sesion?.nombre ?? '',
+      email: sesion?.correo ?? '',
+      cargo: adminInicial.cargo,
+      celular: '',
+      ultimoIngreso: ahoraISO(),
+    },
+  }
+}
 
-export const leerEstadoGuardado = (): State | null => leerGuardado()
+/** Solo para las pruebas: estado con el que parte la app. Antes las pruebas lo dejaban en localStorage. */
+let estadoDePrueba: State | null = null
+export function usarEstadoDePrueba(s: State | null) {
+  estadoDePrueba = s ? sincronizar(s) : null
+}
 
+/** Con sesión del servidor se parte vacío; sin ella (pruebas y demostración sin backend) se usan los datos de ejemplo. */
 export function cargarEstado(): State {
-  return limpiezaUnica(leerGuardado() ?? estadoInicial())
-}
-
-function leerGuardado(): State | null {
-  try {
-    const raw = localStorage.getItem(KEY)
-    if (raw) {
-      const p = JSON.parse(raw) as Partial<State>
-      if (Array.isArray(p.vans) && Array.isArray(p.choferes) && Array.isArray(p.pasajeros) && Array.isArray(p.viajes) && Array.isArray(p.reservas) && p.admin) {
-        const vans = p.vans.map((v) => ({ ...v, asientos: CAPACIDAD_VAN }))
-        return sincronizar({ ...p, vans, notificaciones: p.notificaciones ?? [] } as State)
-      }
-    }
-  } catch {
-    /* sin almacenamiento o JSON corrupto: se usa el estado inicial */
-  }
-  return null
-}
-
-/** Quita los viajes de días anteriores a `hoy`, con sus reservas y avisos. */
-export function sinViajesPasados(s: State, hoy: string): State {
-  const pasados = new Set(s.viajes.filter((v) => v.fecha < hoy).map((v) => v.id))
-  if (pasados.size === 0) return s
-  return sincronizar({
-    ...s,
-    viajes: s.viajes.filter((v) => !pasados.has(v.id)),
-    reservas: s.reservas.filter((r) => !pasados.has(r.viajeId)),
-    notificaciones: s.notificaciones.filter((n) => !pasados.has(n.viajeId)),
-  })
-}
-
-const LIMPIEZA = 'unab-limpieza-viajes-v1'
-
-function limpiezaUnica(s: State): State {
-  if (import.meta.env.MODE === 'test') return s
-  try {
-    if (localStorage.getItem(LIMPIEZA)) return s
-    localStorage.setItem(LIMPIEZA, todayISO())
-  } catch {
-    return s
-  }
-  return sinViajesPasados(s, todayISO())
-}
-
-/** Devuelve `false` si el navegador no pudo guardar (sin espacio, modo privado, etc.). */
-export function guardarEstado(s: State): boolean {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(s))
-    return true
-  } catch {
-    return false
-  }
+  if (estadoDePrueba) return estadoDePrueba
+  return leerSesion()?.token ? estadoVacio() : estadoInicial()
 }
 
 export const nuevoId = (prefijo: string) => `${prefijo}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`

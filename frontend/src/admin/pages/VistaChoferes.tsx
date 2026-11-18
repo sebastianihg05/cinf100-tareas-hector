@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { api } from '../../api'
+import { leerSesion } from '../../login/sesion'
 import AddButton from '../components/AddButton'
 import CardActions from '../components/CardActions'
 import ChoferForm from '../components/ChoferForm'
@@ -69,7 +70,10 @@ export default function VistaChoferes() {
         { value: 'activos', label: 'Activos', count: activos.length },
         { value: 'baja', label: 'Dados de baja', count: baja.length },
       ]} />
-      <AddButton label="Agregar Conductor" onClick={() => setDialogo({ kind: 'form' })} />
+      {/* #2905: con el servidor, un conductor nuevo es una cuenta de la base (no se guarda en el navegador) */}
+      {leerSesion()?.token
+        ? <p className="adm-note">Los conductores nuevos se registran en la página de registro y se aprueban con el rol Conductor en Pasajeros.</p>
+        : <AddButton label="Agregar Conductor" onClick={() => setDialogo({ kind: 'form' })} />}
       {aviso && <p className="adm-field__error" role="alert">{aviso}</p>}
 
       {/* RB-04: las tarjetas entran una tras otra; se repite al cambiar de filtro */}

@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { requiereRol, requiereSesion } from '../auth/middleware';
+import { aConductor, COLUMNAS_CONDUCTOR, type FilaConductor } from '../admin/conductores';
+import { aVan, COLUMNAS_VAN, type FilaVan } from '../admin/vans';
 import { pool } from '../db';
 import { COLUMNAS_VIAJE, conReservas, idValido, viajePorId, type FilaViaje } from '../viajes/modelo';
 import { ErrorRuta, rutaHaciaDestino } from '../viajes/rutas-mapa';
@@ -9,6 +11,33 @@ import { coordenadasDeSede } from '../viajes/sedes';
 export const rutasConductor = Router();
 
 rutasConductor.use(requiereSesion, requiereRol('conductor'));
+
+// #2905: datos de conductor y van asignada. El panel del conductor los lee de aquí en vez de copiarlos
+// del navegador del administrador (la lista de vans es solo para administradores).
+rutasConductor.get('/perfil', async (req, res) => {
+  const { rows } = await pool.query<FilaConductor>(
+    `SELECT ${COLUMNAS_CONDUCTOR}
+       FROM conductores c
+       JOIN usuarios u ON u.id = c.usuario_id
+      WHERE c.usuario_id = $1`,
+    [req.usuario!.id]
+  );
+
+  if (rows.length === 0) {
+    res.status(404).json({
+      error: 'Tu cuenta todavía no tiene datos de conductor. Pide a la administración que te registre.',
+    });
+    return;
+  }
+
+  // Un conductor maneja como máximo una van activa (vans_conductor_unique en 006_vans.sql).
+  const van = await pool.query<FilaVan>(
+    `SELECT ${COLUMNAS_VAN} FROM vans WHERE conductor_id = $1 AND activa ORDER BY id LIMIT 1`,
+    [req.usuario!.id]
+  );
+
+  res.json({ conductor: aConductor(rows[0]), van: van.rows[0] ? aVan(van.rows[0]) : null });
+});
 
 // Lista todos los viajes asignados al conductor, incluidos los completados,
 // con sus pasajeros y asientos.

@@ -9,7 +9,6 @@ import { agregarConductor, agregarCuenta, CONTRASENA, cuentaGuardada } from '../
 
 const CORREO_CONDUCTOR = 'dev.conductor@unab.cl'
 const abrir = (ruta: string) => render(<MemoryRouter initialEntries={[ruta]}><App /></MemoryRouter>)
-const estadoGuardado = () => JSON.parse(localStorage.getItem('unab-admin-v3')!)
 
 const iniciarSesion = async (correo: string) => {
   await userEvent.type(await screen.findByLabelText('Correo electrónico'), correo)
@@ -49,7 +48,8 @@ describe('un viaje a la vez', () => {
     const iniciar = await screen.findByRole('button', { name: 'Iniciar viaje' })
     expect(iniciar).toBeDisabled()
     expect(screen.getByText(/Tienes un viaje en curso \(Ida de las 06:45 hrs\)/)).toBeInTheDocument()
-    expect(estadoGuardado().viajes.find((v: { id: string }) => v.id === 'f1v').estado).toBe('pendiente')
+    // #2905: el estado vive solo en memoria; no queda nada guardado en el navegador
+    expect(localStorage.length).toBe(0)
   })
 })
 
@@ -73,8 +73,8 @@ describe('cambiar el celular', () => {
 
     expect(cuentaGuardada(CORREO_CONDUCTOR)?.telefono).toBe('+56987654321')
     expect(await screen.findByText('+56 9 8765 4321')).toBeInTheDocument()
-    const chofer = estadoGuardado().choferes.find((c: { correo: string }) => c.correo === CORREO_CONDUCTOR)
-    expect(chofer.telefono).toBe('+56 9 8765 4321')
+    // #2905: el administrador lo ve porque Choferes lee el celular de la API (no de una copia en el navegador)
+    expect(localStorage.length).toBe(0)
   })
 
   it('el funcionario cambia su celular y queda guardado en la base', async () => {

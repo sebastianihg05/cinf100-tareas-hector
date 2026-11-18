@@ -25,15 +25,15 @@ export const useEstadoViajesBd = () => useContext(Contexto)
  * recuperar la conexión. `admin` trae todos; `conductor` solo los suyos. Sin sesión del servidor (sin token) no hace nada.
  */
 export function ProveedorViajesBd({ rol, children }: { rol: 'admin' | 'conductor'; children: ReactNode }) {
-  const { state, sincronizarViajes, sincronizarConductores } = useAdmin()
+  const { state, sincronizarViajes, sincronizarConductores, sincronizarVans, sincronizarCuentas } = useAdmin()
   const [cargando, setCargando] = useState(() => Boolean(leerSesion()?.token))
   const [error, setError] = useState('')
 
   // el id de la cuenta del conductor sale de su cuenta copiada al iniciar sesión
   const sesion = leerSesion()
   const conductorId = state.pasajeros.find((p) => p.id === sesion?.pasajeroId)?.idBd
-  const ultimo = useRef({ conductorId, sincronizarViajes, sincronizarConductores })
-  ultimo.current = { conductorId, sincronizarViajes, sincronizarConductores }
+  const ultimo = useRef({ conductorId, sincronizarViajes, sincronizarConductores, sincronizarVans, sincronizarCuentas })
+  ultimo.current = { conductorId, sincronizarViajes, sincronizarConductores, sincronizarVans, sincronizarCuentas }
   const enCurso = useRef(false)
 
   const cargar = useCallback(async () => {
@@ -42,6 +42,18 @@ export function ProveedorViajesBd({ rol, children }: { rol: 'admin' | 'conductor
       return
     }
     enCurso.current = true
+    // #2905: el conductor no tiene acceso a la lista de vans; su ficha y su van llegan de /api/conductor/perfil.
+    // Se cargan antes que los viajes para que cada viaje encuentre su van.
+    let idConductor = ultimo.current.conductorId
+    if (rol === 'conductor') {
+      const [perfil, cuenta] = await Promise.all([api.miPerfilConductor(), api.miPerfil()])
+      if (cuenta.ok) ultimo.current.sincronizarCuentas([cuenta.datos.usuario])
+      if (perfil.ok) {
+        idConductor = perfil.datos.conductor.id
+        ultimo.current.sincronizarConductores([perfil.datos.conductor])
+        ultimo.current.sincronizarVans(perfil.datos.van ? [perfil.datos.van] : [])
+      }
+    }
     // el administrador también trae los conductores: sus cuentas reales son las que reciben los viajes que asigna
     const [r, conductores] = await Promise.all([
       rol === 'admin' ? api.listarViajes() : api.listarMisViajes(),
@@ -50,8 +62,8 @@ export function ProveedorViajesBd({ rol, children }: { rol: 'admin' | 'conductor
     enCurso.current = false
     if (conductores?.ok) ultimo.current.sincronizarConductores(conductores.datos.conductores)
     if (r.ok) {
-      const { conductorId: id, sincronizarViajes: sincronizar } = ultimo.current
-      sincronizar(r.datos.viajes, rol === 'admin' ? { tipo: 'todos' } : id !== undefined ? { tipo: 'conductor', conductorId: id } : { tipo: 'parcial' })
+      const { sincronizarViajes: sincronizar } = ultimo.current
+      sincronizar(r.datos.viajes, rol === 'admin' ? { tipo: 'todos' } : idConductor !== undefined ? { tipo: 'conductor', conductorId: idConductor } : { tipo: 'parcial' })
       setError('')
     } else {
       setError(r.error)

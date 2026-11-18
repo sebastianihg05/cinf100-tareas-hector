@@ -9,7 +9,7 @@ import NotificacionesPanel from './NotificacionesPanel'
 import { api } from '../../api'
 import { cerrarSesion, leerSesion } from '../../login/sesion'
 import { useAdmin } from '../store/AdminContext'
-import { iniciales } from '../utils/format'
+import { iniciales, isoLocal, normalizarTelefono } from '../utils/format'
 import { IconBack, IconBell, IconChevron, IconPanel, IconRoute, IconTruck, IconUser, IconUsers } from './icons'
 
 const tabs = [
@@ -21,7 +21,7 @@ const tabs = [
 ]
 
 export default function AdminLayout() {
-  const { state, pendientes, sinLeer, sincronizarCuentas, sincronizarConductores } = useAdmin()
+  const { state, pendientes, sinLeer, sincronizarCuentas, sincronizarConductores, recargarVans, cargarAvisosLeidos, updateAdmin, reiniciarDatos } = useAdmin()
   const [notifAbierto, setNotifAbierto] = useState(false)
   const totalAvisos = pendientes + sinLeer
   const { pathname } = useLocation()
@@ -31,10 +31,18 @@ export default function AdminLayout() {
   const subpagina = enPerfil || enAbrirViaje
   const titulo = enPerfil ? 'Mi perfil' : enAbrirViaje ? 'Abrir viaje' : 'Panel Administración'
 
-  // Al entrar, trae las cuentas de PostgreSQL: solicitudes por aprobar y pasajeros aprobados.
+  // Al entrar, trae de PostgreSQL las cuentas (solicitudes por aprobar y pasajeros aprobados), las vans,
+  // los avisos ya leídos y la cuenta del administrador. #2905: nada de esto se guarda en el navegador.
   // Solo una vez: sincronizarCuentas cambia en cada render.
   useEffect(() => {
     if (!leerSesion()?.token) return
+    void recargarVans()
+    void cargarAvisosLeidos()
+    api.miPerfil().then((r) => {
+      if (!r.ok) return
+      const u = r.datos.usuario
+      updateAdmin({ nombre: u.nombreCompleto, email: u.correo, celular: normalizarTelefono(u.telefono) ?? u.telefono, ultimoIngreso: isoLocal(u.ultimoIngresoEn ?? u.creadoEn) })
+    })
     api.listarUsuarios().then((r) => {
       if (r.ok) {
         sincronizarCuentas(r.datos.usuarios)
@@ -43,6 +51,7 @@ export default function AdminLayout() {
       // La sesión expiró (dura 8 horas) o la cuenta ya no tiene acceso: vuelve al login.
       else if (r.status === 401 || r.status === 403) {
         cerrarSesion()
+        reiniciarDatos(false)
         navigate('/login', { replace: true })
       }
     })

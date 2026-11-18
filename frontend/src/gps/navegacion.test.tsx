@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from '../App'
 import { numeroDeVan } from '../admin/utils/vanBd'
-import { agregarConductor, agregarCuenta, agregarViajeBd, configurarRutaFalsa, consultasRuta, CONTRASENA, viajeBdGuardado } from '../test/apiFalsa'
+import { agregarConductor, agregarCuenta, asignarVanBd, agregarViajeBd, configurarRutaFalsa, consultasRuta, CONTRASENA, viajeBdGuardado } from '../test/apiFalsa'
 
 /** GPS-03 a GPS-07 y GPS-08: la pantalla de navegación, con un GPS simulado y el mapa reemplazado por un marcador de prueba. */
 
@@ -45,6 +45,8 @@ afterEach(() => {
 const crearConductor = () => {
   const cuenta = agregarCuenta({ nombreCompleto: 'Juan Carrasco', correo: 'dev.conductor@unab.cl', rol: 'conductor', estado: 'aprobada' })
   agregarConductor(cuenta.id)
+  // #2905: la administración le asignó la van FG-1251 (id 1); el panel la lee de /api/conductor/perfil
+  asignarVanBd('1', cuenta.id)
   return cuenta
 }
 

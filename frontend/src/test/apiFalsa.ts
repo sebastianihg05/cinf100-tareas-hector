@@ -1,6 +1,6 @@
 
 import { vi } from 'vitest'
-import type { ConductorBd, ReservaViajeBd, RutaBd, UsuarioBd, ViajeBd } from '../api'
+import type { ConductorBd, ReservaViajeBd, RutaBd, UsuarioBd, VanBd, ViajeBd } from '../api'
 import { sumarDias, todayISO } from '../admin/utils/format'
 
 /**
@@ -68,6 +68,28 @@ export function agregarViajeBd(datos: Partial<ViajeBd> = {}): ViajeBd {
 }
 
 /* ---------- Reservas del funcionario (S3-RES-01 a S3-RES-04) ---------- */
+
+/* ---------- Vans (tabla vans): #2905, el panel ya no las saca del navegador ---------- */
+
+/** Van con la que parte cada prueba: la FG-1251 (id 1), igual que la van de ejemplo v1. */
+const vanInicial = (): VanBd => ({ id: '1', patente: 'FG-1251', asientos: 9, conductorId: null, activa: true })
+let vansBd: VanBd[] = [vanInicial()]
+let siguienteVan = 2
+
+/** Agrega una van a la "base" y la devuelve. */
+export function agregarVanBd(datos: Partial<VanBd> & Pick<VanBd, 'patente'>): VanBd {
+  const van: VanBd = { id: String(siguienteVan++), asientos: 9, conductorId: null, activa: true, ...datos }
+  vansBd.push(van)
+  return van
+}
+
+/** Asigna una van de la "base" a un conductor (como hace la administración en Vans). */
+export function asignarVanBd(id: string, conductorId: number | null) {
+  vansBd.find((v) => v.id === id)!.conductorId = conductorId
+}
+
+/** La van tal como quedó guardada en la "base". */
+export const vanBdGuardada = (id: string) => vansBd.find((v) => v.id === id)
 
 /** Las vans de prueba son la Hyundai Staria: 9 asientos reservables. */
 const CAPACIDAD = 9
@@ -276,6 +298,13 @@ function atender(url: string, metodo: string, cuerpo: Record<string, string>, to
     if (sesion.rol !== 'conductor' || sesion.estado !== 'aprobada') {
       return responder(403, { error: 'No tienes permiso para realizar esta acción.' })
     }
+    if (metodo === 'GET' && url === '/api/conductor/perfil') {
+      if (!conductores.has(sesion.id)) {
+        return responder(404, { error: 'Tu cuenta todavía no tiene datos de conductor. Pide a la administración que te registre.' })
+      }
+      const van = vansBd.find((v) => v.conductorId === sesion.id && v.activa) ?? null
+      return responder(200, { conductor: aConductor(sesion), van })
+    }
     if (metodo === 'GET' && url === '/api/conductor/viajes') {
       return responder(200, { viajes: viajes.filter((v) => v.conductorId === sesion.id) })
     }
@@ -331,6 +360,23 @@ function atender(url: string, metodo: string, cuerpo: Record<string, string>, to
     return responder(403, { error: 'No tienes permiso para realizar esta acción.' })
   }
   if (metodo === 'GET' && url === '/api/admin/usuarios') return responder(200, { usuarios: cuentas.map(publica) })
+
+  if (metodo === 'GET' && url === '/api/admin/vans') return responder(200, { vans: vansBd })
+
+  if (metodo === 'POST' && url === '/api/admin/vans') {
+    const datos = cuerpo as unknown as { patente: string; conductorId: number | null }
+    if (vansBd.some((v) => v.patente === datos.patente)) return responder(409, { error: 'Ya existe una van con esa patente.' })
+    return responder(201, { van: agregarVanBd({ patente: datos.patente, conductorId: datos.conductorId ?? null }) })
+  }
+
+  const cambioVan = url.match(/^\/api\/admin\/vans\/(\d+)$/)
+  if (metodo === 'PATCH' && cambioVan) {
+    const van = vansBd.find((v) => v.id === cambioVan[1])
+    if (!van) return responder(404, { error: 'La van no existe.' })
+    Object.assign(van, cuerpo)
+    if (!van.activa) van.conductorId = null
+    return responder(200, { van })
+  }
 
   if (metodo === 'GET' && url === '/api/admin/viajes') return responder(200, { viajes })
 
@@ -398,6 +444,8 @@ export function instalarApiFalsa() {
   viajes = []
   siguienteViaje = 1
   siguienteReserva = 1
+  vansBd = [vanInicial()]
+  siguienteVan = 2
   avisosLeidos = new Map()
   consultasRuta.length = 0
   respuestaRuta = { coordenadas: [[-33.2, -71.4], [-33.435172, -70.634]], distanciaM: 120000, duracionS: 5400 }

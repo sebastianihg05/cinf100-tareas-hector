@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 import App from './App'
 import { numeroDeVan } from './admin/utils/vanBd'
-import { agregarConductor, agregarCuenta, agregarViajeBd, CONTRASENA, viajeBdGuardado } from './test/apiFalsa'
+import { agregarConductor, agregarCuenta, asignarVanBd, agregarViajeBd, CONTRASENA, viajeBdGuardado } from './test/apiFalsa'
 
 /** S3-VIA-03 (administrador) y S3-CON-02 (conductor): las pantallas leen y escriben en la API, no solo en el navegador. */
 
@@ -21,6 +21,8 @@ const iniciarSesion = async (correo: string) => {
 const crearConductor = () => {
   const cuenta = agregarCuenta({ nombreCompleto: 'Juan Carrasco', correo: 'dev.conductor@unab.cl', rol: 'conductor', estado: 'aprobada' })
   agregarConductor(cuenta.id)
+  // #2905: la administración le asignó la van FG-1251 (id 1); el panel la lee de /api/conductor/perfil
+  asignarVanBd('1', cuenta.id)
   return cuenta
 }
 
