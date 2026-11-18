@@ -31,35 +31,35 @@
 .adm-avatar--light { background: rgba(255, 255, 255, .18); color: #fff; width: 44px; height: 44px; font-size: 15px; font-weight: 700; }
 .adm-online { background: var(--green-bg); color: var(--green); font-weight: 700; font-size: 11px; padding: 6px 10px; border-radius: 100px; }
 
-.adm-content { flex: 1; padding: 14px 16px 96px; }
+.adm-content { flex: 1; padding: var(--esp-4) var(--margen-pagina) 96px; }
 
 /* Pills / filtros */
-.adm-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.adm-pills { display: flex; flex-wrap: wrap; gap: var(--esp-2); margin-bottom: var(--separacion-bloques); }
 .adm-pill {
-  background: var(--navy); color: #fff; border: 0; border-radius: 100px;
+  background: var(--navy); color: #fff; border: 0; border-radius: var(--radio-pildora);
   padding: 7px 12px; font-size: 11px; font-weight: 700; opacity: .75;
 }
 .adm-pill.is-active { opacity: 1; background: var(--navy-light); }
-.adm-pill__alert { color: #ff383c; }
+.adm-pill__alert { color: var(--alerta); }
 
 .adm-add {
   display: inline-flex; align-items: center; gap: 6px; background: var(--navy); color: #fff;
-  border: 0; border-radius: 6px; padding: 6px 10px; font-size: 11px; font-weight: 800; margin-bottom: 16px;
+  border: 0; border-radius: 6px; padding: 6px 10px; font-size: 11px; font-weight: 800; margin-bottom: var(--separacion-bloques);
 }
 
 /* Cards */
-.adm-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.adm-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--separacion-bloques); }
 .adm-card {
-  background: var(--navy); color: #fff; border-radius: 12px; padding: 14px;
+  background: var(--navy); color: #fff; border-radius: var(--radio-tarjeta); padding: var(--relleno-tarjeta);
   box-shadow: 0 4px 6px rgba(0, 0, 0, .06); display: flex; flex-direction: column; gap: 6px;
 }
 .adm-card__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .adm-card__title { margin: 0; font-weight: 800; font-size: 14px; }
 .adm-card__title--icon { display: inline-flex; align-items: center; gap: 6px; }
 .adm-card__strong { margin: 0; font-weight: 700; font-size: 13px; }
-.adm-card__small { margin: 0; font-weight: 600; font-size: 10.5px; opacity: .95; }
+.adm-card__small { margin: 0; font-weight: 600; font-size: var(--letra-xs); opacity: .95; }
 .adm-card__line { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 12px; }
-.adm-card__line--small { font-size: 10.5px; }
+.adm-card__line--small { font-size: var(--letra-xs); }
 .adm-empty { text-align: center; color: var(--muted); font-size: 13px; padding: 24px 0; }
 
 .adm-badge { font-weight: 800; font-size: 11px; padding: 4px 8px; border-radius: 6px; white-space: nowrap; }
@@ -87,7 +87,7 @@
 .adm-approve { background: var(--navy-light); color: #fff; border: 0; font-weight: 800; font-size: 11px; padding: 8px 10px; }
 
 /* Viajes */
-.adm-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+.adm-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: var(--separacion-bloques); }
 .adm-date { display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 700; }
 .adm-date input, .adm-date select { font-family: inherit; font-size: 12px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; }
 .adm-date--fila { margin-bottom: 12px; max-width: 220px; }
@@ -122,11 +122,11 @@
 .adm-bell { position: relative; }
 .adm-bell__dot {
   position: absolute; top: 4px; right: 4px; width: 10px; height: 10px; border-radius: 50%;
-  background: #ff383c; border: 2px solid var(--navy);
+  background: var(--alerta); border: 2px solid var(--navy);
 }
 .adm-pill__badge {
   display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; margin-left: 2px;
-  border-radius: 100px; background: #ff383c; color: #fff; font-size: 10px; font-weight: 800;
+  border-radius: var(--radio-pildora); background: var(--alerta); color: #fff; font-size: 10px; font-weight: 800;
   box-shadow: 0 0 0 3px rgba(255, 56, 60, .28);
 }
 
@@ -137,8 +137,8 @@
 .adm-passenger__go:hover { background: rgba(255, 255, 255, .12); }
 .adm-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
 .adm-tag {
-  display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 800;
-  padding: 3px 10px; border-radius: 100px; align-self: flex-start;
+  display: inline-flex; align-items: center; gap: 5px; font-size: var(--letra-xs); font-weight: 800;
+  padding: 3px 10px; border-radius: var(--radio-pildora); align-self: flex-start;
 }
 .adm-tag--date { background: #129469; color: #dcfcb8; }
 .adm-tag--seat { background: rgba(255, 255, 255, .18); color: #fff; }
@@ -154,12 +154,13 @@
 
 /* ---------- Botones, modal y formularios ---------- */
 .adm-btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 10px;
-  padding: 11px 18px; font-size: 14px; font-weight: 700; text-decoration: none; transition: filter .15s;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: var(--radio-control);
+  min-height: var(--alto-control); padding: var(--esp-2) 18px; font-size: var(--letra-base); font-weight: 700;
+  text-decoration: none; transition: filter .15s;
 }
 .adm-btn:hover { filter: brightness(1.1); }
 .adm-btn--primary { background: var(--navy); color: #fff; }
-.adm-btn--ghost { background: #eef1f5; color: var(--ink); }
+.adm-btn--ghost { background: var(--fondo); color: var(--ink); }
 .adm-btn--danger { background: var(--red); color: #fff; }
 
 .adm-overlay {
@@ -187,8 +188,8 @@
 .adm-field { display: flex; flex-direction: column; gap: 6px; }
 .adm-field label { font-size: 13px; font-weight: 700; color: var(--ink); }
 .adm-field input, .adm-field select {
-  font-family: inherit; font-size: 16px; padding: 10px 12px; border: 1.5px solid var(--line);
-  border-radius: 10px; background: #fff; color: var(--ink); width: 100%;
+  font-family: inherit; font-size: var(--letra-lg); min-height: var(--alto-control); padding: 10px 12px;
+  border: 1.5px solid var(--line); border-radius: var(--radio-control); background: var(--superficie); color: var(--ink); width: 100%;
 }
 .adm-field input:focus, .adm-field select:focus { outline: 0; border-color: var(--navy); box-shadow: 0 0 0 3px rgba(0, 51, 102, .15); }
 .adm-field input[aria-invalid='true'], .adm-field select[aria-invalid='true'] { border-color: var(--red); }
@@ -205,7 +206,8 @@
 .adm-detail dd { margin: 0; font-weight: 700; text-align: right; }
 
 /* ---------- Perfil (solo tema claro) ---------- */
-.prf { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+/* UI-02: columna de lectura alineada al mismo borde izquierdo que las listas */
+.prf { max-width: var(--ancho-lectura); margin: 0; display: flex; flex-direction: column; gap: var(--separacion-bloques); }
 .prf__hero { text-align: center; padding: 8px 0 4px; }
 .prf__avatar {
   width: 96px; height: 96px; border-radius: 50%; border: 3px solid var(--red); margin: 0 auto 14px;
@@ -214,17 +216,19 @@
 .prf__hero h2 { margin: 0; font-size: 22px; font-weight: 800; }
 .prf__email { margin: 4px 0 12px; color: var(--muted); font-size: 14px; }
 .prf__badges { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
-.prf__badges span { background: rgba(0, 51, 102, .08); color: var(--navy); font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 100px; }
-.prf__card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+.prf__badges span { background: rgba(0, 51, 102, .08); color: var(--navy); font-size: var(--letra-sm); font-weight: 700; padding: 6px 12px; border-radius: var(--radio-pildora); }
+.prf__card { background: var(--superficie); border: 1px solid var(--line); border-radius: var(--radio-tarjeta); padding: var(--relleno-tarjeta); }
 .prf__card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .prf__card-head h3 { margin: 0; font-size: 15px; }
-.prf__edit { background: none; border: 0; color: var(--navy); font-weight: 700; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 8px; }
+.prf__edit { background: none; border: 0; color: var(--navy); font-weight: 700; font-size: var(--letra-md); display: inline-flex; align-items: center; gap: 6px; min-height: var(--alto-control-compacto); padding: 6px 8px; border-radius: var(--radio-sm); }
 .prf__edit:hover { background: rgba(0, 51, 102, .08); }
 .prf__row { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; font-size: 14px; border-top: 1px solid var(--line); }
 .prf__row span { color: var(--muted); }
 .prf__logout {
-  display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 14px;
-  background: #fff; color: var(--red); border: 1.5px solid var(--red); border-radius: 14px; font-size: 16px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%;
+  min-height: var(--alto-boton-principal); padding: 0 var(--esp-4);
+  background: var(--superficie); color: var(--red); border: 1.5px solid var(--red); border-radius: var(--radio-control);
+  font-size: var(--letra-lg); font-weight: 700;
 }
 .prf__logout:hover { background: rgba(204, 0, 51, .06); }
 .prf__foot { text-align: center; font-size: 12px; color: var(--muted); margin: 0; }
@@ -240,8 +244,8 @@
 .adm-avatar--sm { width: 36px; height: 36px; font-size: 13px; font-weight: 700; }
 
 .adm-bell__count {
-  position: absolute; top: -2px; right: -2px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 100px;
-  background: #ff383c; color: #fff; font-size: 10px; font-weight: 800; display: grid; place-items: center;
+  position: absolute; top: -2px; right: -2px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: var(--radio-pildora);
+  background: var(--alerta); color: #fff; font-size: 10px; font-weight: 800; display: grid; place-items: center;
   border: 2px solid var(--navy); box-sizing: content-box;
 }
 .adm-notif-backdrop { position: fixed; inset: 0; z-index: 40; }
@@ -274,8 +278,9 @@
 
 /* ---------- Buscador, filtros con scroll, notas, interruptores, segmentado ---------- */
 .adm-search {
-  display: flex; align-items: center; gap: 10px; padding: 0 14px; margin-bottom: 14px;
-  background: #fff; border: 1.5px solid var(--line); border-radius: 12px; color: var(--muted);
+  display: flex; align-items: center; gap: 10px; padding: 0 14px; margin-bottom: var(--separacion-bloques);
+  min-height: var(--alto-control); background: var(--superficie); border: 1.5px solid var(--line);
+  border-radius: var(--radio-control); color: var(--muted);
 }
 .adm-search:focus-within { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(0, 51, 102, .12); }
 .adm-search input { flex: 1; border: 0; outline: 0; background: none; padding: 12px 0; font-family: inherit; font-size: 16px; color: var(--ink); min-width: 0; }
@@ -289,14 +294,14 @@
 .adm-back { background: none; border: 0; color: #fff; display: flex; padding: 4px; margin-left: -6px; border-radius: 8px; }
 .adm-back:hover { background: rgba(255, 255, 255, .15); }
 .adm-chip--warn { background: #fde68a; color: #92400e; }
-.adm-btn--block { width: 100%; padding: 14px; font-size: 16px; border-radius: 14px; }
+.adm-btn--block { width: 100%; min-height: var(--alto-boton-principal); padding: 0 var(--esp-4); font-size: var(--letra-lg); border-radius: var(--radio-control); }
 
-.adm-note { display: flex; align-items: flex-start; gap: 8px; margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+.adm-note { display: flex; align-items: flex-start; gap: 8px; margin: 0; font-size: var(--letra-md); color: var(--muted); line-height: 1.45; }
 .adm-note svg { flex-shrink: 0; margin-top: 1px; }
-.adm-note--box { background: rgba(0, 51, 102, .06); border: 1px solid rgba(0, 51, 102, .25); border-radius: 14px; padding: 12px 14px; color: var(--navy); font-size: 13.5px; }
+.adm-note--box { background: rgba(0, 51, 102, .06); border: 1px solid rgba(0, 51, 102, .25); border-radius: var(--radio-tarjeta); padding: 12px 14px; color: var(--navy); font-size: var(--letra-base); }
 
-.adm-trip-form { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
-.adm-panel { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 18px; }
+.adm-trip-form { max-width: var(--ancho-lectura); margin: 0; display: flex; flex-direction: column; gap: var(--separacion-bloques); }
+.adm-panel { background: var(--superficie); border: 1px solid var(--line); border-radius: var(--radio-tarjeta); padding: var(--relleno-tarjeta); display: flex; flex-direction: column; gap: 18px; }
 .adm-field__label { font-size: 13px; font-weight: 700; color: var(--ink); }
 .adm-segmented { display: grid; grid-template-columns: repeat(3, 1fr); background: #eef1f5; border-radius: 12px; padding: 4px; gap: 4px; }
 .adm-segmented button { border: 0; background: none; border-radius: 9px; padding: 10px 6px; font-size: 14px; font-weight: 600; color: var(--muted); }
@@ -311,7 +316,7 @@
 
 .adm-switch-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; border-top: 1px solid var(--line); }
 .adm-switch-row strong { display: block; font-size: 15px; }
-.adm-switch-row small { display: block; margin-top: 2px; color: var(--muted); font-size: 12.5px; }
+.adm-switch-row small { display: block; margin-top: 2px; color: var(--muted); font-size: var(--letra-md); }
 .adm-switch { flex-shrink: 0; width: 50px; height: 30px; border-radius: 100px; border: 0; background: #cbd5e1; padding: 3px; transition: background .15s; }
 .adm-switch span { display: block; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .3); transition: transform .15s; }
 .adm-switch.is-on { background: var(--navy); }
@@ -321,16 +326,14 @@
 @media (min-width: 640px) {
   .adm-shell { max-width: 720px; }
   .adm-nav { max-width: 720px; }
-  .adm-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .adm-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--separacion-bloques); }
   .adm-empty { grid-column: 1 / -1; }
 }
 
 /* ---------- Desktop (>= 900px): barra lateral + contenido en grilla ---------- */
 @media (min-width: 900px) {
-  body { background: #f6f8fb; }
-
   .adm-shell {
-    max-width: none; background: #f6f8fb;
+    max-width: none; background: var(--fondo-escritorio);
     display: grid; grid-template-columns: 240px minmax(0, 1fr); grid-template-rows: auto auto 1fr;
     grid-template-areas: "header header" "nav greeting" "nav content";
   }
@@ -352,14 +355,14 @@
 
   /* UI-06: la columna principal no tiene un ancho máximo artificial. */
   .adm-content {
-    grid-area: content; padding: 28px 32px 40px;
+    grid-area: content; padding: var(--esp-6) var(--margen-pagina) 40px;
     width: 100%; min-width: 0; max-width: none;
   }
   /* UI-06: tantas columnas como quepan, sin limitar las listas a tres tarjetas. */
   .adm-list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
-    gap: 20px;
+    gap: var(--separacion-bloques);
   }
   /* Cada tarjeta conserva un ancho de lectura cómodo incluso si solo cabe una. */
   .adm-list > .adm-card {
@@ -371,7 +374,6 @@
   .adm-list > .adm-empty { grid-column: 1 / -1; }
   .adm-card { min-width: 0; }
   .adm-card__title, .adm-card__small, .adm-card__line { overflow-wrap: anywhere; }
-  .adm-card { padding: 18px; }
   .adm-card__title { font-size: 16px; }
   .adm-card__small, .adm-card__line--small { font-size: 12px; }
   .adm-pill, .adm-add, .adm-chip { font-size: 12px; }
@@ -434,7 +436,7 @@
 .adm-reservas__trayectos { display: grid; gap: 10px; }
 .adm-reservas__trayecto { padding: 10px; border-radius: 8px; background: #f5f7fb; }
 .adm-reservas__trayecto-cabecera { font-size: 12px; margin-bottom: 8px; }
-.adm-reservas__estado { border-radius: 999px; font-size: 10px; font-weight: 700; padding: 4px 8px; }
+.adm-reservas__estado { border-radius: var(--radio-pildora); font-size: 10px; font-weight: 700; padding: 4px 8px; }
 .adm-reservas__estado--pendiente { background: #f4e7b5; color: #725609; }
 .adm-reservas__estado--completada { background: #c7fec9; color: #186b34; }
 .adm-reservas__estado--cancelada { background: #fecaca; color: #991b1b; }
