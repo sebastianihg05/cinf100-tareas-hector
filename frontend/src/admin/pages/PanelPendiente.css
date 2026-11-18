@@ -1,6 +1,6 @@
 /* Solo el diseño (layout) del panel. Cada pieza reutilizable tiene su propio CSS junto a su componente. */
 
-.dashboard { display: flex; flex-direction: column; gap: 16px; width: 100%; }
+.dashboard { display: flex; flex-direction: column; gap: 16px; width: 100%; min-width: 0; }
 .dashboard a:focus-visible { outline: 3px solid rgba(0, 51, 102, .35); outline-offset: 2px; }
 
 .dashboard-section {
@@ -18,7 +18,7 @@
 }
 .dashboard-pending-warning:hover { background: #ffe9a6; }
 
-.dashboard-counts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.dashboard-counts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .dashboard-trips { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
 .dashboard-alert {
@@ -37,22 +37,31 @@
 .dashboard-cancelled strong { font-size: 28px; font-weight: 800; }
 
 .dashboard-section .adm-pills { margin-bottom: 12px; }
-.dashboard-charts { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.dashboard-charts { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 
 @media (max-width: 480px) {
   .dashboard-counts, .dashboard-trips { gap: 8px; }
 }
 @media (min-width: 640px) {
   .dashboard-trips { gap: 12px; }
-  .dashboard-charts--two { grid-template-columns: 1fr 1fr; }
+  .dashboard-charts--two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (min-width: 900px) {
-  .dashboard { max-width: 1000px; margin: 0 auto; }
-  .dashboard-trips { grid-template-columns: repeat(4, 1fr); }
-  .dashboard-charts { grid-template-columns: repeat(3, 1fr); }
-  .dashboard-charts--two { grid-template-columns: 1fr 1fr; }
+  /* UI-06: todo el dashboard ocupa el ancho útil del panel, sin el límite de 1000px. */
+  .dashboard { max-width: none; margin: 0; }
+  .dashboard-trips { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* Dos o tres gráficos según el ancho real, sin forzar tres columnas estrechas. */
+  .dashboard-charts {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr));
+  }
+  .dashboard-charts--two {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  }
   .dashboard-section__header h2 { font-size: 20px; }
   .dashboard-section__text { font-size: 13px; }
+}
+@media (min-width: 1250px) {
+  .dashboard-trips { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
 /* RB-04: ocupación de los próximos viajes, una van con líquido por viaje */

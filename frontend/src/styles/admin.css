@@ -1,4 +1,4 @@
-/* Shell: mobile-first (390px), centrado en pantallas grandes */
+/* Shell: mobile-first (390px); el layout de escritorio utiliza todo el ancho disponible. */
 .adm-shell {
   max-width: 430px; min-height: 100vh; margin: 0 auto; background: #fff;
   display: flex; flex-direction: column; position: relative;
@@ -331,7 +331,7 @@
 
   .adm-shell {
     max-width: none; background: #f6f8fb;
-    display: grid; grid-template-columns: 240px 1fr; grid-template-rows: auto auto 1fr;
+    display: grid; grid-template-columns: 240px minmax(0, 1fr); grid-template-rows: auto auto 1fr;
     grid-template-areas: "header header" "nav greeting" "nav content";
   }
   .adm-header { grid-area: header; padding: 16px 32px; }
@@ -350,8 +350,18 @@
   .adm-nav__tab:hover { background: rgba(0, 51, 102, .06); }
   .adm-nav__tab.is-active { background: rgba(204, 0, 51, .08); }
 
-  .adm-content { grid-area: content; padding: 28px 32px 40px; max-width: 1200px; width: 100%; }
-  .adm-list { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+  /* UI-06: la columna principal no tiene un ancho máximo artificial. */
+  .adm-content {
+    grid-area: content; padding: 28px 32px 40px;
+    width: 100%; min-width: 0; max-width: none;
+  }
+  /* auto-fit redistribuye el ancho cuando hay pocas vans, conductores o pasajeros. */
+  .adm-list {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 285px), 1fr));
+    gap: 20px;
+  }
+  .adm-card { min-width: 0; }
+  .adm-card__title, .adm-card__small, .adm-card__line { overflow-wrap: anywhere; }
   .adm-card { padding: 18px; }
   .adm-card__title { font-size: 16px; }
   .adm-card__small, .adm-card__line--small { font-size: 12px; }
