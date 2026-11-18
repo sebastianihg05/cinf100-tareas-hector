@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import MarcaAuth from "../components/MarcaAuth";
 import "../styles/auth.css";
 
 function RegisterSuccess() {
@@ -7,17 +8,11 @@ function RegisterSuccess() {
   return (
     <main className="auth-page">
       <section className="auth-container">
-        <div className="brand">
-          <div className="brand-icon">✉</div>
-
-          <div>
-            <h1>UNAB Transporte</h1>
-            <p>Sistema de gestión de rutas</p>
-          </div>
-        </div>
+        <MarcaAuth />
 
         <div className="success-card">
-          <div className="success-icon">✉</div>
+          {/* decorativo: el lector de pantalla no lee el sobre */}
+          <div className="success-icon" aria-hidden="true">✉</div>
 
           <div>
             <h2>Registro enviado</h2>

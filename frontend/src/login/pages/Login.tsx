@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
-import Logo from "../../admin/components/Logo";
+import CampoContrasena from "../components/CampoContrasena";
+import MarcaAuth from "../components/MarcaAuth";
 import { useAdmin } from "../../admin/store/AdminContext";
 import { idLocalDe } from "../../admin/store/adminStore";
 import { ahoraISO, esCorreoInstitucional } from "../../admin/utils/format";
@@ -14,7 +15,6 @@ function Login() {
 
   const [correo, setCorreo] = useState("");
   const [password, setPassword] = useState("");
-  const [mostrarPassword, setMostrarPassword] = useState(false);
   const [error, setError] = useState("");
   const [enviando, setEnviando] = useState(false);
 
@@ -63,14 +63,7 @@ function Login() {
   return (
     <main className="auth-page">
       <section className="auth-container">
-        <div className="brand">
-          <Logo variante="negativo" alto={60} className="auth-logo" />
-
-          <div className="brand-text">
-            <h1>UNAB Transporte</h1>
-            <p>Sistema de gestión de rutas</p>
-          </div>
-        </div>
+        <MarcaAuth />
 
         <div className="auth-header">
           <h2>Iniciar sesión</h2>
@@ -87,32 +80,19 @@ function Login() {
               placeholder="Correo institucional"
               value={correo}
               onChange={(e) => setCorreo(e.target.value)}
+              autoComplete="username"
+              aria-required="true"
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="password">Contraseña</label>
-
-            <div className="password-field">
-              <input
-                id="password"
-                type={mostrarPassword ? "text" : "password"}
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-
-              <button
-                type="button"
-                className="password-toggle"
-                onClick={() =>
-                  setMostrarPassword(!mostrarPassword)
-                }
-              >
-                {mostrarPassword ? "Ocultar" : "Ver"}
-              </button>
-            </div>
-          </div>
+          <CampoContrasena
+            id="password"
+            etiqueta="Contraseña"
+            valor={password}
+            onCambiar={setPassword}
+            placeholder="••••••••"
+            autoComplete="current-password"
+          />
 
           <button
             type="button"
@@ -122,10 +102,11 @@ function Login() {
             ¿Olvidaste tu contraseña?
           </button>
 
-          {error && <p className="form-error">{error}</p>}
+          {/* VIS-03: role="alert" hace que el lector de pantalla lea el error apenas aparece */}
+          {error && <p className="form-error" role="alert">{error}</p>}
 
           <button type="submit" className="primary-button" disabled={enviando}>
-            Ingresar al sistema
+            {enviando ? "Ingresando…" : "Ingresar al sistema"}
           </button>
         </form>
 
