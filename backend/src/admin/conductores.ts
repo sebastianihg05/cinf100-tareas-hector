@@ -48,24 +48,8 @@ function esFechaValida(valor: string): boolean {
   return !Number.isNaN(fecha.getTime()) && fecha.toISOString().startsWith(valor);
 }
 
-/**
- * Toda cuenta aprobada con rol conductor debe tener su fila en conductores (es la que usan vans y viajes).
- * La aprobación la crea, pero una cuenta cargada por otra vía (seed, Adminer, datos antiguos) puede no tenerla:
- * aquí se completa, sin RUT ni licencia, para que el administrador pueda asignarla y completar sus datos.
- * Se ejecuta al listar los conductores del panel administrativo y no cambia las filas que ya existen.
- */
-export async function asegurarRegistrosConductor(): Promise<void> {
-  await pool.query(
-    `INSERT INTO conductores (usuario_id)
-     SELECT u.id FROM usuarios u
-      WHERE u.rol = 'conductor' AND u.estado_aprobacion IN ('aprobada', 'desactivada')
-     ON CONFLICT (usuario_id) DO NOTHING`
-  );
-}
-
 // Conductores aprobados o desactivados, con sus datos de conductor.
 rutasConductores.get('/', async (_req, res) => {
-  await asegurarRegistrosConductor();
   const { rows } = await pool.query<FilaConductor>(
     `SELECT ${COLUMNAS_CONDUCTOR} FROM conductores c
        JOIN usuarios u ON u.id = c.usuario_id
