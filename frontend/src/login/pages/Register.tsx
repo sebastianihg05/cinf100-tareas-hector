@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
-import Logo from "../../admin/components/Logo";
 import { esCorreoInstitucional, normalizarTelefono } from "../../admin/utils/format";
+import CampoContrasena from "../components/CampoContrasena";
+import MarcaAuth from "../components/MarcaAuth";
 import "../styles/auth.css";
 
 function Register() {
@@ -14,10 +15,6 @@ function Register() {
   const [telefono, setTelefono] = useState("");
   const [password, setPassword] = useState("");
   const [confirmarPassword, setConfirmarPassword] = useState("");
-
-  const [mostrarPassword, setMostrarPassword] = useState(false);
-  const [mostrarConfirmacion, setMostrarConfirmacion] =
-    useState(false);
 
   const [error, setError] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -83,14 +80,7 @@ function Register() {
   return (
     <main className="auth-page">
       <section className="auth-container">
-        <div className="brand">
-          <Logo variante="negativo" alto={60} className="auth-logo" />
-
-          <div className="brand-text">
-            <h1>UNAB Transporte</h1>
-            <p>Sistema de gestión de rutas</p>
-          </div>
-        </div>
+        <MarcaAuth />
 
         <div className="auth-header">
           <h2>Crear cuenta</h2>
@@ -107,6 +97,8 @@ function Register() {
               placeholder="Tu nombre y apellido"
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
+              autoComplete="name"
+              aria-required="true"
             />
           </div>
 
@@ -119,7 +111,11 @@ function Register() {
               placeholder="Correo institucional"
               value={correo}
               onChange={(e) => setCorreo(e.target.value)}
+              autoComplete="email"
+              aria-required="true"
+              aria-describedby="correo-ayuda"
             />
+            <p id="correo-ayuda" className="field-help">Termina en @unab.cl o @uandresbello.edu.</p>
           </div>
 
           <div className="form-group">
@@ -129,6 +125,7 @@ function Register() {
               id="sede"
               value={sede}
               onChange={(e) => setSede(e.target.value)}
+              aria-required="true"
             >
               <option value="">Selecciona una sede</option>
               <option value="Quillota 980">Quillota 980</option>
@@ -149,67 +146,37 @@ function Register() {
               placeholder="+56 9 1234 5678"
               value={telefono}
               onChange={(e) => setTelefono(e.target.value)}
+              autoComplete="tel"
+              aria-required="true"
+              aria-describedby="telefono-ayuda"
             />
+            <p id="telefono-ayuda" className="field-help">Celular chileno, por ejemplo +56 9 1234 5678.</p>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="password">Contraseña</label>
+          <CampoContrasena
+            id="password"
+            etiqueta="Contraseña"
+            valor={password}
+            onCambiar={setPassword}
+            placeholder="Mínimo 8 caracteres"
+            autoComplete="new-password"
+            ayuda="Mínimo 8 caracteres."
+          />
 
-            <div className="password-field">
-              <input
-                id="password"
-                type={mostrarPassword ? "text" : "password"}
-                placeholder="Mínimo 8 caracteres"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+          <CampoContrasena
+            id="confirmarPassword"
+            etiqueta="Confirmar contraseña"
+            valor={confirmarPassword}
+            onCambiar={setConfirmarPassword}
+            placeholder="Repite tu contraseña"
+            autoComplete="new-password"
+          />
 
-              <button
-                type="button"
-                className="password-toggle"
-                onClick={() =>
-                  setMostrarPassword(!mostrarPassword)
-                }
-              >
-                {mostrarPassword ? "Ocultar" : "Ver"}
-              </button>
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="confirmarPassword">
-              Confirmar contraseña
-            </label>
-
-            <div className="password-field">
-              <input
-                id="confirmarPassword"
-                type={
-                  mostrarConfirmacion ? "text" : "password"
-                }
-                placeholder="Repite tu contraseña"
-                value={confirmarPassword}
-                onChange={(e) =>
-                  setConfirmarPassword(e.target.value)
-                }
-              />
-
-              <button
-                type="button"
-                className="password-toggle"
-                onClick={() =>
-                  setMostrarConfirmacion(!mostrarConfirmacion)
-                }
-              >
-                {mostrarConfirmacion ? "Ocultar" : "Ver"}
-              </button>
-            </div>
-          </div>
-
-          {error && <p className="form-error">{error}</p>}
+          {/* VIS-03: role="alert" hace que el lector de pantalla lea el error apenas aparece */}
+          {error && <p className="form-error" role="alert">{error}</p>}
 
           <button type="submit" className="primary-button" disabled={enviando}>
-            Crear cuenta
+            {enviando ? "Creando cuenta…" : "Crear cuenta"}
           </button>
         </form>
 

@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { esCorreoInstitucional } from "../../admin/utils/format";
+import MarcaAuth from "../components/MarcaAuth";
 import "../styles/auth.css";
 
 function ForgotPassword() {
@@ -8,15 +10,6 @@ function ForgotPassword() {
   const [correo, setCorreo] = useState("");
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
-
-  const correoInstitucionalValido = (correoIngresado: string) => {
-    const correoNormalizado = correoIngresado.toLowerCase().trim();
-
-    return (
-      correoNormalizado.endsWith("@uandresbello.edu") ||
-      correoNormalizado.endsWith("@unab.cl")
-    );
-  };
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -27,7 +20,7 @@ function ForgotPassword() {
       return;
     }
 
-    if (!correoInstitucionalValido(correo)) {
+    if (!esCorreoInstitucional(correo)) {
       setError("Debes utilizar un correo institucional.");
       setMensaje("");
       return;
@@ -42,28 +35,7 @@ function ForgotPassword() {
   return (
     <main className="auth-page">
       <section className="auth-container forgot-container">
-        <div className="brand">
-          <div className="brand-icon">
-            <svg
-              viewBox="0 0 24 24"
-              width="28"
-              height="28"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <rect x="4" y="5" width="16" height="12" rx="2" />
-              <path d="M7 17v2M17 17v2M4 10h16M8 7h3M13 7h3" />
-              <circle cx="8" cy="17" r="1" />
-              <circle cx="16" cy="17" r="1" />
-            </svg>
-          </div>
-
-          <div>
-            <h1>UNAB Transporte</h1>
-            <p>Sistema de gestión de rutas</p>
-          </div>
-        </div>
+        <MarcaAuth />
 
         <div className="auth-header forgot-header">
           <h2>Recuperar contraseña</h2>
@@ -86,17 +58,20 @@ function ForgotPassword() {
               placeholder="Correo institucional"
               value={correo}
               onChange={(e) => setCorreo(e.target.value)}
+              autoComplete="email"
+              aria-required="true"
+              aria-describedby="correo-ayuda"
             />
 
-            <p className="field-help">
+            <p id="correo-ayuda" className="field-help">
               Usa el correo asociado a tu cuenta.
             </p>
           </div>
 
-          {error && <p className="form-error">{error}</p>}
+          {error && <p className="form-error" role="alert">{error}</p>}
 
           {mensaje && (
-            <p className="form-success">{mensaje}</p>
+            <p className="form-success" role="status">{mensaje}</p>
           )}
 
           <button type="submit" className="primary-button">

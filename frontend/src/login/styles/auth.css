@@ -47,18 +47,6 @@
   margin-bottom: 32px;
 }
 
-.auth-page .brand-icon {
-  width: 58px;
-  height: 48px;
-  flex-shrink: 0;
-  border-radius: 12px;
-  background: var(--auth-red);
-  color: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .auth-page .brand h1 {
   margin: 0;
   font-size: 22px;
@@ -114,8 +102,11 @@
   border: 1px solid var(--auth-border);
   border-radius: 12px;
   color: var(--auth-text);
-  font-size: 15px;
-  outline: none;
+  /* VIS-03: con menos de 16 px, Safari de iPhone hace zoom al tocar el campo. */
+  font-size: 16px;
+  /* Transparente: no se ve, pero el modo de alto contraste de Windows sí la dibuja al enfocar. */
+  outline: 2px solid transparent;
+  outline-offset: 2px;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
@@ -143,31 +134,39 @@
   padding-right: 88px;
 }
 
+/* VIS-03: área táctil de 44 x 44 px; el texto queda donde estaba. */
 .auth-page .password-toggle {
   position: absolute;
-  right: 14px;
+  right: 4px;
   top: 50%;
   transform: translateY(-50%);
+  min-width: 44px;
+  min-height: 44px;
   background: transparent;
   border: 0;
+  border-radius: 8px;
   color: var(--auth-link);
   cursor: pointer;
   display: flex;
   align-items: center;
-  padding: 5px;
+  justify-content: center;
+  padding: 0 10px;
   font-size: 13px;
   font-weight: 600;
 }
 
+/* VIS-03: 44 px de alto para tocarlo; los márgenes negativos mantienen el espacio que tenía. */
 .auth-page .forgot-password {
   align-self: flex-end;
+  min-height: 44px;
+  padding: 0 4px;
   border: 0;
   background: transparent;
   color: var(--auth-link);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  margin: -3px 0 22px;
+  margin: -14px 0 11px;
 }
 
 .auth-page .form-error {
@@ -354,13 +353,14 @@
 }
 
 .auth-page .field-help {
-  margin: 8px 0 0;
+  margin: 6px 0 0;
   color: var(--auth-muted);
   font-size: 12px;
 }
 
 .auth-page .back-login-button {
   margin: 26px auto 0;
+  min-height: 44px;
   padding: 8px;
   border: 0;
   background: transparent;
