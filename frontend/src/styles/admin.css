@@ -355,11 +355,20 @@
     grid-area: content; padding: 28px 32px 40px;
     width: 100%; min-width: 0; max-width: none;
   }
-  /* auto-fit redistribuye el ancho cuando hay pocas vans, conductores o pasajeros. */
+  /* UI-06: tantas columnas como quepan, sin limitar las listas a tres tarjetas. */
   .adm-list {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 285px), 1fr));
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
     gap: 20px;
   }
+  /* Cada tarjeta conserva un ancho de lectura cómodo incluso si solo cabe una. */
+  .adm-list > .adm-card {
+    width: 100%;
+    max-width: 420px;
+    min-width: 0;
+    justify-self: center;
+  }
+  .adm-list > .adm-empty { grid-column: 1 / -1; }
   .adm-card { min-width: 0; }
   .adm-card__title, .adm-card__small, .adm-card__line { overflow-wrap: anywhere; }
   .adm-card { padding: 18px; }
@@ -369,6 +378,7 @@
   .adm-pill:hover, .adm-add:hover, .adm-chip:hover, .adm-open-trip:hover, .adm-approve:hover { filter: brightness(1.15); }
   .adm-open-trip { padding: 12px 24px; font-size: 12px; }
 }
+
 
 @media (min-width: 640px) {
   .adm-overlay { align-items: center; padding: 24px; }
