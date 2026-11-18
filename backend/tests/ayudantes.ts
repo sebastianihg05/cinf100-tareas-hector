@@ -21,7 +21,7 @@ export async function crearUsuario(
      RETURNING id`,
     [correo, await hash, rol === 'administrador' ? null : 'Quintay', rol, estado]
   );
-  return rows[0].id;
+  return Number(rows[0].id);
 }
 
 // Encabezado Authorization con un token válido para ese usuario.

@@ -43,7 +43,8 @@ rutasVans.post('/', async (req, res) => {
     return;
   }
 
-  if (conductorId !== null && (!Number.isInteger(conductorId) || conductorId <= 0)) {
+  if (conductorId !== undefined && conductorId !== null &&
+    (!Number.isInteger(conductorId) || conductorId <= 0)) {
     res.status(400).json({ error: 'El conductor indicado no es válido.' });
     return;
   }
