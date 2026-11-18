@@ -228,7 +228,7 @@
 
 /* ---------- Perfil (solo tema claro) ---------- */
 /* UI-02: columna de lectura alineada al mismo borde izquierdo que las listas */
-.prf { max-width: var(--ancho-lectura); margin: 0; display: flex; flex-direction: column; gap: var(--separacion-bloques); }
+.prf { max-width: var(--ancho-lectura); margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: var(--separacion-bloques); }
 .prf__hero { text-align: center; padding: 8px 0 4px; }
 .prf__avatar {
   width: 96px; height: 96px; border-radius: 50%; border: 3px solid var(--red); margin: 0 auto 14px;
@@ -327,7 +327,7 @@
 .adm-note svg { flex-shrink: 0; margin-top: 1px; }
 .adm-note--box { background: rgba(0, 51, 102, .06); border: 1px solid rgba(0, 51, 102, .25); border-radius: var(--radio-tarjeta); padding: 12px 14px; color: var(--navy); font-size: var(--letra-base); }
 
-.adm-trip-form { max-width: var(--ancho-lectura); margin: 0; display: flex; flex-direction: column; gap: var(--separacion-bloques); }
+.adm-trip-form { max-width: var(--ancho-lectura); margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: var(--separacion-bloques); }
 .adm-panel { background: var(--superficie); border: 1px solid var(--line); border-radius: var(--radio-tarjeta); padding: var(--relleno-tarjeta); display: flex; flex-direction: column; gap: 18px; }
 .adm-field__label { font-size: 13px; font-weight: 700; color: var(--ink); }
 .adm-segmented { display: grid; grid-template-columns: repeat(3, 1fr); background: #eef1f5; border-radius: 12px; padding: 4px; gap: 4px; }
@@ -376,9 +376,14 @@
   /* UI-06: tantas columnas como quepan, sin limitar las listas a tres tarjetas. */
   .adm-list {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 420px));
+    justify-content: center;
     gap: var(--separacion-bloques);
   }
+  /* Filtros, botón de agregar y fecha centrados igual que las tarjetas */
+  .adm-content > .adm-pills { justify-content: center; }
+  .adm-content > .adm-add { display: flex; width: fit-content; margin-inline: auto; }
+  .adm-content > .adm-date { max-width: 220px; margin-inline: auto; }
   /* Cada tarjeta conserva un ancho de lectura cómodo incluso si solo cabe una. */
   .adm-list > .adm-card {
     width: 100%;

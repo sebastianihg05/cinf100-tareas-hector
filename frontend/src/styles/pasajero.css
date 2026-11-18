@@ -274,13 +274,13 @@ select.psj-control:disabled { cursor: not-allowed; color: var(--muted); backgrou
   /* Franjas superiores (saludo, resumen del viaje, pestañas): a todo el ancho del contenido */
   .psj-user, .psj-viaje { padding: 16px var(--psj-pad); }
   .psj-user, .psj-viaje, .psj-tabs { margin-top: -24px; }
-  .psj-tabs { grid-template-columns: repeat(2, 200px); }
+  .psj-tabs { grid-template-columns: repeat(2, 200px); justify-content: center; }
 
   /* UI-02: formulario, mapa y confirmación en una columna de lectura, alineada al mismo borde que las listas */
   .psj-page > :not(.psj-user):not(.psj-viaje):not(.psj-tabs):not([role='tabpanel']) {
-    width: 100%; max-width: var(--ancho-lectura); margin-inline: 0;
+    width: 100%; max-width: var(--ancho-lectura); margin-inline: auto;
   }
-  .psj-page > [role='tabpanel'] { width: 100%; max-width: 1200px; }
+  .psj-page > [role='tabpanel'] { width: 100%; max-width: 1200px; margin-inline: auto; }
   .psj-form {
     flex: none; padding: var(--esp-6); background: var(--superficie); border: 1px solid var(--line); border-radius: var(--radio-tarjeta);
   }
@@ -298,7 +298,7 @@ select.psj-control:disabled { cursor: not-allowed; color: var(--muted); backgrou
   /* Mis reservas: tarjetas en grilla */
   .psj-lista {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: var(--separacion-bloques);
-    width: 100%; max-width: 1200px;
+    width: 100%; max-width: 1200px; margin-inline: auto;
   }
   .psj-vacio { padding: 56px 0; }
 
