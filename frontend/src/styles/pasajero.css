@@ -1,7 +1,7 @@
 
 .psj-shell {
   --psj-bg: #f4f5f7;
-  --psj-pad: 16px;
+  --psj-pad: var(--margen-pagina);
   --psj-nav-h: calc(66px + env(safe-area-inset-bottom));
   /* colores de los asientos, tomados del diseño */
   --psj-libre: #f1e8d3;
@@ -38,7 +38,7 @@
 .psj-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 
 /* ---------- Página base ---------- */
-.psj-page { flex: 1; display: flex; flex-direction: column; gap: 16px; padding: var(--psj-pad); min-width: 0; }
+.psj-page { flex: 1; display: flex; flex-direction: column; gap: var(--separacion-bloques); padding: var(--psj-pad); min-width: 0; }
 
 /* Franjas blancas a todo el ancho (saludo, resumen del viaje, pestañas) */
 .psj-user, .psj-viaje, .psj-tabs {
@@ -58,8 +58,8 @@
 
 /* ---------- Insignias ---------- */
 .psj-badge {
-  flex-shrink: 0; display: inline-block; padding: 5px 12px; border-radius: 100px;
-  font-size: 12px; font-weight: 700; line-height: 1.2; white-space: nowrap;
+  flex-shrink: 0; display: inline-block; padding: 5px 12px; border-radius: var(--radio-pildora);
+  font-size: var(--letra-sm); font-weight: 700; line-height: 1.2; white-space: nowrap;
 }
 .psj-badge--activo, .psj-badge--completado { background: #d3f7e5; color: #0e9f6e; }
 .psj-badge--pendiente { background: #fdf0c6; color: #b7791f; }
@@ -70,7 +70,7 @@
 .psj-field { display: flex; flex-direction: column; gap: 8px; margin: 0; }
 .psj-label { font-size: 14px; font-weight: 700; color: var(--ink); }
 .psj-control {
-  width: 100%; height: 50px; padding: 0 16px; border: 1px solid transparent; border-radius: 12px;
+  width: 100%; height: 50px; padding: 0 16px; border: 1px solid transparent; border-radius: var(--radio-control);
   background: #fff; color: #3b4252; font-family: inherit; font-size: 15px;
   box-shadow: 0 1px 2px rgba(16, 24, 40, .06);
 }
@@ -82,12 +82,12 @@ select.psj-control {
 select.psj-control:disabled { cursor: not-allowed; color: var(--muted); background-color: #eceef2; }
 .psj-control[readonly] { color: #3b4252; cursor: default; }
 .psj-control:focus-visible { outline: 0; border-color: var(--navy); box-shadow: 0 0 0 3px rgba(0, 51, 102, .18); }
-.psj-help { margin: -2px 0 0; font-size: 11.5px; color: var(--muted); }
+.psj-help { margin: -2px 0 0; font-size: var(--letra-sm); color: var(--muted); }
 
 /* Control segmentado (Ida | Vuelta | Ida y Vuelta) */
 .psj-segmented { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; background: #ebedf1; border-radius: 14px; }
 .psj-segmented__item {
-  min-height: 42px; padding: 0 6px; border: 0; border-radius: 11px; background: transparent;
+  min-height: var(--alto-control); padding: 0 6px; border: 0; border-radius: 11px; background: transparent;
   color: var(--muted); font-family: inherit; font-size: 14px; font-weight: 600;
 }
 .psj-segmented__item.is-active { background: #fff; color: var(--navy); font-weight: 800; box-shadow: 0 1px 3px rgba(16, 24, 40, .14); }
@@ -95,14 +95,14 @@ select.psj-control:disabled { cursor: not-allowed; color: var(--muted); backgrou
 
 /* Recuadro de horarios fijos */
 .psj-horarios { padding: 12px 14px; border: 1px solid #8a97ab; border-radius: 12px; background: #e4e8ee; }
-.psj-horarios__title { display: flex; align-items: center; gap: 7px; margin: 0 0 4px; font-size: 13.5px; font-weight: 800; color: var(--navy); }
+.psj-horarios__title { display: flex; align-items: center; gap: 7px; margin: 0 0 4px; font-size: var(--letra-base); font-weight: 800; color: var(--navy); }
 .psj-horarios__text { margin: 0; font-size: 13px; color: #4b5563; }
 .psj-horarios__text strong { color: var(--ink); }
 
 /* ---------- Botones ---------- */
 .psj-btn {
-  display: flex; align-items: center; justify-content: center; width: 100%; min-height: 52px; padding: 0 20px;
-  border: 1.5px solid transparent; border-radius: 14px; font-family: inherit; font-size: 16px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; width: 100%; min-height: var(--alto-boton-principal); padding: 0 20px;
+  border: 1.5px solid transparent; border-radius: var(--radio-control); font-family: inherit; font-size: 16px; font-weight: 700;
   line-height: 1.2; text-align: center; text-decoration: none; cursor: pointer; transition: filter .15s, background .15s;
 }
 .psj-btn:focus-visible { outline: 3px solid rgba(0, 51, 102, .4); outline-offset: 2px; }
@@ -127,7 +127,7 @@ select.psj-control:disabled { cursor: not-allowed; color: var(--muted); backgrou
 }
 .psj-nav__tab {
   flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 4px 0;
-  font-size: 11.5px; font-weight: 600; color: var(--muted); text-decoration: none; border-radius: 10px;
+  font-size: var(--letra-xs); font-weight: 600; color: var(--muted); text-decoration: none; border-radius: 10px;
 }
 .psj-nav--solo-movil { display: none; } /* en escritorio vuelve a mostrarse como barra lateral */
 .psj-nav__tab.is-active { color: var(--red); }
@@ -137,7 +137,7 @@ select.psj-control:disabled { cursor: not-allowed; color: var(--muted); backgrou
 .psj-viaje { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px var(--psj-pad); }
 .psj-viaje__ruta { margin: 0; font-size: 15px; font-weight: 800; }
 .psj-viaje__fecha { margin: 3px 0 0; font-size: 12px; color: var(--muted); }
-.psj-chip { flex-shrink: 0; padding: 7px 12px; border-radius: 8px; background: #e8edf4; color: var(--navy); font-size: 12.5px; font-weight: 800; }
+.psj-chip { flex-shrink: 0; padding: 7px 12px; border-radius: 8px; background: #e8edf4; color: var(--navy); font-size: var(--letra-md); font-weight: 800; }
 
 .psj-mapa { display: flex; flex-direction: column; align-items: center; gap: 16px; }
 .psj-van {
@@ -192,8 +192,8 @@ select.psj-control:disabled { cursor: not-allowed; color: var(--muted); backgrou
 .psj-seleccion { margin: -4px 0 0; text-align: center; font-size: 13px; font-weight: 600; color: var(--navy); }
 
 /* ---------- Tarjetas, avisos, enlaces ---------- */
-.psj-card { background: #fff; border-radius: 16px; padding: 18px 16px; box-shadow: 0 1px 3px rgba(16, 24, 40, .08); }
-.psj-card__title { margin: 0 0 12px; font-size: 15px; font-weight: 800; color: var(--navy); }
+.psj-card { background: var(--superficie); border-radius: var(--radio-tarjeta); padding: var(--relleno-tarjeta); box-shadow: var(--sombra-tarjeta); }
+.psj-card__title { margin: 0 0 12px; font-size: var(--letra-titulo); font-weight: 800; color: var(--navy); }
 .psj-card__title--sep { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
 
 .psj-alert { margin: 0; padding: 12px 14px; border: 1px solid #f4b4bd; border-radius: 12px; background: #fdecee; color: #9b1c2e; font-size: 13px; line-height: 1.45; }
@@ -238,8 +238,8 @@ select.psj-control:disabled { cursor: not-allowed; color: var(--muted); backgrou
 .psj-tab.is-active { border-color: var(--red); color: var(--red); font-weight: 800; }
 .psj-tab:focus-visible { outline: 3px solid rgba(204, 0, 51, .3); outline-offset: -3px; }
 
-.psj-lista { display: flex; flex-direction: column; gap: 14px; margin: 0; padding: 0; list-style: none; }
-.psj-reserva { display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 14px; }
+.psj-lista { display: flex; flex-direction: column; gap: var(--separacion-bloques); margin: 0; padding: 0; list-style: none; }
+.psj-reserva { display: flex; flex-direction: column; gap: 8px; padding: var(--relleno-tarjeta); border-radius: var(--radio-tarjeta); }
 .psj-reserva__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .psj-reserva__fecha { margin: 0; font-size: 15px; font-weight: 800; }
 .psj-reserva__ruta { display: flex; align-items: center; gap: 7px; margin: 0; font-size: 14px; font-weight: 800; color: var(--navy); }
@@ -258,11 +258,8 @@ select.psj-control:disabled { cursor: not-allowed; color: var(--muted); backgrou
 }
 
 @media (min-width: 900px) {
-  body { background: #f6f8fb; }
-
   .psj-shell {
-    --psj-bg: #f6f8fb;
-    --psj-pad: 32px;
+    --psj-bg: var(--fondo-escritorio);
     max-width: none; margin: 0; box-shadow: none;
     display: grid; grid-template-columns: 240px minmax(0, 1fr); grid-template-rows: auto 1fr;
     grid-template-areas: "header header" "nav main";
@@ -282,20 +279,20 @@ select.psj-control:disabled { cursor: not-allowed; color: var(--muted); backgrou
   .psj-nav__tab.is-active { background: rgba(204, 0, 51, .08); }
 
   .psj-main { grid-area: main; }
-  .psj-page { gap: 20px; padding-top: 24px; padding-bottom: 40px; }
+  .psj-page { padding-top: var(--esp-6); padding-bottom: 40px; }
 
   /* Franjas superiores (saludo, resumen del viaje, pestañas): a todo el ancho del contenido */
   .psj-user, .psj-viaje { padding: 16px var(--psj-pad); }
   .psj-user, .psj-viaje, .psj-tabs { margin-top: -24px; }
   .psj-tabs { grid-template-columns: repeat(2, 200px); }
 
-  /* Contenido de formulario, mapa y confirmación: columna centrada, como "Abrir viaje" */
+  /* UI-02: formulario, mapa y confirmación en una columna de lectura, alineada al mismo borde que las listas */
   .psj-page > :not(.psj-user):not(.psj-viaje):not(.psj-tabs):not([role='tabpanel']) {
-    width: 100%; max-width: 560px; margin-inline: auto;
+    width: 100%; max-width: var(--ancho-lectura); margin-inline: 0;
   }
   .psj-page > [role='tabpanel'] { width: 100%; max-width: 1200px; }
   .psj-form {
-    flex: none; padding: 24px; background: #fff; border: 1px solid var(--line); border-radius: 14px;
+    flex: none; padding: var(--esp-6); background: var(--superficie); border: 1px solid var(--line); border-radius: var(--radio-tarjeta);
   }
   .psj-form .psj-control { border-color: var(--line); box-shadow: none; background-color: #fff; }
   .psj-form select.psj-control:disabled { background-color: #eceef2; }
@@ -310,14 +307,13 @@ select.psj-control:disabled { cursor: not-allowed; color: var(--muted); backgrou
 
   /* Mis reservas: tarjetas en grilla */
   .psj-lista {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: var(--separacion-bloques);
     width: 100%; max-width: 1200px;
   }
-  .psj-reserva { padding: 18px; }
   .psj-vacio { padding: 56px 0; }
 
   .psj-btn--primary:hover:not(:disabled), .psj-asiento--libre:hover { filter: brightness(1.12); }
-  .psj-page > .psj-btn { max-width: 560px; }
+  .psj-page > .psj-btn { max-width: var(--ancho-lectura); }
 }
 
 /* Pantallas bajas (celulares en horizontal): el mapa se compacta */
@@ -327,7 +323,7 @@ select.psj-control:disabled { cursor: not-allowed; color: var(--muted); backgrou
 
 /* ---------- Cancelar una reserva ---------- */
 .psj-reserva__acciones { display: flex; gap: 10px; margin-top: 12px; }
-.psj-reserva__acciones .psj-btn { min-height: 42px; font-size: 14px; }
+.psj-reserva__acciones .psj-btn { min-height: var(--alto-control); font-size: var(--letra-base); }
 .psj-reserva__cancelar { border-color: #cc0033; color: #cc0033; }
 .psj-reserva__cancelar:hover { background: #fdf0f3; }
 

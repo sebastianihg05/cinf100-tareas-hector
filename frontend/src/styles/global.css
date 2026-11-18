@@ -8,6 +8,65 @@
   --green: #10b981;
   --green-bg: #d1fae5;
   --font: 'Manrope', system-ui, sans-serif;
+
+  /* ---------- UI-02 (#2331): escala común de los tres paneles ----------
+     Guía de uso: docs/visual/UI-02 - Guia de estilos compartidos.md */
+
+  /* Fondos y alertas que antes estaban escritos a mano en cada archivo */
+  --fondo: #eef1f5;
+  --fondo-escritorio: #f6f8fb;
+  --superficie: #fff;
+  --alerta: #ff383c;
+
+  /* Espaciado: múltiplos de 4 px */
+  --esp-1: 4px;
+  --esp-2: 8px;
+  --esp-3: 12px;
+  --esp-4: 16px;
+  --esp-5: 20px;
+  --esp-6: 24px;
+  --esp-8: 32px;
+
+  /* Margen lateral de la página y separación entre bloques (tarjetas, filtros, listas) */
+  --margen-pagina: var(--esp-4);
+  --separacion-bloques: var(--esp-4);
+
+  /* Radios: controles (botones y campos), tarjetas y píldoras */
+  --radio-sm: 8px;
+  --radio-control: 12px;
+  --radio-tarjeta: 14px;
+  --radio-pildora: 999px;
+
+  /* Tamaños de letra (sin medios píxeles) */
+  --letra-xs: 11px;
+  --letra-sm: 12px;
+  --letra-md: 13px;
+  --letra-base: 14px;
+  --letra-titulo: 15px;
+  --letra-lg: 16px;
+
+  /* Alturas de controles: 44 px es el mínimo cómodo para tocar con el dedo */
+  --alto-control: 44px;
+  --alto-control-compacto: 36px;
+  --alto-boton-principal: 52px;
+
+  /* Tarjetas */
+  --relleno-tarjeta: var(--esp-4);
+  --sombra-tarjeta: 0 1px 3px rgba(16, 24, 40, .08);
+
+  /* Ancho de las columnas de lectura (formularios, perfil, detalle) */
+  --ancho-lectura: 560px;
+}
+
+/* En escritorio hay más aire: el mismo valor para los tres paneles. */
+@media (min-width: 900px) {
+  :root {
+    --margen-pagina: var(--esp-8);
+    --separacion-bloques: var(--esp-5);
+    --relleno-tarjeta: 18px;
+  }
+
+  body { background: var(--fondo-escritorio); }
 }
 
 * { box-sizing: border-box; }
@@ -16,7 +75,7 @@ body {
   margin: 0;
   font-family: var(--font);
   color: var(--ink);
-  background: #eef1f5;
+  background: var(--fondo);
 }
 
 button { font-family: inherit; cursor: pointer; }
