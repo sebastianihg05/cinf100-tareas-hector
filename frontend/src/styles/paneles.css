@@ -1,0 +1,38 @@
+/*
+ * UI-02 (#2331): partes del marco que comparten los tres paneles.
+ * Antes estaban escritas dos veces, en admin.css (.adm-*) y en pasajero.css (.psj-*, que también usa el conductor).
+ * Se carga después de esos archivos (main.tsx) para que las reglas de escritorio ganen a las de celular.
+ */
+
+/* Pestaña activa del menú: en rojo en todos los paneles */
+.adm-nav__tab.is-active,
+.psj-nav__tab.is-active { color: var(--red); }
+
+@media (min-width: 900px) {
+  /* Encabezado azul */
+  .adm-header,
+  .psj-header { grid-area: header; padding: var(--esp-4) var(--margen-pagina); }
+
+  .adm-title,
+  .psj-title { font-size: 20px; }
+
+  /* El menú inferior del celular pasa a ser una barra lateral */
+  .adm-nav,
+  .psj-nav {
+    grid-area: nav; position: static; transform: none; width: auto; max-width: none;
+    flex-direction: column; justify-content: flex-start; gap: var(--esp-1);
+    padding: var(--esp-6) var(--esp-4); border-top: 0; border-right: 1px solid var(--line);
+  }
+
+  .adm-nav__tab,
+  .psj-nav__tab {
+    flex: none; flex-direction: row; width: 100%; gap: var(--esp-3); padding: var(--esp-3) 14px;
+    font-size: var(--letra-base); font-weight: 600; border-radius: var(--radio-control);
+  }
+
+  .adm-nav__tab:hover,
+  .psj-nav__tab:hover { background: rgba(0, 51, 102, .06); }
+
+  .adm-nav__tab.is-active,
+  .psj-nav__tab.is-active { background: rgba(204, 0, 51, .08); }
+}

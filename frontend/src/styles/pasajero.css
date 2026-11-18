@@ -130,7 +130,6 @@ select.psj-control:disabled { cursor: not-allowed; color: var(--muted); backgrou
   font-size: var(--letra-xs); font-weight: 600; color: var(--muted); text-decoration: none; border-radius: 10px;
 }
 .psj-nav--solo-movil { display: none; } /* en escritorio vuelve a mostrarse como barra lateral */
-.psj-nav__tab.is-active { color: var(--red); }
 .psj-nav__tab:focus-visible { outline: 3px solid rgba(204, 0, 51, .3); }
 
 /* ---------- Selección de asiento ---------- */
@@ -265,18 +264,9 @@ select.psj-control:disabled { cursor: not-allowed; color: var(--muted); backgrou
     grid-template-areas: "header header" "nav main";
   }
 
-  .psj-header { grid-area: header; padding: 16px 32px; }
-  .psj-title { font-size: 20px; }
 
-  /* La navegación pasa a barra lateral y se muestra en todas las pantallas */
-  .psj-nav {
-    grid-area: nav; position: static; flex-direction: column; justify-content: flex-start; gap: 4px;
-    padding: 24px 16px; border-top: 0; border-right: 1px solid var(--line);
-  }
+  /* La navegación se muestra en todas las pantallas; su forma de barra lateral está en styles/paneles.css */
   .psj-nav--solo-movil { display: flex; }
-  .psj-nav__tab { flex: none; flex-direction: row; width: 100%; gap: 12px; padding: 12px 14px; font-size: 14px; }
-  .psj-nav__tab:hover { background: rgba(0, 51, 102, .06); }
-  .psj-nav__tab.is-active { background: rgba(204, 0, 51, .08); }
 
   .psj-main { grid-area: main; }
   .psj-page { padding-top: var(--esp-6); padding-bottom: 40px; }
