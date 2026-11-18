@@ -36,15 +36,17 @@
 /* Pills / filtros */
 .adm-pills { display: flex; flex-wrap: wrap; gap: var(--esp-2); margin-bottom: var(--separacion-bloques); }
 .adm-pill {
+  display: inline-flex; align-items: center; min-height: var(--alto-control-compacto);
   background: var(--navy); color: #fff; border: 0; border-radius: var(--radio-pildora);
-  padding: 7px 12px; font-size: 11px; font-weight: 700; opacity: .75;
+  padding: 0 14px; font-size: var(--letra-xs); font-weight: 700; opacity: .75;
 }
 .adm-pill.is-active { opacity: 1; background: var(--navy-light); }
 .adm-pill__alert { color: var(--alerta); }
 
 .adm-add {
   display: inline-flex; align-items: center; gap: 6px; background: var(--navy); color: #fff;
-  border: 0; border-radius: 6px; padding: 6px 10px; font-size: 11px; font-weight: 800; margin-bottom: var(--separacion-bloques);
+  min-height: var(--alto-control-compacto); border: 0; border-radius: var(--radio-sm); padding: 0 14px;
+  font-size: var(--letra-xs); font-weight: 800; margin-bottom: var(--separacion-bloques);
 }
 
 /* Cards */
@@ -68,9 +70,10 @@
 .adm-badge--pending { background: #f4e7b5; color: #b8962a; align-self: flex-start; margin-top: 4px; }
 
 .adm-actions { display: flex; gap: 10px; margin-top: 4px; }
+/* UI-03: botones de las tarjetas con alto compacto (antes 24-25 px, difíciles de tocar) */
 .adm-chip {
-  display: inline-flex; align-items: center; gap: 4px; border: 0; border-radius: 100px;
-  padding: 4px 14px; font-size: 11px; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px; border: 0; border-radius: var(--radio-pildora);
+  min-height: var(--alto-control-compacto); padding: 0 14px; font-size: var(--letra-xs); font-weight: 700; white-space: nowrap;
 }
 .adm-chip--edit { background: #88e3c5; color: #08ac75; }
 .adm-chip--ban { background: #d396a5; color: var(--red); }
@@ -84,20 +87,35 @@
   align-self: flex-start; background: #129469; color: #adee46; font-size: 8px; font-weight: 800;
   padding: 2px 10px; border-radius: 6px; margin-top: 4px;
 }
-.adm-approve { background: var(--navy-light); color: #fff; border: 0; font-weight: 800; font-size: 11px; padding: 8px 10px; }
+.adm-approve {
+  background: var(--navy-light); color: #fff; border: 1px solid var(--navy-light); border-radius: var(--radio-sm);
+  min-height: var(--alto-control-compacto); padding: 0 14px; font-weight: 800; font-size: var(--letra-xs);
+}
 
 /* Viajes */
-.adm-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: var(--separacion-bloques); }
-.adm-date { display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 700; }
-.adm-date input, .adm-date select { font-family: inherit; font-size: 12px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; }
+/* UI-03: fecha y destino comparten fila; "Abrir viaje" baja a la siguiente si no cabe, sin partirse */
+.adm-toolbar {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--esp-3);
+  margin-bottom: var(--separacion-bloques);
+}
+.adm-date { flex: 1 1 140px; display: flex; flex-direction: column; gap: var(--esp-1); font-size: var(--letra-xs); font-weight: 700; }
+/* 16 px: con menos, Safari de iPhone hace zoom al tocar el campo */
+.adm-date input, .adm-date select {
+  min-height: var(--alto-control); font-family: inherit; font-size: var(--letra-lg); padding: 0 10px;
+  border: 1.5px solid var(--line); border-radius: var(--radio-control); background: var(--superficie); color: var(--ink);
+}
 .adm-date--fila { margin-bottom: 12px; max-width: 220px; }
-.adm-open-trip { background: var(--navy); color: #fff; border: 0; border-radius: 100px; padding: 14px 24px; font-weight: 700; font-size: 11px; }
+.adm-open-trip {
+  flex: 0 0 auto; margin-left: auto; min-height: var(--alto-control); padding: 0 var(--esp-6); white-space: nowrap;
+  background: var(--navy); color: #fff; border: 0; border-radius: var(--radio-pildora); font-weight: 700; font-size: var(--letra-sm);
+}
 .adm-today {
   display: inline-block; background: var(--navy); color: #fff; font-size: 10px;
   padding: 3px 10px; border-radius: 10px; margin: 0 0 12px;
 }
 .adm-card--trip { gap: 8px; }
-.adm-trip__date { margin-left: 6px; font-weight: 700; }
+/* UI-03: la fecha en su propia línea, así todas las tarjetas tienen el mismo título */
+.adm-trip__date { display: block; margin-top: 2px; font-size: var(--letra-sm); font-weight: 700; opacity: .9; }
 .adm-trip__meta { display: flex; flex-wrap: wrap; gap: 12px; font-size: 11px; font-weight: 700; }
 .adm-trip__meta span { display: inline-flex; align-items: center; gap: 4px; }
 .adm-progress { height: 5px; background: rgba(255, 255, 255, .15); border-radius: 100px; overflow: hidden; }
@@ -132,7 +150,10 @@
 /* ---------- Etiquetas de reserva (fecha + asiento) ---------- */
 .adm-card--passenger.is-clickable { cursor: pointer; transition: transform .12s, box-shadow .12s; }
 .adm-card--passenger.is-clickable:hover { transform: translateY(-2px); box-shadow: 0 8px 14px rgba(0, 0, 0, .12); }
-.adm-passenger__go { background: none; border: 0; color: #fff; display: flex; padding: 6px; border-radius: 8px; }
+.adm-passenger__go {
+  background: none; border: 0; color: #fff; display: grid; place-items: center;
+  min-width: var(--alto-control-compacto); min-height: var(--alto-control-compacto); border-radius: var(--radio-sm);
+}
 .adm-passenger__go:hover { background: rgba(255, 255, 255, .12); }
 .adm-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
 .adm-tag {
@@ -149,7 +170,8 @@
 .adm-state--pendiente { background: #f4e7b5; color: #8a6d0b; }
 .adm-state--en-curso { background: #bfdbfe; color: #1d4ed8; }
 .adm-state--completado { background: #c7fec9; color: var(--green); }
-.adm-trip__foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+/* UI-03: "Abierto por administrador" arriba y los botones abajo a la derecha, en todas las tarjetas */
+.adm-trip__foot { display: flex; flex-direction: column; align-items: stretch; gap: var(--esp-2); }
 
 /* ---------- Botones, modal y formularios ---------- */
 .adm-btn {
@@ -286,7 +308,13 @@
 
 .adm-pill { flex-shrink: 0; white-space: nowrap; }
 @media (max-width: 899px) {
-  .adm-pills--scroll { flex-wrap: nowrap; overflow-x: auto; margin-inline: -16px; padding-inline: 16px; scrollbar-width: none; }
+  .adm-pills--scroll {
+    flex-wrap: nowrap; overflow-x: auto; margin-inline: calc(var(--margen-pagina) * -1); padding-inline: var(--margen-pagina);
+    scrollbar-width: none;
+    /* UI-03: el borde derecho se desvanece para indicar que la fila se puede deslizar */
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent);
+    mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent);
+  }
   .adm-pills--scroll::-webkit-scrollbar { display: none; }
 }
 
@@ -363,9 +391,8 @@
   .adm-card__title, .adm-card__small, .adm-card__line { overflow-wrap: anywhere; }
   .adm-card__title { font-size: 16px; }
   .adm-card__small, .adm-card__line--small { font-size: 12px; }
-  .adm-pill, .adm-add, .adm-chip { font-size: 12px; }
+  .adm-pill, .adm-add, .adm-chip { font-size: var(--letra-sm); }
   .adm-pill:hover, .adm-add:hover, .adm-chip:hover, .adm-open-trip:hover, .adm-approve:hover { filter: brightness(1.15); }
-  .adm-open-trip { padding: 12px 24px; font-size: 12px; }
 }
 
 
@@ -391,15 +418,16 @@
 }
 .adm-solicitud__rol select option { color: #1a1d20; }
 .adm-reject {
-  background: transparent; color: #fff; border: 1px solid rgba(255, 255, 255, .55); border-radius: 8px;
-  font-weight: 800; font-size: 11px; padding: 8px 12px;
+  background: transparent; color: #fff; border: 1px solid rgba(255, 255, 255, .55); border-radius: var(--radio-sm);
+  min-height: var(--alto-control-compacto); padding: 0 14px; font-weight: 800; font-size: var(--letra-xs);
 }
 .adm-reject:hover { background: rgba(204, 0, 51, .45); border-color: transparent; }
 
 /* HU-16: acceso y vista del historial de reservas de un pasajero (solo lectura). */
 .adm-passenger__reservas {
-  align-self: flex-start; margin-top: 8px; padding: 7px 10px; border: 1px solid rgba(255,255,255,.55);
-  border-radius: 8px; background: rgba(255,255,255,.12); color: #fff; font-size: 12px;
+  align-self: flex-start; margin-top: 8px; min-height: var(--alto-control-compacto); padding: 0 14px;
+  border: 1px solid rgba(255,255,255,.55);
+  border-radius: var(--radio-sm); background: rgba(255,255,255,.12); color: #fff; font-size: var(--letra-sm);
   font-weight: 700; cursor: pointer;
 }
 .adm-passenger__reservas:hover, .adm-passenger__reservas:focus-visible { background: rgba(255,255,255,.23); }
