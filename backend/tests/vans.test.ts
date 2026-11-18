@@ -1,13 +1,15 @@
 
 import { before, after, test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import request from 'supertest';
 import { app } from '../src/app';
 import { pool } from '../src/db';
 import { crearUsuario, autorizacion, borrarUsuarios } from './ayudantes';
 
 const prefijo = 'prueba.vans.';
-const patentesPrueba = ['ZZ-9876', 'ZY-9876', 'ZX-9876'];
+const patentesPrueba = ['ZZ-9876', 'ZY-9876', 'ZX-9876', 'ZW-9876'];
 
 let adminId: number;
 let conductorId: number;
@@ -176,4 +178,53 @@ test('permite asignar el conductor liberado a otra van', async () => {
     201,
     `No se pudo reasignar el conductor: ${JSON.stringify(respuesta.body)}`
   );
+});
+
+test('no asigna un conductor sin registro válido y explica el motivo', async () => {
+  const funcionario = await crearUsuario(`${prefijo}funcionario@unab.cl`, 'aprobada', 'funcionario');
+  for (const id of [funcionario, 999999]) {
+    const respuesta = await request(app)
+      .post('/api/admin/vans')
+      .set('Authorization', admin)
+      .send({ patente: 'ZW-9876', conductorId: id });
+    assert.equal(respuesta.status, 400, JSON.stringify(respuesta.body));
+    assert.match(respuesta.body.error, /todavía no está registrado/);
+  }
+});
+
+test('no asigna un conductor dado de baja (antes respondía error interno)', async () => {
+  await pool.query('UPDATE conductores SET activo = false WHERE usuario_id = $1', [otroConductorId]);
+  const respuesta = await request(app)
+    .post('/api/admin/vans')
+    .set('Authorization', admin)
+    .send({ patente: 'ZW-9876', conductorId: otroConductorId });
+  await pool.query('UPDATE conductores SET activo = true WHERE usuario_id = $1', [otroConductorId]);
+  assert.equal(respuesta.status, 400);
+  assert.match(respuesta.body.error, /dado de baja/);
+});
+
+test('una cuenta conductor sin ficha no se asigna; con la ficha que completa la migración 010, sí', async () => {
+  // cuenta cargada fuera de la aprobación (seed, Adminer): rol conductor, pero sin fila en conductores
+  const id = await crearUsuario(`${prefijo}sin-registro@unab.cl`, 'aprobada', 'conductor');
+  const sinFicha = await request(app)
+    .post('/api/admin/vans')
+    .set('Authorization', admin)
+    .send({ patente: 'ZW-9876', conductorId: id });
+  assert.equal(sinFicha.status, 400);
+  assert.match(sinFicha.body.error, /todavía no está registrado/);
+
+  // listar es solo lectura: no crea la ficha
+  const lista = await request(app).get('/api/admin/conductores').set('Authorization', admin);
+  assert.ok(!lista.body.conductores.some((c: { id: number }) => c.id === id));
+
+  // el mismo INSERT de 010_completar_fichas_conductores.sql
+  const migracion = readFileSync(join(__dirname, '../../database/migrations/010_completar_fichas_conductores.sql'), 'utf8');
+  await pool.query(migracion);
+  const respuesta = await request(app)
+    .post('/api/admin/vans')
+    .set('Authorization', admin)
+    .send({ patente: 'ZW-9876', conductorId: id });
+  assert.equal(respuesta.status, 201, JSON.stringify(respuesta.body));
+  const { rows } = await pool.query('SELECT conductor_id FROM vans WHERE patente = $1', ['ZW-9876']);
+  assert.equal(rows[0].conductor_id, id);
 });

@@ -45,10 +45,11 @@ export default function VistaChoferes() {
         rut: chofer.rut, licenciaHasta: chofer.licenciaHasta, telefono: chofer.telefono,
       })
       if (!r.ok) return r.error
-      // también actualiza el celular en el perfil del conductor
+      // se muestra lo que quedó guardado en PostgreSQL (RUT, licencia y celular), no lo escrito en el formulario
       sincronizarConductores([r.datos.conductor])
+    } else {
+      saveChofer(chofer)
     }
-    saveChofer(chofer)
     cerrar()
   }
 

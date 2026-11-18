@@ -116,7 +116,7 @@ describe('Conductores guardados en la base de datos', () => {
 })
 
 describe('Sincronización de conductores (adminStore)', () => {
-  it('reconoce por correo a un chofer de ejemplo y conserva su RUT y licencia si la base no los tiene', () => {
+  it('reconoce por correo a un chofer de ejemplo, pero si la base no tiene RUT ni licencia no usa los de ejemplo', () => {
     const ejemplo = choferesIniciales[0]
     const s = reducer(estadoInicial(), {
       type: 'chofer/desdeBd',
@@ -127,8 +127,9 @@ describe('Sincronización de conductores (adminStore)', () => {
     })
     const chofer = s.choferes.find((c) => c.idBd === 4)!
     expect(chofer.id).toBe(ejemplo.id)
-    expect(chofer.rut).toBe(ejemplo.rut)
-    expect(chofer.licenciaHasta).toBe(ejemplo.licenciaHasta)
+    // la base manda: se muestran "sin registrar" hasta que el administrador los complete
+    expect(chofer.rut).toBe('')
+    expect(chofer.licenciaHasta).toBe('')
     expect(s.choferes).toHaveLength(choferesIniciales.length)
   })
 

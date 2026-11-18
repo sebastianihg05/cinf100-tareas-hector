@@ -52,6 +52,8 @@ type AdminApi = {
   limpiarErrorVans: () => void
   /** #2905: vuelve a pedir las vans a la API (al entrar al panel del administrador) */
   recargarVans: () => Promise<void>
+  /** Vuelve a pedir los conductores a la API: cada uno queda con su id de PostgreSQL (`idBd`), RUT y licencia */
+  recargarConductores: () => Promise<void>
   /** Copia en la app las vans que devolvió la API (el conductor recibe solo la suya) */
   sincronizarVans: (vans: VanBd[]) => void
   /** Avisos del administrador que ya leyó, guardados en la base (tabla avisos_leidos) */
@@ -131,6 +133,39 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     setVansCargando(false)
   }
 
+  // Conductores registrados en PostgreSQL. Sin sesión del servidor se trabaja con los de ejemplo.
+  const recargarConductores = async () => {
+    if (!conServidor()) return
+    const respuesta = await clienteApi.listarConductores()
+    if (respuesta.ok) {
+      const accion: Action = { type: 'chofer/desdeBd', conductores: respuesta.datos.conductores }
+      estadoActual.current = reducer(estadoActual.current, accion)
+      dispatch(accion)
+    }
+  }
+
+  /**
+   * id en PostgreSQL del conductor elegido en el panel. Se busca, en orden: en el conductor ya sincronizado,
+   * en el id local `cbd<id>` (una van puede llegar antes que la lista de conductores) y, si no aparece,
+   * se vuelve a pedir la lista a la API. Solo devuelve `undefined` si la base realmente no lo tiene registrado.
+   */
+  const idBdDeConductor = async (choferId: string): Promise<number | undefined> => {
+    const buscar = () => {
+      const chofer = estadoActual.current.choferes.find((c) => c.id === choferId)
+      if (chofer?.idBd !== undefined) return chofer.idBd
+      const local = /^cbd(\d+)$/.exec(choferId)
+      return local ? Number(local[1]) : undefined
+    }
+    const encontrado = buscar()
+    if (encontrado !== undefined || !conServidor()) return encontrado
+
+    // el conductor de la lista local aún no tiene su id: se busca por correo en la lista actual de la base
+    const correo = estadoActual.current.choferes.find((c) => c.id === choferId)?.correo.toLowerCase()
+    await recargarConductores()
+    const enBase = correo ? estadoActual.current.choferes.find((c) => c.correo.toLowerCase() === correo) : undefined
+    return enBase?.idBd ?? buscar()
+  }
+
   // Avisos del administrador que ya leyó: vienen de la tabla avisos_leidos, no del navegador.
   const [leidosBd, setLeidosBd] = useState<Set<string>>(() => new Set())
   const cargarAvisosLeidos = async () => {
@@ -149,16 +184,13 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     setVansError(null)
 
     try {
-      const chofer = van.choferId
-        ? state.choferes.find((c) => c.id === van.choferId)
-        : undefined
+      // El conductor se identifica con su id de PostgreSQL. El mensaje solo aparece si la base no lo tiene.
+      const conductorId = van.choferId ? await idBdDeConductor(van.choferId) : null
 
-      if (van.choferId && (!chofer || chofer.idBd === undefined)) {
+      if (conductorId === undefined) {
         setVansError('El conductor seleccionado todavía no está registrado en la base de datos.')
         return false
       }
-
-      const conductorId = chofer?.idBd ?? null
       const esEdicionBd = /^\d+$/.test(van.id)
 
       const respuesta = esEdicionBd
@@ -179,12 +211,15 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
       const vanBd = respuesta.datos.van
 
-      // El servidor devuelve el ID definitivo. Se conserva el conductor local asociado.
+      // El servidor devuelve el ID definitivo y el conductor que quedó guardado.
+      const choferGuardado = vanBd.conductorId === null
+        ? null
+        : estadoActual.current.choferes.find((c) => c.idBd === vanBd.conductorId)?.id ?? van.choferId
       const vanActualizada: Van = {
         id: vanBd.id,
         patente: vanBd.patente,
         asientos: vanBd.asientos,
-        choferId: van.choferId,
+        choferId: choferGuardado,
         activa: vanBd.activa,
       }
 
@@ -282,6 +317,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       vansError,
       limpiarErrorVans: () => setVansError(null),
       recargarVans,
+      recargarConductores,
       sincronizarVans: (vans) => dispatch({ type: 'van/desdeBd', vans }),
       cargarAvisosLeidos,
       reiniciarDatos: (servidor) => {
@@ -334,8 +370,10 @@ export function AdminProvider({ children }: { children: ReactNode }) {
           return { ok: true }
         }
         const van = actual.vans.find((v) => v.id === vanId)
-        const chofer = actual.choferes.find((c) => c.id === van?.choferId)
-        const r = await clienteApi.actualizarViaje(viaje.idBd, { vanId: numeroDeVan(vanId), conductorId: chofer?.idBd ?? null })
+        // antes, un conductor sin id local se enviaba como null y el viaje quedaba sin conductor
+        const conductorId = van?.choferId ? await idBdDeConductor(van.choferId) : null
+        if (conductorId === undefined) return { ok: false, error: 'El conductor de esa van todavía no está registrado en la base de datos.' }
+        const r = await clienteApi.actualizarViaje(viaje.idBd, { vanId: numeroDeVan(vanId), conductorId })
         if (!r.ok) return { ok: false, error: r.error }
         dispatch({ type: 'viaje/desdeBd', viajes: [r.datos.viaje], alcance: { tipo: 'parcial' } })
         return { ok: true }

@@ -24,6 +24,28 @@ export function aVan(fila: FilaVan) {
 
 export const COLUMNAS_VAN = 'id, patente, capacidad, activa, conductor_id';
 
+type Consultor = { query: typeof pool.query };
+
+/**
+ * Revisa que el conductor elegido para una van tenga un registro válido: cuenta aprobada con rol conductor,
+ * fila en conductores y activo. Devuelve el motivo del rechazo o null si se puede asignar.
+ */
+async function motivoConductorInvalido(db: Consultor, conductorId: number): Promise<string | null> {
+  const { rows } = await db.query<{ activo: boolean | null; rol: string | null; estado: string }>(
+    `SELECT c.activo, u.rol, u.estado_aprobacion AS estado
+       FROM usuarios u
+       LEFT JOIN conductores c ON c.usuario_id = u.id
+      WHERE u.id = $1`,
+    [conductorId]
+  );
+  const fila = rows[0];
+  if (!fila || fila.rol !== 'conductor' || fila.estado !== 'aprobada' || fila.activo === null) {
+    return 'El conductor seleccionado todavía no está registrado en la base de datos.';
+  }
+  if (!fila.activo) return 'El conductor seleccionado está dado de baja y no puede tener una van.';
+  return null;
+}
+
 rutasVans.get('/', async (_req, res) => {
   const { rows } = await pool.query<FilaVan>(
     `SELECT ${COLUMNAS_VAN} FROM vans ORDER BY id`
@@ -47,6 +69,14 @@ rutasVans.post('/', async (req, res) => {
     (!Number.isInteger(conductorId) || conductorId <= 0)) {
     res.status(400).json({ error: 'El conductor indicado no es válido.' });
     return;
+  }
+
+  if (typeof conductorId === 'number') {
+    const motivo = await motivoConductorInvalido(pool, conductorId);
+    if (motivo) {
+      res.status(400).json({ error: motivo });
+      return;
+    }
   }
 
   try {
@@ -125,6 +155,15 @@ rutasVans.patch('/:id', async (req, res) => {
     const nuevoConductor = nuevoEstado
       ? (conductorId !== undefined ? conductorId : van.conductor_id)
       : null;
+
+    if (typeof nuevoConductor === 'number' && nuevoConductor !== van.conductor_id) {
+      const motivo = await motivoConductorInvalido(cliente, nuevoConductor);
+      if (motivo) {
+        await cliente.query('ROLLBACK');
+        res.status(400).json({ error: motivo });
+        return;
+      }
+    }
 
     const { rows } = await cliente.query<FilaVan>(
       `UPDATE vans

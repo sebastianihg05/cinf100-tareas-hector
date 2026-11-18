@@ -8,7 +8,7 @@ test('conecta a PostgreSQL y ejecuta una consulta de prueba', async () => {
   assert.equal(result.rows[0].ok, 1);
 });
 
-test('las migraciones 001 a 006 están aplicadas', async () => {
+test('las migraciones 001 a 006 y 010 están aplicadas', async () => {
   const { rows } = await pool.query('SELECT version FROM schema_migrations');
   const versiones = rows.map((row) => row.version);
 
@@ -18,6 +18,7 @@ test('las migraciones 001 a 006 están aplicadas', async () => {
   assert.ok(versiones.includes('004_viajes.sql'));
   assert.ok(versiones.includes('005_reservas.sql'));
   assert.ok(versiones.includes('006_vans.sql'));
+  assert.ok(versiones.includes('010_completar_fichas_conductores.sql'));
 });
 
 test('la base rechaza un viaje de ida con otro horario', async () => {

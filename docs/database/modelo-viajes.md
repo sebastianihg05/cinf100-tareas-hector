@@ -82,6 +82,7 @@ Las filas las escriben `POST /api/conductor/viajes/:id/iniciar`, `.../finalizar`
 |---|---|
 | `database/migrations/004_viajes.sql` | Tabla, restricciones, índices y trigger. |
 | `database/migrations/008_historial_estados_viajes.sql` y `009_historial_usuario_set_null.sql` | Historial de estados. |
+| `database/migrations/010_completar_fichas_conductores.sql` | Crea la ficha en `conductores` de las cuentas con rol conductor que no la tenían (cargadas por seed o Adminer). La aprobación ya la crea para las cuentas nuevas. |
 | `database/tests/viajes_restricciones.sql` | 23 pruebas de las restricciones, dentro de una transacción que se revierte. |
 
 ```bash

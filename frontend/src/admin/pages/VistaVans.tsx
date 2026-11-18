@@ -25,12 +25,15 @@ export default function VistaVans() {
     vansError,
     limpiarErrorVans,
     recargarVans,
+    recargarConductores,
   } = useAdmin()
 
   // #2905: las vans se piden a la API al abrir la pantalla (no hay copia guardada en el navegador).
   // Solo al entrar: recargarVans cambia en cada render.
   useEffect(() => {
     void recargarVans()
+    // la lista de conductores del formulario sale de PostgreSQL, con el id de cada uno
+    void recargarConductores()
   }, [])
 
   const [filtro, setFiltro] = useState<Filtro>('activas')

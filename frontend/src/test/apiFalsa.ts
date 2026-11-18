@@ -363,8 +363,19 @@ function atender(url: string, metodo: string, cuerpo: Record<string, string>, to
 
   if (metodo === 'GET' && url === '/api/admin/vans') return responder(200, { vans: vansBd })
 
+  // Igual que el backend: solo se asigna un conductor con cuenta aprobada, ficha en conductores y activo.
+  const motivoConductor = (id: unknown) => {
+    if (typeof id !== 'number') return null
+    const cuenta = cuentas.find((c) => c.id === id)
+    const datos = conductores.get(id)
+    if (!cuenta || cuenta.rol !== 'conductor' || cuenta.estado !== 'aprobada' || !datos) return 'El conductor seleccionado todavía no está registrado en la base de datos.'
+    return datos.activo ? null : 'El conductor seleccionado está dado de baja y no puede tener una van.'
+  }
+
   if (metodo === 'POST' && url === '/api/admin/vans') {
     const datos = cuerpo as unknown as { patente: string; conductorId: number | null }
+    const motivo = motivoConductor(datos.conductorId)
+    if (motivo) return responder(400, { error: motivo })
     if (vansBd.some((v) => v.patente === datos.patente)) return responder(409, { error: 'Ya existe una van con esa patente.' })
     return responder(201, { van: agregarVanBd({ patente: datos.patente, conductorId: datos.conductorId ?? null }) })
   }
@@ -373,6 +384,9 @@ function atender(url: string, metodo: string, cuerpo: Record<string, string>, to
   if (metodo === 'PATCH' && cambioVan) {
     const van = vansBd.find((v) => v.id === cambioVan[1])
     if (!van) return responder(404, { error: 'La van no existe.' })
+    const nuevo = (cuerpo as { conductorId?: unknown }).conductorId
+    const motivo = nuevo !== van.conductorId ? motivoConductor(nuevo) : null
+    if (motivo) return responder(400, { error: motivo })
     Object.assign(van, cuerpo)
     if (!van.activa) van.conductorId = null
     return responder(200, { van })
