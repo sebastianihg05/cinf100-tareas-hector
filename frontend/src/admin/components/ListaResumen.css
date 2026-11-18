@@ -11,6 +11,7 @@
 .lista-resumen__fila:hover { background: rgba(0, 51, 102, .06); }
 .lista-resumen__fila:focus-visible { outline: 3px solid rgba(0, 51, 102, .35); outline-offset: 2px; }
 .lista-resumen__texto { display: flex; flex-direction: column; min-width: 0; }
-.lista-resumen__texto strong { font-size: 12px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* UI-03: el texto baja de línea en vez de cortarse con "…" */
+.lista-resumen__texto strong { font-size: var(--letra-sm); font-weight: 800; overflow-wrap: anywhere; }
 .lista-resumen__texto small { color: #6b7280; font-size: 11px; }
 .lista-resumen__valor { flex-shrink: 0; font-size: 12px; font-weight: 800; }

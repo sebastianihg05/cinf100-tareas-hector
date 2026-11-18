@@ -1,4 +1,3 @@
-
 import { Router } from 'express';
 import { pool } from '../db';
 import { COLUMNAS_VIAJE, conReservas, idValido, viajePorId, type FilaViaje } from '../viajes/modelo';
@@ -6,7 +5,7 @@ import { COLUMNAS_VIAJE, conReservas, idValido, viajePorId, type FilaViaje } fro
 // Gestión administrativa de viajes (S3-VIA-03). Solo administradores: se monta en rutasAdmin.
 export const rutasViajes = Router();
 
-// Ruta y horario fijos de cada trayecto.
+// Ruta y horario fijos de cada trayecto (los mismos que exige viajes_ruta_check).
 const TRAYECTOS = {
   Ida: { origen: 'Quillota 980', destino: 'Santiago', hora: '06:45' },
   Vuelta: { origen: 'Santiago', destino: 'Quillota 980', hora: '17:00' },
@@ -53,6 +52,7 @@ rutasViajes.post('/', async (req, res) => {
     return;
   }
 
+  // La fecha se compara con el día de Chile, no con el del servidor.
   const { rows: rango } = await pool.query<{ ok: boolean }>(
     `SELECT $1::date BETWEEN (CURRENT_TIMESTAMP AT TIME ZONE 'America/Santiago')::date + $2::int
                          AND (CURRENT_TIMESTAMP AT TIME ZONE 'America/Santiago')::date + $3::int AS ok`,

@@ -1,4 +1,3 @@
-
 import { Router } from 'express';
 import { requiereRol, requiereSesion } from '../auth/middleware';
 import { pool } from '../db';
@@ -6,7 +5,7 @@ import { COLUMNAS_VIAJE, conReservas, idValido, viajePorId, type FilaViaje } fro
 import { ErrorRuta, rutaHaciaDestino } from '../viajes/rutas-mapa';
 import { coordenadasDeSede } from '../viajes/sedes';
 
-// Panel del conductor: solo ve y modifica los viajes que la administración le asignó.
+// Panel del conductor (S3-CON-01 y S3-CON-02): solo ve y modifica los viajes que la administración le asignó.
 export const rutasConductor = Router();
 
 rutasConductor.use(requiereSesion, requiereRol('conductor'));
@@ -206,7 +205,8 @@ rutasConductor.post('/viajes/:id/finalizar', async (req, res) => {
   res.json({ viaje: await viajePorId(id) });
 });
 
-// Ruta GPS desde la posición del conductor hasta la sede de destino.
+// GPS-05: ruta desde la posición del conductor hasta la sede de destino. El destino sale del viaje
+// guardado en la base; el cliente solo envía su posición.
 rutasConductor.get('/viajes/:id/ruta', async (req, res) => {
   const id = idValido(req.params.id);
 

@@ -179,8 +179,9 @@ export default function PanelPendiente() {
             barras={barrasSede} vacio="Aún no hay pasajeros." />
           {/* RB-04: la ocupación se ve como el líquido que llena cada van (React Bits SloshGauge) */}
           <section className="grafico-barras" aria-label="Ocupación de los próximos viajes">
-            <h3>Ocupación de los próximos viajes</h3>
-            <p className="grafico-barras__sub">Asientos reservados sobre la capacidad de la van</p>
+            {/* UI-03: título corto para que quepa en una línea, como los de las columnas vecinas */}
+            <h3>Ocupación de las vans</h3>
+            <p className="grafico-barras__sub">Próximos viajes: asientos reservados sobre la capacidad</p>
             {barrasOcupacion.length === 0 ? (
               <p className="grafico-barras__vacio">No hay viajes pendientes próximos.</p>
             ) : (

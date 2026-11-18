@@ -101,7 +101,7 @@ export default function VistaViajes() {
         <button className="adm-open-trip" onClick={() => navigate('/admin/viajes/abrir')}>Abrir viaje</button>
       </div>
 
-      <Pills value={filtro} onChange={setFiltro} options={[
+      <Pills value={filtro} onChange={setFiltro} scroll options={[
         { value: 'todos', label: 'Todos' },
         { value: 'pendiente', label: 'Pendientes' },
         { value: 'en-curso', label: 'En curso' },
@@ -109,7 +109,7 @@ export default function VistaViajes() {
         { value: 'cancelado', label: 'Cancelados' },
       ]} />
 
-      <Pills value={trayecto} onChange={setTrayecto} options={[
+      <Pills value={trayecto} onChange={setTrayecto} scroll options={[
         { value: 'todos', label: 'Ida y vuelta' },
         { value: 'Ida', label: 'Ida' },
         { value: 'Vuelta', label: 'Vuelta' },

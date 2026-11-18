@@ -112,7 +112,7 @@ export default function VistaPasajeros() {
       <label className="adm-search">
         <IconSearch />
         <input type="search" value={busqueda} onChange={(e) => setBusqueda(e.target.value)}
-          placeholder="Buscar por nombre, correo, sede o destino" aria-label="Buscar pasajeros" />
+          placeholder="Nombre, correo, sede o destino" aria-label="Buscar pasajeros" />
       </label>
 
       <label className="adm-date adm-date--fila">

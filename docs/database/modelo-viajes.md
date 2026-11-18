@@ -62,11 +62,26 @@ La migración de vans (`006_vans.sql`) agregó la llave foránea `viajes_van_id_
 
 Que la van esté activa al asignarla lo valida el backend (#2602).
 
-## 7. Implementación y pruebas
+## 7. Historial de estados (008 y 009)
+
+`viajes_historial_estados` guarda cada cambio de estado de un viaje:
+
+| Columna | Detalle |
+|---|---|
+| `viaje_id` | FK a `viajes`, `ON DELETE CASCADE`. |
+| `estado_anterior`, `estado_nuevo` | Solo las transiciones válidas: `pendiente → en-curso`, `pendiente → cancelado` y `en-curso → completado`. |
+| `usuario_id` | Quién hizo el cambio. FK a `usuarios` con `ON DELETE SET NULL` (009): al borrar la cuenta, el historial se conserva sin el usuario, igual que `viajes.creado_por`. |
+| `fecha_hora` | Cuándo se hizo. Índice por `(viaje_id, fecha_hora)`. |
+
+Las filas las escriben `POST /api/conductor/viajes/:id/iniciar`, `.../finalizar` y `PATCH /api/admin/viajes/:id`
+(cancelar), dentro de la misma transacción que el cambio. Pruebas en `backend/tests/viajes.test.ts`.
+
+## 8. Implementación y pruebas
 
 | Archivo | Contenido |
 |---|---|
 | `database/migrations/004_viajes.sql` | Tabla, restricciones, índices y trigger. |
+| `database/migrations/008_historial_estados_viajes.sql` y `009_historial_usuario_set_null.sql` | Historial de estados. |
 | `database/tests/viajes_restricciones.sql` | 23 pruebas de las restricciones, dentro de una transacción que se revierte. |
 
 ```bash

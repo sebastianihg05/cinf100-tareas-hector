@@ -9,6 +9,9 @@ __pycache__/
 .venv/
 venv/
 
+# Salida local de las pruebas
+resultado-pruebas.txt
+
 # Node
 node_modules/
 dist/
