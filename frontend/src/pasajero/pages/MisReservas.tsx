@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import ConfirmDialog from '../../admin/components/ConfirmDialog'
 import { IconClock, IconSeat } from '../../admin/components/icons'
@@ -60,18 +60,30 @@ function TarjetaReserva({ grupo, onEditar, onCancelar }: { grupo: GrupoMio; onEd
   )
 }
 
+/** #2901: cuánto se ve un aviso de éxito ("Tu reserva fue actualizada", "...fue cancelada") antes de ocultarse. */
+export const DURACION_AVISO_MS = 5000
+
+type Aviso = { texto: string; error: boolean }
+
 export default function MisReservas() {
   // S3-RES-04 (#2608): las reservas vienen de la base (GET /api/reservas).
   const { proximas, historial, cargando, error, recargar } = useMisReservas()
   const [cancelando, setCancelando] = useState<GrupoMio | null>(null)
   const [editando, setEditando] = useState<GrupoMio | null>(null)
-  const [aviso, setAviso] = useState('')
+  const [aviso, setAviso] = useState<Aviso | null>(null)
+
+  // #2901: el aviso de éxito se oculta solo; uno de error se queda hasta la siguiente acción.
+  useEffect(() => {
+    if (!aviso || aviso.error) return
+    const id = setTimeout(() => setAviso(null), DURACION_AVISO_MS)
+    return () => clearTimeout(id)
+  }, [aviso])
 
   // POST /api/reservas/:grupoId/cancelar sin cuerpo: cancela todos los trayectos que todavía se pueden cancelar.
   const cancelar = async (grupoId: string) => {
     setCancelando(null)
     const r = await api.cancelarReserva(grupoId)
-    setAviso(r.ok ? 'Tu reserva fue cancelada y los asientos quedaron libres.' : r.error)
+    setAviso(r.ok ? { texto: 'Tu reserva fue cancelada y los asientos quedaron libres.', error: false } : { texto: r.error, error: true })
     await recargar()
   }
   const [pestana, setPestana] = useState<'proximas' | 'historial'>('proximas')
@@ -100,18 +112,20 @@ export default function MisReservas() {
           <AnimatedContent as="ul" className="psj-lista" {...ENTRADA_TARJETAS}>
             {lista.map((g) => (
               <TarjetaReserva key={g.grupoId} grupo={g}
-                onEditar={() => { setAviso(''); setEditando(g) }}
-                onCancelar={editables(g).length > 0 ? () => { setAviso(''); setCancelando(g) } : undefined} />
+                onEditar={() => { setAviso(null); setEditando(g) }}
+                onCancelar={editables(g).length > 0 ? () => { setAviso(null); setCancelando(g) } : undefined} />
             ))}
           </AnimatedContent>
         )}
       </div>
 
-      {aviso && <p className="psj-alert psj-alert--suave" role="status">{aviso}</p>}
+      {aviso && (aviso.error
+        ? <p className="psj-alert" role="alert">{aviso.texto}</p>
+        : <p className="psj-alert psj-alert--suave" role="status">{aviso.texto}</p>)}
 
       {editando && (
         <EditarReserva grupo={editando} onClose={() => setEditando(null)}
-          onGuardado={(m) => { setEditando(null); setAviso(m); void recargar() }} />
+          onGuardado={(m) => { setEditando(null); setAviso({ texto: m, error: false }); void recargar() }} />
       )}
 
       {cancelando && (
