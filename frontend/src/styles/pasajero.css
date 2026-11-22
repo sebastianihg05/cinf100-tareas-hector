@@ -231,13 +231,16 @@ select.psj-control:disabled { cursor: not-allowed; color: var(--muted); backgrou
 /* ---------- Mis reservas ---------- */
 .psj-tabs { display: grid; grid-template-columns: 1fr 1fr; }
 .psj-tab {
-  min-height: 52px; border: 1.5px solid transparent; background: #fff; color: var(--muted);
-  font-family: inherit; font-size: 15px; font-weight: 600;
+  min-height: 52px; border: 0; border-bottom: 3px solid transparent; background: #fff; color: var(--muted);
+  font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer;
 }
-.psj-tab.is-active { border-color: var(--red); color: var(--red); font-weight: 800; }
+/* UI-04 (F4): la pestaña activa se marca con un subrayado rojo, como el resto de la app (antes era un rectángulo) */
+.psj-tab.is-active { border-bottom-color: var(--red); color: var(--red); font-weight: 800; }
 .psj-tab:focus-visible { outline: 3px solid rgba(204, 0, 51, .3); outline-offset: -3px; }
 
 .psj-lista { display: flex; flex-direction: column; gap: var(--separacion-bloques); margin: 0; padding: 0; list-style: none; }
+/* Resumen y lista que van juntos al ancho de las listas (Historial del conductor) */
+.psj-ancho-lista { display: flex; flex-direction: column; gap: var(--separacion-bloques); }
 .psj-reserva { display: flex; flex-direction: column; gap: 8px; padding: var(--relleno-tarjeta); border-radius: var(--radio-tarjeta); }
 .psj-reserva__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .psj-reserva__fecha { margin: 0; font-size: 15px; font-weight: 800; }
@@ -277,10 +280,10 @@ select.psj-control:disabled { cursor: not-allowed; color: var(--muted); backgrou
   .psj-tabs { grid-template-columns: repeat(2, 200px); justify-content: center; }
 
   /* UI-02: formulario, mapa y confirmación en una columna de lectura, alineada al mismo borde que las listas */
-  .psj-page > :not(.psj-user):not(.psj-viaje):not(.psj-tabs):not([role='tabpanel']) {
+  .psj-page > :not(.psj-user):not(.psj-viaje):not(.psj-tabs):not([role='tabpanel']):not(.psj-ancho-lista) {
     width: 100%; max-width: var(--ancho-lectura); margin-inline: auto;
   }
-  .psj-page > [role='tabpanel'] { width: 100%; max-width: 1200px; margin-inline: auto; }
+  .psj-page > [role='tabpanel'], .psj-page > .psj-ancho-lista { width: 100%; max-width: 1200px; margin-inline: auto; }
   .psj-form {
     flex: none; padding: var(--esp-6); background: var(--superficie); border: 1px solid var(--line); border-radius: var(--radio-tarjeta);
   }
@@ -297,9 +300,11 @@ select.psj-control:disabled { cursor: not-allowed; color: var(--muted); backgrou
 
   /* Mis reservas: tarjetas en grilla */
   .psj-lista {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: var(--separacion-bloques);
+    /* UI-04 (F3): tarjetas de 340 a 420 px, tantas por fila como quepan y centradas aunque sean pocas */
+    display: flex; flex-flow: row wrap; justify-content: center; gap: var(--separacion-bloques);
     width: 100%; max-width: 1200px; margin-inline: auto;
   }
+  .psj-lista > * { flex: 1 1 340px; min-width: 0; max-width: 420px; }
   .psj-vacio { padding: 56px 0; }
 
   .psj-btn--primary:hover:not(:disabled), .psj-asiento--libre:hover { filter: brightness(1.12); }
@@ -313,7 +318,11 @@ select.psj-control:disabled { cursor: not-allowed; color: var(--muted); backgrou
 
 /* ---------- Cancelar una reserva ---------- */
 .psj-reserva__acciones { display: flex; gap: 10px; margin-top: 12px; }
-.psj-reserva__acciones .psj-btn { min-height: var(--alto-control); font-size: var(--letra-base); }
+/* UI-04 (F1): "Editar" y "Cancelar reserva" del mismo ancho y alto, sin partirse en dos líneas */
+.psj-reserva__acciones .psj-btn {
+  flex: 1 1 0; min-width: 0; min-height: var(--alto-control); padding: 0 var(--esp-3);
+  font-size: var(--letra-base); white-space: nowrap;
+}
 .psj-reserva__cancelar { border-color: #cc0033; color: #cc0033; }
 .psj-reserva__cancelar:hover { background: #fdf0f3; }
 

@@ -27,7 +27,11 @@
 .cnd-pasajero__nombre { min-width: 0; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
 .cnd-pasajero__datos { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .cnd-pasajero__celular { font-size: 13px; color: #5a6575; }
-a.cnd-pasajero__celular { color: var(--navy); text-decoration: none; }
+/* UI-04 (C2): el enlace para llamar tiene un alto que se puede tocar (antes 18 px) */
+a.cnd-pasajero__celular {
+  display: inline-flex; align-items: center; align-self: flex-start; min-height: var(--alto-control-compacto);
+  color: var(--navy); font-weight: 600; text-decoration: underline; text-underline-offset: 2px;
+}
 
 .cnd-trayecto {
   display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radio-control);
@@ -37,10 +41,16 @@ a.cnd-trayecto:hover { background: #f1f5fa; }
 a.cnd-trayecto:focus-visible { outline: 3px solid rgba(0, 51, 102, .4); outline-offset: 2px; }
 .cnd-trayecto.is-actual { border-color: var(--navy); background: #eef2f8; }
 .cnd-trayecto.is-actual small { margin-left: auto; font-size: 11px; font-weight: 700; color: var(--navy); }
-.cnd-trayecto__info { flex: 1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; font-size: 13px; color: var(--muted); }
+/* UI-04 (C1): la etiqueta de estado queda siempre en la misma línea; si falta espacio, baja el texto de la hora */
+.cnd-trayecto__info { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--muted); }
+.cnd-trayecto__info > span:first-child { min-width: 0; }
+.cnd-trayecto__info .psj-badge { flex-shrink: 0; }
 
 /* RB-05: ocupación de la van en el detalle del viaje */
 .cnd-ocupacion { display: flex; align-items: center; gap: 12px; margin-top: 12px; color: var(--muted); font-size: 12px; font-weight: 700; }
+/* UI-04 (C5): "Iniciar viaje" y "Finalizar viaje" a todo el ancho de la tarjeta (antes quedaban a la derecha, con un hueco) */
+.cnd-detalle__acciones { justify-content: stretch; }
+.cnd-detalle__acciones > .hold-button { flex: 1; }
 
 /* ---------- Navegación GPS (GPS-03) ---------- */
 .cnd-ir-navegacion { margin-top: 12px; text-decoration: none; justify-content: center; }

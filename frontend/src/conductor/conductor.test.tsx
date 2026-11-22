@@ -108,7 +108,7 @@ describe('panel del conductor', () => {
 
   it('el historial muestra los viajes completados y cancelados', async () => {
     abrir('/conductor/viajes')
-    await userEvent.click(await screen.findByRole('tab', { name: 'Historial' }))
+    await userEvent.click(await screen.findByRole('tab', { name: 'Anteriores' }))
     const panel = screen.getByRole('tabpanel')
     expect(within(panel).getAllByText('Completado').length).toBeGreaterThan(0)
     expect(within(panel).getAllByText('Cancelado').length).toBeGreaterThan(0)

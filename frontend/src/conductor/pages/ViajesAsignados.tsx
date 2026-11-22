@@ -1,13 +1,14 @@
 import { Link, useSearchParams } from 'react-router-dom'
-import { IconClock, IconSeat, IconTruck } from '../../admin/components/icons'
+import { IconClock, IconSeat } from '../../admin/components/icons'
 import type { Viaje } from '../../admin/types'
-import { iniciales, todayISO } from '../../admin/utils/format'
+import { todayISO } from '../../admin/utils/format'
 import { fechaTexto } from '../../pasajero/viajes'
 import { ESTADO_VIAJE } from '../etiquetas'
 import { AvisoViajesBd, useEstadoViajesBd } from '../../admin/store/useViajesBd'
 import { motivoSinViajes, useConductorActual } from '../useConductorActual'
 import AnimatedContent from '../../reactbits/AnimatedContent'
 import { ENTRADA_TARJETAS } from '../../reactbits/unab'
+import SaludoConductor from '../components/SaludoConductor'
 
 function TarjetaViaje({ viaje, capacidad, desdeHistorial }: { viaje: Viaje; capacidad: number; desdeHistorial: boolean }) {
   const estado = ESTADO_VIAJE[viaje.estado]
@@ -36,7 +37,7 @@ function TarjetaViaje({ viaje, capacidad, desdeHistorial }: { viaje: Viaje; capa
 
 /** Listado de los viajes que la administración asignó al conductor (por su van). */
 export default function ViajesAsignados() {
-  const { nombre, chofer, van, proximos, historial } = useConductorActual()
+  const { chofer, van, proximos, historial } = useConductorActual()
   const { cargando } = useEstadoViajesBd()
   // La pestaña se conserva en la URL para restaurarla al volver del detalle.
   const [parametros, cambiarParametros] = useSearchParams()
@@ -54,17 +55,7 @@ export default function ViajesAsignados() {
 
   return (
     <div className="psj-page">
-      <div className="psj-user">
-        <div className="psj-user__info">
-          <div className="psj-avatar">{iniciales(nombre)}</div>
-          <div>
-            <p className="psj-user__name">Hola, {nombre.split(' ')[0] || 'conductor'}</p>
-            <p className="psj-user__sub">
-              {van ? <><IconTruck size={12} /> Van {van.patente} · {van.asientos} asientos</> : 'Sin van asignada'}
-            </p>
-          </div>
-        </div>
-      </div>
+      <SaludoConductor />
 
       {/* S3-CON-02: los viajes se leen de PostgreSQL; se avisa mientras cargan o si falla la conexión */}
       <AvisoViajesBd />
@@ -73,7 +64,7 @@ export default function ViajesAsignados() {
         <button type="button" role="tab" id="cnd-tab-proximos" aria-selected={pestana === 'proximos'} aria-controls="cnd-panel-viajes"
           className={`psj-tab${pestana === 'proximos' ? ' is-active' : ''}`} onClick={() => elegirPestana('proximos')}>Próximos</button>
         <button type="button" role="tab" id="cnd-tab-historial" aria-selected={pestana === 'historial'} aria-controls="cnd-panel-viajes"
-          className={`psj-tab${pestana === 'historial' ? ' is-active' : ''}`} onClick={() => elegirPestana('historial')}>Historial</button>
+          className={`psj-tab${pestana === 'historial' ? ' is-active' : ''}`} onClick={() => elegirPestana('historial')}>Anteriores</button>
       </div>
 
       <div id="cnd-panel-viajes" role="tabpanel" aria-labelledby={`cnd-tab-${pestana}`}>

@@ -84,7 +84,7 @@ export default function ViajeDetalle() {
           </div>
 
           {viaje.estado === 'pendiente' && (
-            <div className="adm-form__actions">
+            <div className="adm-form__actions cnd-detalle__acciones">
               {/* RB-06: mantener presionado inicia el viaje (React Bits HoldButton); un toque o el teclado abren la confirmación */}
               <HoldButton backgroundColor={UNAB.navy} fillColor={UNAB.rojo} textColor={UNAB.blanco} fillTextColor={UNAB.blanco}
                 holdTime={900} doneLabel="¡En marcha!" disabled={!!bloqueado || procesando}
@@ -106,7 +106,7 @@ export default function ViajeDetalle() {
             </Link>
           )}
           {viaje.estado === 'en-curso' && (
-            <div className="adm-form__actions">
+            <div className="adm-form__actions cnd-detalle__acciones">
               <HoldButton backgroundColor={UNAB.navy} fillColor={UNAB.rojo} textColor={UNAB.blanco} fillTextColor={UNAB.blanco}
                 holdTime={900} doneLabel="¡Viaje completado!" disabled={procesando}
                 onHold={() => void cambiarEstado('completado')} onTap={() => setConfirmandoFinalizacion(true)}>
