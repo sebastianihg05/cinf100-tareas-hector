@@ -141,8 +141,8 @@ describe('detalle del viaje', () => {
 
   it('conserva la pestaña Historial al abrir un viaje desde Mis viajes y regresar', async () => {
     abrir('/conductor/viajes')
-    await userEvent.click(await screen.findByRole('tab', { name: 'Historial' }))
-    expect(screen.getByRole('tab', { name: 'Historial' })).toHaveAttribute('aria-selected', 'true')
+    await userEvent.click(await screen.findByRole('tab', { name: 'Anteriores' }))
+    expect(screen.getByRole('tab', { name: 'Anteriores' })).toHaveAttribute('aria-selected', 'true')
 
     const panel = screen.getByRole('tabpanel')
     await userEvent.click(within(panel).getAllByRole('link')[0])
@@ -151,7 +151,7 @@ describe('detalle del viaje', () => {
     expect(volver).toHaveAttribute('href', '/conductor/viajes?tab=historial')
     await userEvent.click(volver)
 
-    expect(await screen.findByRole('tab', { name: 'Historial' })).toHaveAttribute('aria-selected', 'true')
+    expect(await screen.findByRole('tab', { name: 'Anteriores' })).toHaveAttribute('aria-selected', 'true')
     expect(within(screen.getByRole('tabpanel')).queryByText('Pendiente')).not.toBeInTheDocument()
   })
 
@@ -184,6 +184,12 @@ describe('historial de viajes finalizados', () => {
     // ni pendientes ni cancelados ni viajes de otra van
     expect(screen.queryByText('Pendiente')).not.toBeInTheDocument()
     expect(screen.queryByText('Cancelado')).not.toBeInTheDocument()
+  })
+
+  it('UI-04: muestra el saludo con la van, igual que Mis viajes', async () => {
+    abrir()
+    expect(await screen.findByText('Hola, Juan')).toBeInTheDocument()
+    expect(screen.getByText(/Van FG-1251 · \d+ asientos/)).toBeInTheDocument()
   })
 
   it('sin viajes finalizados muestra un estado vacío', async () => {

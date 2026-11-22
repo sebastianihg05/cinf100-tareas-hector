@@ -375,9 +375,8 @@
   }
   /* UI-06: tantas columnas como quepan, sin limitar las listas a tres tarjetas. */
   .adm-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 420px));
-    justify-content: center;
+    /* Tarjetas de 300 a 420 px, tantas por fila como quepan y centradas aunque sean pocas */
+    display: flex; flex-flow: row wrap; justify-content: center;
     gap: var(--separacion-bloques);
   }
   /* Filtros, botón de agregar y fecha centrados igual que las tarjetas */
@@ -386,12 +385,11 @@
   .adm-content > .adm-date { max-width: 220px; margin-inline: auto; }
   /* Cada tarjeta conserva un ancho de lectura cómodo incluso si solo cabe una. */
   .adm-list > .adm-card {
-    width: 100%;
+    flex: 1 1 300px;
     max-width: 420px;
     min-width: 0;
-    justify-self: center;
   }
-  .adm-list > .adm-empty { grid-column: 1 / -1; }
+  .adm-list > .adm-empty { flex-basis: 100%; }
   .adm-card { min-width: 0; }
   .adm-card__title, .adm-card__small, .adm-card__line { overflow-wrap: anywhere; }
   .adm-card__title { font-size: 16px; }

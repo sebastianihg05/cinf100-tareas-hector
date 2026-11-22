@@ -9,6 +9,7 @@ import { motivoSinViajes, useConductorActual } from '../useConductorActual'
 import { pasajerosDelViaje } from '../viajes'
 import AnimatedContent from '../../reactbits/AnimatedContent'
 import { ENTRADA_TARJETAS } from '../../reactbits/unab'
+import SaludoConductor from '../components/SaludoConductor'
 
 function TarjetaFinalizado({ viaje, patente, pasajeros }: { viaje: Viaje; patente: string; pasajeros: number }) {
   const estado = ESTADO_VIAJE[viaje.estado]
@@ -39,13 +40,15 @@ export default function HistorialViajes() {
 
   return (
     <div className="psj-page">
+      <SaludoConductor />
       <AvisoViajesBd />
       {sinAsignacion ? (
         <p className="psj-alert psj-alert--suave" role="status">{sinAsignacion}</p>
       ) : finalizados.length === 0 ? (
         cargando ? null : <div className="psj-vacio"><p>Aún no tienes viajes finalizados.</p></div>
       ) : (
-        <>
+        // UI-04 (C3): mismo ancho que la lista de Mis viajes
+        <div className="psj-ancho-lista">
           <p className="cnd-resumen">
             {finalizados.length === 1 ? '1 viaje finalizado' : `${finalizados.length} viajes finalizados`}
           </p>
@@ -54,7 +57,7 @@ export default function HistorialViajes() {
               <TarjetaFinalizado key={v.id} viaje={v} patente={van!.patente} pasajeros={pasajerosDelViaje(state, v.id).length} />
             ))}
           </AnimatedContent>
-        </>
+        </div>
       )}
     </div>
   )
