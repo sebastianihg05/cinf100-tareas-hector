@@ -1,7 +1,7 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from '../App'
 import { reservasIniciales, pasajerosIniciales, vansIniciales, viajesIniciales } from '../admin/data/mock'
 import { agruparReservas, asientosOcupados, cancelables, sincronizar, validarCambioAsientos, validarSolicitud, type Datos } from '../admin/store/reservas'
@@ -9,6 +9,7 @@ import { sumarDias, todayISO } from '../admin/utils/format'
 import { guardarSesion } from '../login/sesion'
 import { agregarReservaBd, agregarViajeBd, viajeBdGuardado } from '../test/apiFalsa'
 import MapaAsientos, { disponerAsientos } from './MapaAsientos'
+import { DURACION_AVISO_MS } from './pages/MisReservas'
 
 const datos = (): Datos =>
   sincronizar({ vans: vansIniciales, viajes: viajesIniciales, pasajeros: pasajerosIniciales, reservas: reservasIniciales })
@@ -244,6 +245,28 @@ describe('flujo del pasajero', () => {
     expect(await screen.findByText(/Tu reserva fue actualizada/)).toBeInTheDocument()
     expect(viajeBdGuardado(ida.id)!.reservas.find((r) => r.id === proxima.id)!.asiento).toBe(1)
     expect(await screen.findByText('Asientos: #1 (Ida) / #3 (Vuelta)')).toBeInTheDocument()
+  })
+
+  it('#2901: el aviso "Tu reserva fue actualizada" se oculta solo después de unos segundos', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      const usuario = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      reservasDeConstanza()
+      render(<MemoryRouter initialEntries={['/pasajero/reservas']}><App /></MemoryRouter>)
+      await usuario.click(await screen.findByRole('button', { name: 'Editar reserva' }))
+      const dialogo = screen.getByRole('dialog')
+      await usuario.click(within(dialogo).getAllByRole('radio', { name: 'Asiento 1' })[0])
+      await usuario.click(within(dialogo).getByRole('button', { name: 'Guardar cambios' }))
+      expect(await screen.findByText(/Tu reserva fue actualizada/)).toBeInTheDocument()
+
+      // todavía se ve justo antes de cumplir el tiempo
+      act(() => { vi.advanceTimersByTime(DURACION_AVISO_MS - 500) })
+      expect(screen.getByText(/Tu reserva fue actualizada/)).toBeInTheDocument()
+      act(() => { vi.advanceTimersByTime(500) })
+      expect(screen.queryByText(/Tu reserva fue actualizada/)).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('el cliente puede cancelar su reserva: pide confirmación, libera el asiento y pasa al historial', async () => {
