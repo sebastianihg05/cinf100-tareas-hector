@@ -232,6 +232,70 @@ test('un viaje inexistente responde 404 y un id inválido 400', async () => {
   assert.equal(malId.status, 400);
 });
 
+/* ---------- S3-VIA-01: detalle y filtros de la API de administración ---------- */
+
+test('el administrador consulta el detalle de un viaje con sus reservas', async () => {
+  const id = await viajeAsignado(idConductor, 4);
+  await reservar(id, 3);
+
+  const r = await request(app).get(`/api/admin/viajes/${id}`).set('Authorization', admin);
+  assert.equal(r.status, 200);
+  assert.equal(r.body.viaje.id, id);
+  assert.equal(r.body.viaje.vanId, await van(4));
+  assert.equal(r.body.viaje.conductorId, idConductor);
+  assert.deepEqual(r.body.viaje.reservas.map((x: { asiento: number }) => x.asiento), [3]);
+
+  // el detalle es solo para la administración
+  assert.equal((await request(app).get(`/api/admin/viajes/${id}`)).status, 401);
+  assert.equal((await request(app).get(`/api/admin/viajes/${id}`).set('Authorization', funcionario)).status, 403);
+  assert.equal((await request(app).get(`/api/admin/viajes/${id}`).set('Authorization', conductor)).status, 403);
+});
+
+test('el detalle de un viaje inexistente responde 404 y un id inválido 400', async () => {
+  assert.equal((await request(app).get('/api/admin/viajes/999999').set('Authorization', admin)).status, 404);
+  assert.equal((await request(app).get('/api/admin/viajes/abc').set('Authorization', admin)).status, 400);
+  assert.equal((await request(app).get('/api/admin/viajes/0').set('Authorization', admin)).status, 400);
+});
+
+test('el listado se filtra por rango de fechas y por estado', async () => {
+  const { respuesta, fecha } = await abrir(['Ida', 'Vuelta']);
+  assert.equal(respuesta.status, 201);
+  const [ida, vuelta] = respuesta.body.viajes;
+  await request(app).patch(`/api/admin/viajes/${vuelta.id}`).set('Authorization', admin).send({ estado: 'cancelado' });
+
+  const delDia = await request(app).get(`/api/admin/viajes?desde=${fecha}&hasta=${fecha}`).set('Authorization', admin);
+  assert.equal(delDia.status, 200);
+  assert.ok(delDia.body.viajes.every((v: { fecha: string }) => v.fecha === fecha));
+  const ids = delDia.body.viajes.map((v: { id: number }) => v.id);
+  assert.ok(ids.includes(ida.id) && ids.includes(vuelta.id));
+
+  const cancelados = await request(app)
+    .get(`/api/admin/viajes?desde=${fecha}&hasta=${fecha}&estado=cancelado`).set('Authorization', admin);
+  assert.ok(cancelados.body.viajes.every((v: { estado: string }) => v.estado === 'cancelado'));
+  assert.ok(cancelados.body.viajes.some((v: { id: number }) => v.id === vuelta.id));
+  assert.ok(!cancelados.body.viajes.some((v: { id: number }) => v.id === ida.id));
+
+  const pendientes = await request(app).get('/api/admin/viajes?estado=pendiente').set('Authorization', admin);
+  assert.ok(pendientes.body.viajes.every((v: { estado: string }) => v.estado === 'pendiente'));
+  assert.ok(pendientes.body.viajes.some((v: { id: number }) => v.id === ida.id));
+
+  const desde = await request(app).get(`/api/admin/viajes?desde=${fecha}`).set('Authorization', admin);
+  assert.ok(desde.body.viajes.every((v: { fecha: string }) => v.fecha >= fecha));
+});
+
+test('los filtros del listado rechazan fechas y estados inválidos', async () => {
+  for (const query of [
+    'desde=mañana',
+    'hasta=2026-02-30',
+    `desde=${fechaEn(5)}&hasta=${fechaEn(2)}`,
+    'estado=borrado',
+  ]) {
+    const r = await request(app).get(`/api/admin/viajes?${query}`).set('Authorization', admin);
+    assert.equal(r.status, 400, query);
+    assert.ok(r.body.errores, query);
+  }
+});
+
 /* ---------- Panel del conductor ---------- */
 
 test('solo un conductor accede a las rutas del conductor', async () => {

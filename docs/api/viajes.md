@@ -31,8 +31,32 @@ Formato de un viaje (`ReservaViaje` solo trae a quienes reservaron):
 
 ## Administración (rol `administrador`)
 
+Resumen de la API REST de administración (S3-VIA-01):
+
+| Método | Ruta | Qué hace |
+|---|---|---|
+| GET | `/api/admin/viajes` | Lista los viajes, con filtros opcionales |
+| GET | `/api/admin/viajes/:id` | Detalle de un viaje |
+| POST | `/api/admin/viajes` | Abre ida, vuelta o ambos |
+| PATCH | `/api/admin/viajes/:id` | Asigna van y conductor, o cancela |
+
+Sin token responde 401 y con un rol que no es `administrador`, 403.
+
 ### GET /api/admin/viajes
-Todos los viajes, del más antiguo al más nuevo, con sus reservas (incluidas las canceladas).
+Los viajes, del más antiguo al más nuevo, con sus reservas (incluidas las canceladas). Filtros opcionales, combinables:
+
+| Parámetro | Ejemplo | Efecto |
+|---|---|---|
+| `desde` | `?desde=2026-11-20` | Solo viajes desde esa fecha (incluida) |
+| `hasta` | `?hasta=2026-11-30` | Solo viajes hasta esa fecha (incluida) |
+| `estado` | `?estado=pendiente` | Solo viajes en ese estado (`pendiente`, `en-curso`, `completado` o `cancelado`) |
+
+Sin filtros devuelve todos. Responde 400 con `errores` si una fecha no es `AAAA-MM-DD`, si `hasta` es anterior a
+`desde` o si el estado no existe.
+
+### GET /api/admin/viajes/:id
+Detalle de un viaje con sus reservas: `{ "viaje": {...} }`, con la misma forma que en el listado.
+400 si el id no es válido; 404 si el viaje no existe.
 
 ### POST /api/admin/viajes
 Abre uno o dos viajes con la ruta y el horario fijos (Ida 06:45 Quillota 980 → Santiago, Vuelta 17:00 Santiago → Quillota 980).

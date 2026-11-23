@@ -1,8 +1,12 @@
 import { Router } from 'express';
 import { pool } from '../db';
-import { COLUMNAS_VIAJE, conReservas, idValido, viajePorId, type FilaViaje } from '../viajes/modelo';
+import { COLUMNAS_VIAJE, conReservas, idValido, viajePorId, type EstadoViaje, type FilaViaje } from '../viajes/modelo';
 
-// Gestión administrativa de viajes (S3-VIA-03). Solo administradores: se monta en rutasAdmin.
+// API REST de administración de viajes (S3-VIA-01 y S3-VIA-03). Solo administradores: se monta en rutasAdmin.
+//   GET    /api/admin/viajes        listado, con filtros opcionales ?desde, ?hasta y ?estado
+//   GET    /api/admin/viajes/:id    detalle de un viaje con sus reservas
+//   POST   /api/admin/viajes        abre ida, vuelta o ambos
+//   PATCH  /api/admin/viajes/:id    asigna van y conductor, o cancela
 export const rutasViajes = Router();
 
 // Ruta y horario fijos de cada trayecto (los mismos que exige viajes_ruta_check).
@@ -22,12 +26,87 @@ function esFechaValida(valor: string): boolean {
   return !Number.isNaN(fecha.getTime()) && fecha.toISOString().startsWith(valor);
 }
 
-// Todos los viajes con sus reservas.
-rutasViajes.get('/', async (_req, res) => {
+const ESTADOS: EstadoViaje[] = ['pendiente', 'en-curso', 'completado', 'cancelado'];
+
+// Lee un filtro de la query string: solo se acepta un texto (no ?estado=a&estado=b).
+function filtro(valor: unknown): string | undefined {
+  return typeof valor === 'string' && valor !== '' ? valor : undefined;
+}
+
+// Viajes con sus reservas. Sin filtros devuelve todos; con ?desde y ?hasta (AAAA-MM-DD, incluidos)
+// limita las fechas y con ?estado deja solo ese estado. Los filtros se pueden combinar.
+rutasViajes.get('/', async (req, res) => {
+  const desde = filtro(req.query.desde);
+  const hasta = filtro(req.query.hasta);
+  const estado = filtro(req.query.estado);
+  const errores: Record<string, string> = {};
+
+  if (desde !== undefined && !esFechaValida(desde)) {
+    errores.desde = 'Indica la fecha "desde" con el formato AAAA-MM-DD.';
+  }
+
+  if (hasta !== undefined && !esFechaValida(hasta)) {
+    errores.hasta = 'Indica la fecha "hasta" con el formato AAAA-MM-DD.';
+  }
+
+  if (desde !== undefined && hasta !== undefined && !errores.desde && !errores.hasta && desde > hasta) {
+    errores.hasta = 'La fecha "hasta" no puede ser anterior a "desde".';
+  }
+
+  if (estado !== undefined && !ESTADOS.includes(estado as EstadoViaje)) {
+    errores.estado = `El estado debe ser uno de: ${ESTADOS.join(', ')}.`;
+  }
+
+  if (Object.keys(errores).length > 0) {
+    res.status(400).json({ errores });
+    return;
+  }
+
+  // Se arma el WHERE solo con los filtros que llegaron, siempre con parámetros ($1, $2...).
+  const condiciones: string[] = [];
+  const valores: string[] = [];
+
+  if (desde !== undefined) {
+    valores.push(desde);
+    condiciones.push(`v.fecha >= $${valores.length}`);
+  }
+
+  if (hasta !== undefined) {
+    valores.push(hasta);
+    condiciones.push(`v.fecha <= $${valores.length}`);
+  }
+
+  if (estado !== undefined) {
+    valores.push(estado);
+    condiciones.push(`v.estado = $${valores.length}`);
+  }
+
+  const where = condiciones.length > 0 ? `WHERE ${condiciones.join(' AND ')}` : '';
+
   const { rows } = await pool.query<FilaViaje>(
-    `SELECT ${COLUMNAS_VIAJE} FROM viajes v ORDER BY v.fecha, v.hora, v.id`
+    `SELECT ${COLUMNAS_VIAJE} FROM viajes v ${where} ORDER BY v.fecha, v.hora, v.id`,
+    valores
   );
   res.json({ viajes: await conReservas(rows) });
+});
+
+// Detalle de un viaje con sus reservas (incluidas las canceladas).
+rutasViajes.get('/:id', async (req, res) => {
+  const id = idValido(req.params.id);
+
+  if (id === null) {
+    res.status(400).json({ error: 'El id del viaje no es válido.' });
+    return;
+  }
+
+  const viaje = await viajePorId(id);
+
+  if (!viaje) {
+    res.status(404).json({ error: 'El viaje no existe.' });
+    return;
+  }
+
+  res.json({ viaje });
 });
 
 // Abre uno o dos viajes en una fecha. Se guardan juntos o ninguno.
